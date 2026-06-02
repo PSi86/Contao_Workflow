@@ -1,0 +1,55 @@
+<?php
+/**
+ * Body-only template for the Verzichtserklärung (logo, signature and footer come
+ * from pdf_master). Receives: data, extra. The accept/reject branch is derived
+ * from the stored answer value of the "Verzicht" column (ja = Verzicht).
+ *
+ * @var \Contao\FrontendTemplate $this
+ */
+$esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$d = fn (string $k): string => (string) ($this->data[$k] ?? '');
+$x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$k] ?? '') ? (string) $this->extra[$k] : $def;
+
+$fmtDate = static function (string $s): string {
+    $s = trim($s);
+    if ('' === $s) {
+        return '';
+    }
+    foreach (['m/d/Y', 'n/j/Y', 'd.m.Y', 'j.n.Y', 'Y-m-d'] as $f) {
+        $dt = \DateTime::createFromFormat($f, $s);
+        if ($dt instanceof \DateTime) {
+            return $dt->format('d.m.Y');
+        }
+    }
+    return $s;
+};
+
+$verein = $x('Verein', 'TSV Korntal e.V.');
+$jahr = $x('Jahr', date('Y'));
+$betrag = '' !== $d('davon Spende') ? $d('davon Spende') : $d('Höhe der ÜLP');
+$name = trim($d('Vorname').' '.$d('Name'));
+$accept = 'ja' === strtolower(trim($d('Verzicht')));
+?>
+<h1>Verzichtserklärung für Trainer / Übungsleiter / Betreuer</h1>
+<div class="subtitle">verbunden mit der Ausstellung einer Zuwendungsbescheinigung</div>
+
+<div class="person">
+    <p><span class="label">Name:</span> <?= $esc($name) ?>, geb. am <?= $esc($fmtDate($d('Geburtsdatum'))) ?></p>
+    <p><span class="label">Adresse:</span> <?= $esc(trim($d('Straße').', '.$d('PLZ').' '.$d('Wohnort'), ', ')) ?></p>
+    <p><span class="label">Funktion im Verein:</span> <?= $esc($d('Tätigkeit in Abteilung')) ?>, Abteilung: <?= $esc($d('Abteilung')) ?></p>
+</div>
+
+<div class="body">
+<?php if ($accept): ?>
+    <p>Hiermit erkläre ich den unwiderruflichen Verzicht auf die rechtswirksam entstandene
+       Aufwandsentschädigung gegenüber dem <?= $esc($verein) ?> für das Jahr <?= $esc($jahr) ?>
+       in Höhe von <span class="amount"><?= $esc($betrag) ?></span>.</p>
+    <p>Im Gegenzug bitte ich den <?= $esc($verein) ?> um das Ausstellen einer
+       Zuwendungsbescheinigung in gleicher Höhe.</p>
+    <p>Es liegt ein rechtskräftiger Übungsleitervertrag vor.</p>
+<?php else: ?>
+    <p>Ich möchte die Auszahlung der mir zustehenden Aufwandsentschädigung gegenüber dem
+       <?= $esc($verein) ?> für das Jahr <?= $esc($jahr) ?> in Höhe von
+       <span class="amount"><?= $esc($betrag) ?></span> und verzichte nicht.</p>
+<?php endif; ?>
+</div>

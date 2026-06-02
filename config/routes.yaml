@@ -1,0 +1,3 @@
+contao_trainer_workflow_backend:
+    resource: ../src/Controller/Backend
+    type: attribute
