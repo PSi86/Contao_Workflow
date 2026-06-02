@@ -56,20 +56,22 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 2. **Seite + Modul**: Frontend-Modul „Trainer-Formular“ anlegen und auf einer
    Seite einfügen, die `auto_item` nutzt. Diese Seite unter *Formularseite*
    am Workflow auswählen.
-3. **Workflow** (Backend → Trainer-Workflow → Trainer-Workflows → Neu):
-   - Titel, *Veröffentlicht* aktivieren
-   - *Schritte* z. B. `Importiert`, `Eingeladen`, `Beantwortet`
-   - *Quelldatei* hochladen/auswählen, *Feld-Zuordnung* `email` → Spaltentitel
-   - *Formularseite*, optional *Anzeige-Felder*, *Unterschrift verlangen*
-   - *Briefkopf-Vorlage* und Standard-*PDF-Inhalt* (Brief oder Body-Vorlage)
-   - die drei Notifications zuordnen
-   - **Antwortfelder** (Operation am Workflow): pro Feld Typ (Dropdown, Radio,
-     Checkboxen, Freitext, Datum), Speicherfeld (Quellspalte, Pflicht), bei
-     Options­typen die Optionen (Wert + Options-Text). Die Ja/Nein-Abfrage =
-     Radio mit zwei Optionen (z. B. „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
-   - **PDF-Regeln** (optional, Operation am Workflow): wählen je nach Antworten
-     eine andere Body-Vorlage. Bedingungen `Feld / Operator / Wert` (UND-verknüpft);
-     die erste passende Regel gewinnt, sonst gilt der Standard-PDF-Inhalt.
+3. **Workflow** (Backend → Trainer-Workflow → Trainer-Workflows → **Bearbeiten**).
+   Die *gesamte* Konfiguration liegt auf einer Seite, in Abschnitte gegliedert
+   (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
+   - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
+   - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte
+   - **Formular & Antwortfelder:** Anzeige-Felder, *Unterschrift verlangen*, Formularseite und die
+     eingebetteten **Antwortfelder** – pro Feld Typ (Dropdown, Radio, Checkboxen, Freitext, Datum),
+     Speicherfeld (Quellspalte, Pflicht), bei Optionstypen die Optionen (Wert + Options-Text).
+     Die Ja/Nein-Abfrage = Radio mit zwei Optionen (z. B. „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
+   - **PDF-Inhalt:** Briefkopf-Vorlage + Typ. **Einfacher Brief** → nur die gemeinsame
+     *Überschrift* hier; die Brieftexte stehen in den **PDF-Regeln**. **Spezielle Vorlage** →
+     eine Datei `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** PDF-Regeln).
+   - **PDF-Regeln** (nur bei *Einfacher Brief*): die **Brieftexte** als Liste. Jede Regel =
+     Bedingungen `Feld / Operator / Wert` (UND) + Brieftext; erste passende gewinnt, eine Regel
+     **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende). Verbindung Antwort↔Text = das **Speicherfeld**.
+   - **Benachrichtigungen:** die drei Notifications zuordnen.
 
 ## Verifikation (End-to-End)
 1. `contao:migrate` läuft fehlerfrei; Backend zeigt „Übersicht“ und „Trainer-Workflows“.

@@ -26,6 +26,7 @@
         "symfony/http-foundation": "^6.4 || ^7.0",
         "symfony/http-kernel": "^6.4 || ^7.0",
         "symfony/routing": "^6.4 || ^7.0",
+        "terminal42/dcawizard": "^3.0",
         "terminal42/notification_center": "^2.0"
     },
     "autoload": {

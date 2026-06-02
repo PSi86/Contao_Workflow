@@ -87,50 +87,41 @@ class PdfGenerator
     }
 
     /**
-     * Builds the body HTML. A matching PDF rule selects a body template;
-     * otherwise the workflow default applies – either a dedicated body template
-     * (template mode) or the back-end letter fields with ##token## replacement.
+     * Builds the body HTML.
+     *
+     * - Template mode: the selected body template handles everything itself
+     *   (it receives all data, incl. answers, and branches internally) – PDF
+     *   rules are NOT consulted.
+     * - Letter mode: the shared heading comes from the workflow; the body text
+     *   comes from the first matching PDF rule (a rule without conditions is the
+     *   "else" case). If no rule matches, the body stays empty.
      *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
      */
     private function renderBody(EntryModel $entry, WorkflowModel $workflow, array $data, array $extra, string $datum): string
     {
-        // 1. A matching rule wins and selects its body template.
-        $ruleTemplate = $this->ruleEvaluator->resolveTemplate($workflow, $entry);
+        if ('template' === (string) $workflow->pdfBodyType && '' !== (string) $workflow->pdfBodyTemplate) {
+            /** @var FrontendTemplate $bodyTpl */
+            $bodyTpl = $this->framework->createInstance(FrontendTemplate::class, [(string) $workflow->pdfBodyTemplate]);
+            $bodyTpl->setData([
+                'data'  => $data,
+                'extra' => $extra,
+            ]);
 
-        if (null !== $ruleTemplate) {
-            return $this->renderBodyTemplate($ruleTemplate, $data, $extra);
+            return $bodyTpl->parse();
         }
 
-        // 2. Workflow default: dedicated body template.
-        if ('template' === $workflow->pdfBodyType && '' !== (string) $workflow->pdfBodyTemplate) {
-            return $this->renderBodyTemplate((string) $workflow->pdfBodyTemplate, $data, $extra);
-        }
+        // Letter mode: shared heading from the workflow, body text from the rule.
+        $rule = $this->ruleEvaluator->resolveRule($workflow, $entry);
+        $body = null !== $rule ? $rule->getPdfBody() : '';
 
-        // 3. Workflow default: letter mode – replace ##tokens## in title/body.
         $map = $this->buildTokenMap($data, $extra, $entry, $datum);
 
-        $title = strtr($this->esc((string) $workflow->pdfTitle), $map);
-        $body = nl2br(strtr($this->esc((string) $workflow->pdfBody), $map));
+        $renderedTitle = strtr($this->esc((string) $workflow->pdfTitle), $map);
+        $renderedBody = nl2br(strtr($this->esc($body), $map));
 
-        return ('' !== $title ? '<h1>'.$title.'</h1>' : '').'<div class="letter-body">'.$body.'</div>';
-    }
-
-    /**
-     * @param array<string, mixed>  $data
-     * @param array<string, string> $extra
-     */
-    private function renderBodyTemplate(string $templateName, array $data, array $extra): string
-    {
-        /** @var FrontendTemplate $body */
-        $body = $this->framework->createInstance(FrontendTemplate::class, [$templateName]);
-        $body->setData([
-            'data'  => $data,
-            'extra' => $extra,
-        ]);
-
-        return $body->parse();
+        return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '').'<div class="letter-body">'.$renderedBody.'</div>';
     }
 
     /**

@@ -9,22 +9,20 @@ use Psimandl\TrainerWorkflowBundle\Model\RuleModel;
 use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
 
 /**
- * Selects the PDF body template for an entry by evaluating a workflow's rules
- * against the stored answers. Rules are checked in sorting order; the first rule
- * whose conditions all match wins. Returns null when no rule matches (the
- * caller then falls back to the workflow's default PDF configuration).
+ * Selects the letter body for an entry by evaluating a workflow's rules against
+ * the stored answers (letter mode only). Rules are checked in sorting order; the
+ * first rule whose conditions all match wins. A rule flagged "isDefault" always
+ * matches and thus acts as the "Standardtext"/else case. Returns null when none.
  */
 class RuleEvaluator
 {
-    public function resolveTemplate(WorkflowModel $workflow, EntryModel $entry): ?string
+    public function resolveRule(WorkflowModel $workflow, EntryModel $entry): ?RuleModel
     {
         $data = $entry->getData();
 
         foreach ($workflow->getRules() as $rule) {
-            $template = $rule->getBodyTemplate();
-
-            if ('' !== $template && $this->matches($rule, $data)) {
-                return $template;
+            if ($this->matches($rule, $data)) {
+                return $rule;
             }
         }
 
@@ -36,10 +34,14 @@ class RuleEvaluator
      */
     private function matches(RuleModel $rule, array $data): bool
     {
+        // The "Standardtext" rule always matches (it is the explicit else case).
+        if ($rule->isDefaultRule()) {
+            return true;
+        }
+
         $conditions = $rule->getConditions();
 
-        // A rule without conditions never matches, so it cannot shadow the
-        // workflow default (which is the explicit "else" branch).
+        // A non-default rule without (complete) conditions never matches.
         if ([] === $conditions) {
             return false;
         }

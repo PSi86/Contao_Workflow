@@ -10,6 +10,7 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
         'dataContainer'    => DC_Table::class,
         'ptable'           => 'tl_trainer_workflow',
         'enableVersioning' => true,
+        'onload_callback'  => [[AnswerConfigListener::class, 'hideConditionsForDefaultRule']],
         'sql' => [
             'keys' => [
                 'id'  => 'primary',
@@ -23,7 +24,10 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
             'fields'       => ['sorting'],
             'headerFields' => ['title'],
             'panelLayout'  => 'limit',
-            'child_record_callback' => [AnswerConfigListener::class, 'renderRuleRecord'],
+        ],
+        'label' => [
+            'fields' => ['title'],
+            'format' => '%s',
         ],
         'global_operations' => [
             'all' => [
@@ -44,7 +48,9 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{rule_legend},title,conditions;{result_legend},bodyTemplate',
+        // "conditions" is removed from the palette at runtime when isDefault is set
+        // (see AnswerConfigListener::hideConditionsForDefaultRule).
+        'default' => '{rule_legend},title,isDefault,conditions;{text_legend},pdfBody',
     ],
     'fields' => [
         'id' => [
@@ -68,6 +74,12 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
             'eval'      => ['maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
+        'isDefault' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default ''",
+        ],
         'conditions' => [
             'exclude'   => true,
             'inputType' => 'multiColumnWizard',
@@ -78,13 +90,13 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
                         'label'            => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_field'],
                         'inputType'        => 'select',
                         'options_callback' => [AnswerConfigListener::class, 'getStorageFieldOptions'],
-                        'eval'             => ['mandatory' => true, 'includeBlankOption' => true, 'style' => 'width:220px'],
+                        'eval'             => ['includeBlankOption' => true, 'style' => 'width:220px'],
                     ],
                     'operator' => [
                         'label'            => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_operator'],
                         'inputType'        => 'select',
                         'options'          => &$GLOBALS['TL_LANG']['tl_trainer_rule']['operatorOptions'],
-                        'eval'             => ['mandatory' => true, 'style' => 'width:160px'],
+                        'eval'             => ['style' => 'width:160px'],
                     ],
                     'value' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_value'],
@@ -95,11 +107,11 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
             ],
             'sql' => 'blob NULL',
         ],
-        'bodyTemplate' => [
+        'pdfBody' => [
             'exclude'   => true,
-            'inputType' => 'select',
-            'eval'      => ['mandatory' => true, 'includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
-            'sql'       => "varchar(64) NOT NULL default ''",
+            'inputType' => 'textarea',
+            'eval'      => ['mandatory' => true, 'rows' => 8, 'tl_class' => 'clr'],
+            'sql'       => 'text NULL',
         ],
     ],
 ];

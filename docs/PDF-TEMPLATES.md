@@ -53,14 +53,21 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->data` | **alle** importierten Spalten **inkl. der gespeicherten Antwortwerte** (assoz.), Zugriff per `$d('Spaltenname')` |
 | `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Jahr')`, `$x('Verein')` … |
 
-> Die frühere feste Entscheidung gibt es nicht mehr. Branche im Template auf einen
-> gespeicherten Antwortwert (z. B. `$accept = 'ja' === $d('Verzicht');`) **oder** wähle
-> die passende Body-Vorlage über **PDF-Regeln** am Workflow.
+> Eine Body-Vorlage **enthält ihre gesamte Verzweigung selbst** – sie bekommt alle Antwortwerte
+> in `$this->data` und entscheidet im Code (z. B. `$accept = 'ja' === $d('Verzicht');`). Bei
+> „Spezielle Vorlage" gibt es deshalb **keine** PDF-Regeln. Vorlagen sind für komplexe/pixelgenaue
+> Fälle gedacht.
 
 ### Einfacher Brief (Letter-Modus, ganz ohne Datei)
-Im Backend (Überschrift/Brieftext) mit `##Platzhaltern##`:
-`##Spaltenname##` (jede Quellspalte inkl. Antwortfelder), `##Jahr##` / `##Verein##` …
-(Master-Variablen), `##datum##`, `##email##`.
+Bei „Einfacher Brief" steht im Workflow nur die gemeinsame **Überschrift**; die **Brieftexte**
+werden als **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter im Text: `##Spaltenname##`
+(jede Quellspalte inkl. Antwortfelder), `##Jahr##` / `##Verein##` … (Master-Variablen),
+`##datum##`, `##email##`.
+
+> So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Antwortfelds.
+> Die Regel-Engine prüft die Regeln der Reihe nach gegen die gespeicherten Werte; die erste
+> passende liefert den Brieftext, eine Regel **ohne Bedingung** gilt immer (Sonst-Fall).
+> Beispiel: Regel „`Verzicht` = `ja`" → Zustimmungstext; Regel ohne Bedingung → Ablehnungstext.
 
 ---
 

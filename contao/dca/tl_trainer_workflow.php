@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
+use Psimandl\TrainerWorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 
 $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
     'config' => [
@@ -35,21 +36,13 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
             ],
         ],
         'operations' => [
-            'questions' => [
-                'href' => 'table=tl_trainer_question',
-                'icon' => 'tablewizard.svg',
-            ],
-            'rules' => [
-                'href' => 'table=tl_trainer_rule',
-                'icon' => 'settings.svg',
+            'edit' => [
+                'href' => 'act=edit',
+                'icon' => 'header.svg',
             ],
             'entries' => [
                 'href' => 'table=tl_trainer_entry',
                 'icon' => 'edit.svg',
-            ],
-            'edit' => [
-                'href' => 'act=edit',
-                'icon' => 'header.svg',
             ],
             'copy' => [
                 'href' => 'act=copy',
@@ -68,10 +61,12 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
     ],
     'palettes' => [
         '__selector__' => ['pdfBodyType'],
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature;{pdf_legend},master,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature,questions;{pdf_legend},master,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
-        'pdfBodyType_letter'   => 'pdfTitle,pdfBody',
+        // Letter mode: shared heading + the rules that carry the body texts.
+        // Template mode: just the template file (it handles branching itself).
+        'pdfBodyType_letter'   => 'pdfTitle,rules',
         'pdfBodyType_template' => 'pdfBodyTemplate',
     ],
     'fields' => [
@@ -149,6 +144,42 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
             'eval'      => ['fieldType' => 'radio', 'tl_class' => 'clr', 'mandatory' => true],
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
+        // Answer fields (tl_trainer_question), embedded in the edit mask.
+        // hideButton: only the inline list (with its own new/edit/delete that open
+        // clean record popups) – NOT the main button, which would open the foreign
+        // table's mode-4 parent list (recursive "edit workflow" header).
+        'questions' => [
+            'exclude'   => true,
+            'inputType' => 'dcaWizard',
+            'foreignTable' => 'tl_trainer_question',
+            'foreignField' => 'pid',
+            'eval'      => [
+                'tl_class'          => 'clr',
+                'hideButton'        => true,
+                'fields'            => ['label', 'type', 'storageField', 'mandatory'],
+                'orderField'        => 'sorting',
+                'showOperations'    => true,
+                'operations'        => ['edit', 'delete', 'new'],
+                'global_operations' => ['new'],
+            ],
+        ],
+        // PDF rules (tl_trainer_rule), embedded in the edit mask (letter mode only).
+        // Custom list_callback shows label + readable conditions ("(Standardtext)"
+        // for a rule without conditions) and keeps the edit/delete operations.
+        'rules' => [
+            'exclude'   => true,
+            'inputType' => 'dcaWizard',
+            'foreignTable' => 'tl_trainer_rule',
+            'foreignField' => 'pid',
+            'eval'      => [
+                'tl_class'          => 'clr',
+                'hideButton'        => true,
+                'orderField'        => 'sorting',
+                'operations'        => ['edit', 'delete'],
+                'global_operations' => ['new'],
+                'list_callback'     => [AnswerConfigListener::class, 'renderRulesList'],
+            ],
+        ],
         // Legacy columns of the old fixed accept/reject decision. Kept (SQL only,
         // no UI) so ConfigurableAnswersMigration can read them; removable in a
         // later release once all installs are migrated.
@@ -186,11 +217,9 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
             'eval'      => ['maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
+        // Legacy column (standard letter body is now defined per PDF rule). SQL only, no UI.
         'pdfBody' => [
-            'exclude'   => true,
-            'inputType' => 'textarea',
-            'eval'      => ['rows' => 8, 'tl_class' => 'clr'],
-            'sql'       => 'text NULL',
+            'sql' => 'text NULL',
         ],
         // Legacy column (old per-decision reject letter body). SQL only, no UI.
         'pdfBodyReject' => [
