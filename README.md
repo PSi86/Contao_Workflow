@@ -109,6 +109,11 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
   `messenger:consume`) wird nichts zugestellt, obwohl der Versand als erfolgreich gilt.
 - Generierte PDFs liegen unter `%kernel.project_dir%/var/workflow_pdfs/` (nicht
   öffentlich) und werden nur über die authentifizierten Backend-Routen gestreamt.
+- **Quelldateien & Datenschutz:** Die hochgeladene Quelltabelle enthält personenbezogene
+  Daten. Contao-Dateiordner sind standardmäßig **geschützt** (nicht ohne Login abrufbar) –
+  Quelldateien daher in einem geschützten Ordner belassen und den Ordner **nicht freigeben**.
+  Liegt die Quelldatei doch in einem öffentlichen Ordner, warnt das Backend beim Bearbeiten
+  des Workflows mit einem deutlichen Datenschutz-Hinweis.
 - PDF-Anhang in der Ergebnis-Mail: setzt voraus, dass das Notification Center den
   über `##attachment##` übergebenen Dateipfad als Anhang verarbeitet. Falls die
   installierte NC-Version das nicht abdeckt, `do-while/contao-pdf-nc-attachment-bundle`

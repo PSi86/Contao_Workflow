@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
+use Contao\FilesModel;
 use Contao\Message;
 use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -16,11 +17,16 @@ use Psimandl\WorkflowBundle\Service\WorkflowValidator;
  * the concrete problems, red-outlined source-dependent fields, and a warning on
  * save. Typical after a copy, before a new source file has been loaded – saving
  * stays possible, but executing the workflow is blocked elsewhere.
+ *
+ * Also warns when the (PII-laden) source spreadsheet sits in a publicly served
+ * folder of the Contao file manager, where it would be downloadable without login.
  */
 class WorkflowIntegrityListener
 {
-    public function __construct(private readonly WorkflowValidator $validator)
-    {
+    public function __construct(
+        private readonly WorkflowValidator $validator,
+        private readonly string $projectDir,
+    ) {
     }
 
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
@@ -79,5 +85,62 @@ class WorkflowIntegrityListener
                 .'Bis eine gültige Quelldatei geladen ist, sind Import, Versand und Export gesperrt.',
             );
         }
+    }
+
+    /**
+     * Warns when the source spreadsheet is stored in a publicly served folder of
+     * the file manager: it (and all the personal data it contains) would then be
+     * directly downloadable without a login. Source files belong in a protected
+     * folder – in Contao they are protected by default unless a folder is published.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
+    public function warnPublicSourceFile(DataContainer $dc): void
+    {
+        if (!$dc->id) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null === $workflow || !$this->sourceFileIsPublic($workflow)) {
+            return;
+        }
+
+        Message::addError(
+            'Datenschutz-Hinweis: Die Quelldatei dieses Workflows liegt in einem öffentlichen '
+            .'Ordner der Dateiverwaltung und ist damit ohne Login direkt herunterladbar – '
+            .'inklusive aller personenbezogenen Daten. Bitte den Ordner in der Dateiverwaltung '
+            .'schützen (Kontextmenü „Schützen") oder die Quelldatei in einen geschützten Ordner verschieben.',
+        );
+    }
+
+    /**
+     * A Contao folder is web-accessible when it (or an ancestor) carries a
+     * ".public" marker file; a file inside is then directly downloadable. Walks
+     * the source file's folder path upwards and checks for that marker.
+     */
+    private function sourceFileIsPublic(WorkflowModel $workflow): bool
+    {
+        if (!$workflow->sourceFile) {
+            return false;
+        }
+
+        $file = FilesModel::findByUuid($workflow->sourceFile);
+
+        if (null === $file) {
+            return false;
+        }
+
+        $parts = explode('/', \dirname((string) $file->path));
+
+        while ([] !== $parts) {
+            if (is_file($this->projectDir.'/'.implode('/', $parts).'/.public')) {
+                return true;
+            }
+
+            array_pop($parts);
+        }
+
+        return false;
     }
 }
