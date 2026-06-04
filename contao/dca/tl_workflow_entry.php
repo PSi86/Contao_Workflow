@@ -15,7 +15,7 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'keys' => [
                 'id'    => 'primary',
                 'pid'   => 'index',
-                'token' => 'index',
+                'token' => 'unique',
             ],
         ],
     ],

@@ -7,13 +7,16 @@ namespace Psimandl\WorkflowBundle\Controller\Backend;
 use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\Exception\AccessDeniedException;
 use Contao\CoreBundle\Framework\ContaoFramework;
+use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\Message;
+use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowMailer;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,6 +43,7 @@ class WorkflowActionController
         private readonly WorkflowValidator $validator,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
+        private readonly Security $security,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -56,7 +60,11 @@ class WorkflowActionController
             return null;
         }
 
-        Message::addError('Workflow „'.$workflow->title.'" kann nicht ausgeführt werden: '.implode(' ', $problems));
+        Message::addError(sprintf(
+            'Workflow „%s" kann nicht ausgeführt werden: %s',
+            StringUtil::specialchars((string) $workflow->title),
+            StringUtil::specialchars(implode(' ', $problems)),
+        ));
 
         return $this->backToDashboard();
     }
@@ -66,6 +74,7 @@ class WorkflowActionController
     {
         $this->framework->initialize();
         $this->assertToken($request);
+        $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
         if ($redirect = $this->assertRunnable($workflow)) {
@@ -102,6 +111,7 @@ class WorkflowActionController
     {
         $this->framework->initialize();
         $this->assertToken($request);
+        $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
         if ($redirect = $this->assertRunnable($workflow)) {
@@ -132,6 +142,7 @@ class WorkflowActionController
     {
         $this->framework->initialize();
         $this->assertToken($request);
+        $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
         $format = 'csv' === $request->query->get('format') ? 'csv' : 'xlsx';
@@ -152,6 +163,7 @@ class WorkflowActionController
     {
         $this->framework->initialize();
         $this->assertToken($request);
+        $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
         $dir = $this->pdfStorage->getWorkflowDir((int) $workflow->id);
@@ -200,6 +212,19 @@ class WorkflowActionController
 
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken($this->csrfTokenName, $rt))) {
             throw new AccessDeniedException('Invalid request token.');
+        }
+    }
+
+    /**
+     * These custom routes sit behind the backend firewall (authentication) but,
+     * unlike Contao's do=… modules, are NOT gated by module permissions. Require
+     * access to the workflow overview module so a low-privilege back end user
+     * cannot import/send or download another workflow's data. Admins always pass.
+     */
+    private function assertAccess(): void
+    {
+        if (!$this->security->isGranted(ContaoCorePermissions::USER_CAN_ACCESS_MODULE, 'workflow_overview')) {
+            throw new AccessDeniedException('Access to the workflow overview module is required.');
         }
     }
 
