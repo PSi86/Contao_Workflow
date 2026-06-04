@@ -79,7 +79,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        var pads = document.querySelectorAll('[data-trainer-signature]');
+        var pads = document.querySelectorAll('[data-workflow-signature]');
         for (var i = 0; i < pads.length; i++) {
             initPad(pads[i]);
         }

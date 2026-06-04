@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\NotificationType;
+namespace Psimandl\WorkflowBundle\NotificationType;
 
 use Terminal42\NotificationCenterBundle\NotificationType\NotificationTypeInterface;
 use Terminal42\NotificationCenterBundle\Token\Definition\AnythingTokenDefinition;
@@ -18,9 +18,9 @@ use Terminal42\NotificationCenterBundle\Token\Definition\TextTokenDefinition;
  * and, importantly, marks "attachment" as a file token so it can be attached to
  * the result mail via the "Attachments via tokens" field (##attachment##).
  */
-class TrainerWorkflowNotificationType implements NotificationTypeInterface
+class WorkflowNotificationType implements NotificationTypeInterface
 {
-    public const NAME = 'trainer_workflow';
+    public const NAME = 'workflow';
 
     public function __construct(private readonly TokenDefinitionFactoryInterface $factory)
     {
@@ -34,11 +34,11 @@ class TrainerWorkflowNotificationType implements NotificationTypeInterface
     public function getTokenDefinitions(): array
     {
         return [
-            $this->factory->create(EmailTokenDefinition::class, 'email', 'trainer.email'),
-            $this->factory->create(TextTokenDefinition::class, 'link', 'trainer.link'),
-            $this->factory->create(TextTokenDefinition::class, 'workflow_title', 'trainer.workflow_title'),
-            $this->factory->create(FileTokenDefinition::class, 'attachment', 'trainer.attachment'),
-            $this->factory->create(AnythingTokenDefinition::class, 'data_*', 'trainer.data_*'),
+            $this->factory->create(EmailTokenDefinition::class, 'email', 'workflow.email'),
+            $this->factory->create(TextTokenDefinition::class, 'link', 'workflow.link'),
+            $this->factory->create(TextTokenDefinition::class, 'workflow_title', 'workflow.workflow_title'),
+            $this->factory->create(FileTokenDefinition::class, 'attachment', 'workflow.attachment'),
+            $this->factory->create(AnythingTokenDefinition::class, 'data_*', 'workflow.data_*'),
         ];
     }
 }

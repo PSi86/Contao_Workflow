@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Reads structural information (sheet names, column headers) from a workflow's

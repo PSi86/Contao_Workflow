@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Model;
+namespace Psimandl\WorkflowBundle\Model;
 
 use Contao\Model;
 use Contao\StringUtil;
 
 /**
- * Reads tl_trainer_master – a reusable "Briefkopf" (letterhead): the master
+ * Reads tl_workflow_master – a reusable "Briefkopf" (letterhead): the master
  * template (chrome), the logo and the static PDF variables. Workflows reference
  * a master; logo and variables are maintained here, not on the workflow.
  *
@@ -21,7 +21,7 @@ use Contao\StringUtil;
  */
 class MasterModel extends Model
 {
-    protected static $strTable = 'tl_trainer_master';
+    protected static $strTable = 'tl_workflow_master';
 
     public function getMasterTemplate(): string
     {

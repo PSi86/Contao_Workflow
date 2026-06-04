@@ -6,22 +6,29 @@ services:
             $projectDir: '%kernel.project_dir%'
             $csrfTokenName: '%contao.csrf_token_name%'
 
-    Psimandl\TrainerWorkflowBundle\:
+    Psimandl\WorkflowBundle\:
         resource: ../src/
         exclude:
-            - ../src/ContaoTrainerWorkflowBundle.php
+            - ../src/ContaoWorkflowBundle.php
             - ../src/ContaoManager/
             - ../src/Model/
             # Instantiated by Contao as a BE_MOD callback, not via the container.
             - ../src/Controller/Backend/DashboardModule.php
 
     # Controllers need to be public so the router/back end can resolve them.
-    Psimandl\TrainerWorkflowBundle\Controller\:
+    Psimandl\WorkflowBundle\Controller\:
         resource: ../src/Controller/
         public: true
         exclude:
             - ../src/Controller/Backend/DashboardModule.php
 
     # Accessed from the (non-service) back end dashboard module via the container.
-    Psimandl\TrainerWorkflowBundle\Service\WorkflowStatus:
+    Psimandl\WorkflowBundle\Service\WorkflowStatus:
+        public: true
+
+    Psimandl\WorkflowBundle\Service\WorkflowValidator:
+        public: true
+
+    # Used from the no-ctor AnswerConfigListener (MCW callback) via the container.
+    Psimandl\WorkflowBundle\Service\SpreadsheetInspector:
         public: true

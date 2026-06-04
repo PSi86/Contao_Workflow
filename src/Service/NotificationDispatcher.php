@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Terminal42\NotificationCenterBundle\BulkyItem\BulkyItemStorage;
 use Terminal42\NotificationCenterBundle\BulkyItem\FileItemFactory;
 use Terminal42\NotificationCenterBundle\NotificationCenter;
@@ -23,8 +24,12 @@ use Terminal42\NotificationCenterBundle\Receipt\ReceiptCollection;
  *   ##workflow_title##  the workflow title
  *   ##data_<column>##   any imported source column (sanitized name), including the
  *                       stored answer values (e.g. ##data_verzicht##)
+ *   ##var_<variable>##  any master/letterhead variable (e.g. ##var_verein##)
  *   ##attachment##      the generated PDF (result mail); stored as a bulky item
  *                       and referenced under "Attachments via tokens"
+ *
+ * The ##data_*## / ##var_*## tokens are produced by the shared PlaceholderResolver
+ * so they are identical to the ones used in the PDF.
  */
 class NotificationDispatcher
 {
@@ -32,6 +37,7 @@ class NotificationDispatcher
         private readonly NotificationCenter $notificationCenter,
         private readonly BulkyItemStorage $bulkyItemStorage,
         private readonly FileItemFactory $fileItemFactory,
+        private readonly PlaceholderResolver $placeholderResolver,
     ) {
     }
 
@@ -95,23 +101,29 @@ class NotificationDispatcher
      */
     private function baseTokens(WorkflowModel $workflow, EntryModel $entry, string $link): array
     {
-        $tokens = [
-            'email'          => (string) $entry->email,
-            'link'           => $link,
-            'workflow_title' => (string) $workflow->title,
-        ];
+        $tokens = $this->placeholderResolver->canonicalTokens(
+            $entry->getData(),
+            $this->masterVars($workflow),
+            (string) $entry->email,
+            (string) $workflow->title,
+        );
 
-        foreach ($entry->getData() as $key => $value) {
-            $tokens['data_'.$this->normalizeTokenName((string) $key)] = (string) $value;
-        }
+        $tokens['link'] = $link;
 
         return $tokens;
     }
 
-    private function normalizeTokenName(string $name): string
+    /**
+     * @return array<string, string>
+     */
+    private function masterVars(WorkflowModel $workflow): array
     {
-        $name = preg_replace('/[^A-Za-z0-9_]/', '_', $name) ?? '';
+        if (!$workflow->master) {
+            return [];
+        }
 
-        return strtolower(trim($name, '_'));
+        $master = MasterModel::findByPk((int) $workflow->master);
+
+        return null !== $master ? $master->getPdfData() : [];
     }
 }

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\EventListener\DataContainer;
+namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\StringUtil;
-use Psimandl\TrainerWorkflowBundle\Service\TokenGenerator;
+use Psimandl\WorkflowBundle\Service\TokenGenerator;
 
 /**
- * DCA callbacks for tl_trainer_entry.
+ * DCA callbacks for tl_workflow_entry.
  */
 class EntryListener
 {
@@ -23,7 +23,7 @@ class EntryListener
      *
      * @param array<string, mixed> $row
      */
-    #[AsCallback(table: 'tl_trainer_entry', target: 'list.sorting.child_record')]
+    #[AsCallback(table: 'tl_workflow_entry', target: 'list.sorting.child_record')]
     public function renderChildRecord(array $row): string
     {
         $status = (int) ($row['status'] ?? 0);
@@ -39,7 +39,7 @@ class EntryListener
     /**
      * Pretty-prints the serialized data blob as JSON for the read-only field.
      */
-    #[AsCallback(table: 'tl_trainer_entry', target: 'fields.data.load')]
+    #[AsCallback(table: 'tl_workflow_entry', target: 'fields.data.load')]
     public function formatDataForDisplay(mixed $value): string
     {
         $data = StringUtil::deserialize($value, true);
@@ -50,7 +50,7 @@ class EntryListener
     /**
      * Ensures a manually created entry always receives a unique token.
      */
-    #[AsCallback(table: 'tl_trainer_entry', target: 'config.onsubmit')]
+    #[AsCallback(table: 'tl_workflow_entry', target: 'config.onsubmit')]
     public function ensureToken(DataContainer $dc): void
     {
         if (!$dc->id) {
@@ -58,13 +58,13 @@ class EntryListener
         }
 
         $current = \Contao\Database::getInstance()
-            ->prepare('SELECT token FROM tl_trainer_entry WHERE id=?')
+            ->prepare('SELECT token FROM tl_workflow_entry WHERE id=?')
             ->execute($dc->id)
         ;
 
         if ($current->numRows && '' === (string) $current->token) {
             \Contao\Database::getInstance()
-                ->prepare('UPDATE tl_trainer_entry SET token=? WHERE id=?')
+                ->prepare('UPDATE tl_workflow_entry SET token=? WHERE id=?')
                 ->execute($this->tokenGenerator->generate(), $dc->id)
             ;
         }

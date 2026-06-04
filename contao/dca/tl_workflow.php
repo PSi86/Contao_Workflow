@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
-use Psimandl\TrainerWorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 
-$GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
+$GLOBALS['TL_DCA']['tl_workflow'] = [
     'config' => [
         'dataContainer'    => DC_Table::class,
-        'ctable'           => ['tl_trainer_entry'],
+        // Questions and rules are copied with the workflow (act=copy); entries are
+        // not (tl_workflow_entry sets doNotCopyRecords). All three cascade on delete.
+        'ctable'           => ['tl_workflow_entry', 'tl_workflow_question', 'tl_workflow_rule'],
         'switchToEdit'     => true,
         'enableVersioning' => true,
         'sql' => [
@@ -19,10 +21,12 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
     ],
     'list' => [
         'sorting' => [
-            'mode'        => 1,
-            'fields'      => ['title'],
-            'flag'        => 1,
-            'panelLayout' => 'search,limit',
+            'mode'           => 1,
+            'fields'         => ['tstamp DESC'],
+            'flag'           => 12,
+            // Newest first, but as a flat list (no tstamp group headers).
+            'disableGrouping' => true,
+            'panelLayout'    => 'search,limit',
         ],
         'label' => [
             'fields' => ['title'],
@@ -41,7 +45,7 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
                 'icon' => 'header.svg',
             ],
             'entries' => [
-                'href' => 'table=tl_trainer_entry',
+                'href' => 'table=tl_workflow_entry',
                 'icon' => 'edit.svg',
             ],
             'copy' => [
@@ -60,10 +64,12 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['pdfBodyType'],
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature,questions;{pdf_legend},master,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        '__selector__' => ['pdfBodyType', 'requireSignature'],
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
+        // The signature-line fields only matter when a signature is required.
+        'requireSignature'     => 'pdfSignatureDate,pdfSignatureLocation',
         // Letter mode: shared heading + the rules that carry the body texts.
         // Template mode: just the template file (it handles branching itself).
         'pdfBodyType_letter'   => 'pdfTitle,rules',
@@ -86,7 +92,8 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
         'published' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
-            'eval'      => ['tl_class' => 'w50 m12'],
+            // A copy must be reviewed before it runs, so it starts unpublished.
+            'eval'      => ['tl_class' => 'w50 m12', 'doNotCopy' => true],
             'sql'       => "char(1) NOT NULL default ''",
         ],
         'steps' => [
@@ -105,6 +112,8 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
                 'extensions'     => 'csv,xlsx,xls',
                 'submitOnChange' => true,
                 'tl_class'       => 'clr',
+                // A copy must load its own source file before it can run.
+                'doNotCopy'      => true,
             ],
             'sql' => 'binary(16) NULL',
         ],
@@ -135,7 +144,7 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
         'requireSignature' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
-            'eval'      => ['tl_class' => 'w50 m12'],
+            'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
             'sql'       => "char(1) NOT NULL default '1'",
         ],
         'formPage' => [
@@ -144,14 +153,14 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
             'eval'      => ['fieldType' => 'radio', 'tl_class' => 'clr', 'mandatory' => true],
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
-        // Answer fields (tl_trainer_question), embedded in the edit mask.
+        // Answer fields (tl_workflow_question), embedded in the edit mask.
         // hideButton: only the inline list (with its own new/edit/delete that open
         // clean record popups) – NOT the main button, which would open the foreign
         // table's mode-4 parent list (recursive "edit workflow" header).
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
-            'foreignTable' => 'tl_trainer_question',
+            'foreignTable' => 'tl_workflow_question',
             'foreignField' => 'pid',
             'eval'      => [
                 'tl_class'          => 'clr',
@@ -163,13 +172,13 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
                 'global_operations' => ['new'],
             ],
         ],
-        // PDF rules (tl_trainer_rule), embedded in the edit mask (letter mode only).
+        // PDF rules (tl_workflow_rule), embedded in the edit mask (letter mode only).
         // Custom list_callback shows label + readable conditions ("(Standardtext)"
         // for a rule without conditions) and keeps the edit/delete operations.
         'rules' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
-            'foreignTable' => 'tl_trainer_rule',
+            'foreignTable' => 'tl_workflow_rule',
             'foreignField' => 'pid',
             'eval'      => [
                 'tl_class'          => 'clr',
@@ -180,34 +189,43 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
                 'list_callback'     => [AnswerConfigListener::class, 'renderRulesList'],
             ],
         ],
-        // Legacy columns of the old fixed accept/reject decision. Kept (SQL only,
-        // no UI) so ConfigurableAnswersMigration can read them; removable in a
-        // later release once all installs are migrated.
-        'labelAccept' => [
-            'sql' => "varchar(128) NOT NULL default ''",
-        ],
-        'labelReject' => [
-            'sql' => "varchar(128) NOT NULL default ''",
-        ],
-        'decisionField' => [
-            'sql' => "varchar(128) NOT NULL default ''",
-        ],
-        'dateField' => [
-            'sql' => "varchar(128) NOT NULL default ''",
-        ],
         'master' => [
             'exclude'    => true,
             'inputType'  => 'select',
-            'foreignKey' => 'tl_trainer_master.title',
+            'foreignKey' => 'tl_workflow_master.title',
             'eval'       => ['mandatory' => true, 'chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
             'sql'        => "int(10) unsigned NOT NULL default 0",
             'relation'   => ['type' => 'hasOne', 'load' => 'lazy'],
+        ],
+        // Data field whose value is printed as the signature date in the PDF
+        // (typically an "Aktuelle Zeit" answer field). Empty = no date printed.
+        'pdfSignatureDate' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            'sql'       => "varchar(128) NOT NULL default ''",
+        ],
+        // Source column whose value is printed as the place in the signature line
+        // (e.g. the participant's town). Empty = no place printed.
+        'pdfSignatureLocation' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            'sql'       => "varchar(128) NOT NULL default ''",
+        ],
+        // File name pattern of the generated PDF, with placeholders. Sanitized to a
+        // safe name; a short token is appended on collision. Empty = entry token.
+        'pdfFileName' => [
+            'exclude'   => true,
+            'inputType' => 'text',
+            'eval'      => ['maxlength' => 255, 'tl_class' => 'clr'],
+            'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'pdfBodyType' => [
             'exclude'   => true,
             'inputType' => 'select',
             'options'   => ['letter', 'template'],
-            'reference' => &$GLOBALS['TL_LANG']['tl_trainer_workflow']['pdfBodyTypeOptions'],
+            'reference' => &$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'],
             'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
@@ -217,14 +235,6 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
             'eval'      => ['maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
-        // Legacy column (standard letter body is now defined per PDF rule). SQL only, no UI.
-        'pdfBody' => [
-            'sql' => 'text NULL',
-        ],
-        // Legacy column (old per-decision reject letter body). SQL only, no UI.
-        'pdfBodyReject' => [
-            'sql' => 'text NULL',
-        ],
         'pdfBodyTemplate' => [
             'exclude'   => true,
             'inputType' => 'select',
@@ -233,7 +243,8 @@ $GLOBALS['TL_DCA']['tl_trainer_workflow'] = [
         ],
         // Internal: checksum of the last imported source file (change detection).
         'sourceHash' => [
-            'sql' => "varchar(64) NOT NULL default ''",
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(64) NOT NULL default ''",
         ],
         'ncInvite' => [
             'exclude'    => true,

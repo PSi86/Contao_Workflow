@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Controller\Backend;
+namespace Psimandl\WorkflowBundle\Controller\Backend;
 
 use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\Exception\AccessDeniedException;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Message;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
-use Psimandl\TrainerWorkflowBundle\Service\PdfStorage;
-use Psimandl\TrainerWorkflowBundle\Service\SpreadsheetExporter;
-use Psimandl\TrainerWorkflowBundle\Service\SpreadsheetImporter;
-use Psimandl\TrainerWorkflowBundle\Service\WorkflowMailer;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\PdfStorage;
+use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
+use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
+use Psimandl\WorkflowBundle\Service\WorkflowMailer;
+use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,11 +24,11 @@ use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Csrf\CsrfToken;
 
 /**
- * Back end actions triggered from the trainer dashboard. State-changing actions
+ * Back end actions triggered from the workflow dashboard. State-changing actions
  * validate the Contao request token (rt) and redirect back with a message;
  * downloads stream a file.
  */
-#[Route('/contao/trainer', defaults: ['_scope' => 'backend', '_token_check' => false])]
+#[Route('/contao/workflow', defaults: ['_scope' => 'backend', '_token_check' => false])]
 class WorkflowActionController
 {
     public function __construct(
@@ -36,18 +37,40 @@ class WorkflowActionController
         private readonly SpreadsheetExporter $exporter,
         private readonly WorkflowMailer $workflowMailer,
         private readonly PdfStorage $pdfStorage,
+        private readonly WorkflowValidator $validator,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $csrfTokenName,
     ) {
     }
 
-    #[Route('/import/{id}', name: 'trainer_import', requirements: ['id' => '\d+'], methods: ['GET'])]
+    /**
+     * Blocks execution of a not-runnable workflow (e.g. a fresh copy without a
+     * source file): adds the concrete problems as an error and redirects back.
+     */
+    private function assertRunnable(WorkflowModel $workflow): ?RedirectResponse
+    {
+        $problems = $this->validator->getProblems($workflow);
+
+        if ([] === $problems) {
+            return null;
+        }
+
+        Message::addError('Workflow „'.$workflow->title.'" kann nicht ausgeführt werden: '.implode(' ', $problems));
+
+        return $this->backToDashboard();
+    }
+
+    #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function import(int $id, Request $request): Response
     {
         $this->framework->initialize();
         $this->assertToken($request);
         $workflow = $this->getWorkflow($id);
+
+        if ($redirect = $this->assertRunnable($workflow)) {
+            return $redirect;
+        }
 
         try {
             $result = $this->importer->import($workflow);
@@ -69,16 +92,34 @@ class WorkflowActionController
         return $this->backToDashboard();
     }
 
-    #[Route('/invitations/{id}', name: 'trainer_send_invitations', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function sendInvitations(int $id, Request $request): Response
+    /**
+     * Unified mail action from the dashboard dialog. "type" is invite|reminder;
+     * "ids" (optional) restricts the recipients to the manually selected entries.
+     * Without ids all entries of the matching status are addressed (automatic).
+     */
+    #[Route('/send/{id}', name: 'workflow_send', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function send(int $id, Request $request): Response
     {
         $this->framework->initialize();
         $this->assertToken($request);
         $workflow = $this->getWorkflow($id);
 
+        if ($redirect = $this->assertRunnable($workflow)) {
+            return $redirect;
+        }
+
+        $reminder = 'reminder' === (string) $request->request->get('type');
+        $ids = array_values(array_filter(array_map('intval', (array) $request->request->all('ids'))));
+
         try {
-            $sent = $this->workflowMailer->sendInvitations($workflow);
-            Message::addConfirmation(sprintf('%d Einladungen wurden versendet.', $sent));
+            $sent = $reminder
+                ? $this->workflowMailer->sendReminders($workflow, $ids ?: null)
+                : $this->workflowMailer->sendInvitations($workflow, $ids ?: null);
+
+            Message::addConfirmation(sprintf(
+                $reminder ? '%d Erinnerungen wurden versendet.' : '%d Einladungen wurden versendet.',
+                $sent,
+            ));
         } catch (\Throwable $e) {
             Message::addError('Versand fehlgeschlagen: '.$e->getMessage());
         }
@@ -86,24 +127,7 @@ class WorkflowActionController
         return $this->backToDashboard();
     }
 
-    #[Route('/reminders/{id}', name: 'trainer_send_reminders', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function sendReminders(int $id, Request $request): Response
-    {
-        $this->framework->initialize();
-        $this->assertToken($request);
-        $workflow = $this->getWorkflow($id);
-
-        try {
-            $sent = $this->workflowMailer->sendReminders($workflow);
-            Message::addConfirmation(sprintf('%d Erinnerungen wurden versendet.', $sent));
-        } catch (\Throwable $e) {
-            Message::addError('Versand fehlgeschlagen: '.$e->getMessage());
-        }
-
-        return $this->backToDashboard();
-    }
-
-    #[Route('/export/{id}', name: 'trainer_export', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/export/{id}', name: 'workflow_export', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function export(int $id, Request $request): Response
     {
         $this->framework->initialize();
@@ -123,7 +147,7 @@ class WorkflowActionController
         return $response;
     }
 
-    #[Route('/pdfs/{id}', name: 'trainer_download_pdfs', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/pdfs/{id}', name: 'workflow_download_pdfs', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function downloadPdfs(int $id, Request $request): Response
     {
         $this->framework->initialize();
@@ -152,7 +176,7 @@ class WorkflowActionController
         $response = new BinaryFileResponse($zipPath);
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            sprintf('trainer_pdfs_%d.zip', $workflow->id),
+            sprintf('workflow_pdfs_%d.zip', $workflow->id),
         );
         $response->deleteFileAfterSend(true);
 
@@ -172,7 +196,7 @@ class WorkflowActionController
 
     private function assertToken(Request $request): void
     {
-        $rt = (string) $request->query->get('rt');
+        $rt = (string) ($request->request->get('REQUEST_TOKEN') ?: $request->query->get('rt'));
 
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken($this->csrfTokenName, $rt))) {
             throw new AccessDeniedException('Invalid request token.');
@@ -182,7 +206,7 @@ class WorkflowActionController
     private function backToDashboard(): RedirectResponse
     {
         return new RedirectResponse(
-            $this->router->generate('contao_backend', ['do' => 'trainer_overview']),
+            $this->router->generate('contao_backend', ['do' => 'workflow_overview']),
         );
     }
 }

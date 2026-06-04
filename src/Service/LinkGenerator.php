@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\PageModel;
 use Contao\StringUtil;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Builds the absolute, individual form link for an entry. The link points at
@@ -31,7 +31,7 @@ class LinkGenerator
             throw new \RuntimeException('Für den Workflow ist keine gültige Formularseite konfiguriert.');
         }
 
-        // Token is appended as auto_item (e.g. /trainer/<token>).
+        // Token is appended as auto_item (e.g. /workflow/<token>).
         return $page->getAbsoluteUrl('/'.$entry->token);
     }
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Sends invitation and reminder mails for a workflow. Shared by the back end
@@ -22,23 +22,31 @@ class WorkflowMailer
     }
 
     /**
-     * Sends the invitation to all freshly imported entries (status 0) and
-     * advances them to "invited" (status 1).
+     * Sends the invitation to freshly imported entries (status 0) and advances
+     * them to "invited" (status 1). With $entryIds only those entries are sent.
+     *
+     * @param array<int, int>|null $entryIds
      */
-    public function sendInvitations(WorkflowModel $workflow): int
+    public function sendInvitations(WorkflowModel $workflow, ?array $entryIds = null): int
     {
-        return $this->dispatch($workflow, WorkflowStatus::STATUS_IMPORTED, false);
+        return $this->dispatch($workflow, WorkflowStatus::STATUS_IMPORTED, false, $entryIds);
     }
 
     /**
-     * Sends a reminder to all invited-but-not-answered entries (status 1).
+     * Sends a reminder to invited-but-not-answered entries (status 1). With
+     * $entryIds only those entries are sent.
+     *
+     * @param array<int, int>|null $entryIds
      */
-    public function sendReminders(WorkflowModel $workflow): int
+    public function sendReminders(WorkflowModel $workflow, ?array $entryIds = null): int
     {
-        return $this->dispatch($workflow, WorkflowStatus::STATUS_INVITED, true);
+        return $this->dispatch($workflow, WorkflowStatus::STATUS_INVITED, true, $entryIds);
     }
 
-    private function dispatch(WorkflowModel $workflow, int $status, bool $isReminder): int
+    /**
+     * @param array<int, int>|null $entryIds restrict to these entry ids (manual selection)
+     */
+    private function dispatch(WorkflowModel $workflow, int $status, bool $isReminder, ?array $entryIds = null): int
     {
         $this->framework->initialize();
 
@@ -50,6 +58,10 @@ class WorkflowMailer
         }
 
         foreach ($entries as $entry) {
+            if (null !== $entryIds && !\in_array((int) $entry->id, $entryIds, true)) {
+                continue;
+            }
+
             if ('' === (string) $entry->email) {
                 continue;
             }

@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
-use Psimandl\TrainerWorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 
-$GLOBALS['TL_DCA']['tl_trainer_question'] = [
+$GLOBALS['TL_DCA']['tl_workflow_question'] = [
     'config' => [
         'dataContainer'    => DC_Table::class,
-        'ptable'           => 'tl_trainer_workflow',
+        'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
+        'onload_callback'  => [[AnswerConfigListener::class, 'hideMandatoryForCurrentTime']],
         'sql' => [
             'keys' => [
                 'id'  => 'primary',
@@ -48,16 +49,17 @@ $GLOBALS['TL_DCA']['tl_trainer_question'] = [
         'default'      => '{question_legend},label,type,storageField,mandatory',
     ],
     'subpalettes' => [
-        'type_select'   => 'options',
-        'type_radio'    => 'options',
-        'type_checkbox' => 'options',
+        'type_select'      => 'options',
+        'type_radio'       => 'options',
+        'type_checkbox'    => 'options',
+        'type_currentTime' => 'hideInForm',
     ],
     'fields' => [
         'id' => [
             'sql' => 'int(10) unsigned NOT NULL auto_increment',
         ],
         'pid' => [
-            'foreignKey' => 'tl_trainer_workflow.title',
+            'foreignKey' => 'tl_workflow.title',
             'sql'        => "int(10) unsigned NOT NULL default 0",
             'relation'   => ['type' => 'belongsTo', 'load' => 'lazy'],
         ],
@@ -77,8 +79,8 @@ $GLOBALS['TL_DCA']['tl_trainer_question'] = [
         'type' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'options'   => ['text', 'textarea', 'select', 'radio', 'checkbox', 'date'],
-            'reference' => &$GLOBALS['TL_LANG']['tl_trainer_question']['typeOptions'],
+            'options'   => ['text', 'textarea', 'select', 'radio', 'checkbox', 'date', 'currentTime'],
+            'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'],
             'eval'      => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'text'",
         ],
@@ -94,6 +96,14 @@ $GLOBALS['TL_DCA']['tl_trainer_question'] = [
             'eval'      => ['tl_class' => 'w50 m12'],
             'sql'       => "char(1) NOT NULL default ''",
         ],
+        // "Aktuelle Zeit" only: leave the field out of the public form (it is
+        // filled automatically on submission).
+        'hideInForm' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default ''",
+        ],
         'options' => [
             'exclude'   => true,
             'inputType' => 'multiColumnWizard',
@@ -101,12 +111,12 @@ $GLOBALS['TL_DCA']['tl_trainer_question'] = [
                 'tl_class'     => 'clr',
                 'columnFields' => [
                     'value' => [
-                        'label'     => &$GLOBALS['TL_LANG']['tl_trainer_question']['option_value'],
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_value'],
                         'inputType' => 'text',
                         'eval'      => ['mandatory' => true, 'style' => 'width:220px'],
                     ],
                     'label' => [
-                        'label'     => &$GLOBALS['TL_LANG']['tl_trainer_question']['option_label'],
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_label'],
                         'inputType' => 'text',
                         'eval'      => ['mandatory' => true, 'style' => 'width:420px'],
                     ],

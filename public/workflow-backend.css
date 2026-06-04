@@ -1,0 +1,125 @@
+/* Back end styling for the Workflow bundle. */
+
+/* Source-dependent fields of a not-yet-runnable workflow (e.g. a fresh copy). */
+.tw-invalid input,
+.tw-invalid select,
+.tw-invalid textarea,
+.tw-invalid .tl_chosen,
+.tw-invalid .dcawizard,
+.tw-invalid .chzn-container {
+    border: 2px solid #c0392b !important;
+    border-radius: 3px;
+}
+
+.tw-invalid label {
+    color: #c0392b;
+}
+
+/* Not-runnable badge. */
+.wf-badge {
+    display: inline-block;
+    margin-left: .5em;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: #c0392b;
+    color: #fff;
+    font-size: .72em;
+    vertical-align: middle;
+}
+
+/* Each workflow as a distinct card in the overview. Use Contao's themed colour
+   variables so the box follows light/dark mode (no hard-coded white). */
+.wf-box {
+    border: 1px solid var(--content-border, #ddd);
+    border-radius: 5px;
+    background: var(--content-bg, #fff);
+    color: var(--text, #222);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+}
+
+/* "Configured but not imported yet" notice. */
+.wf-warn {
+    margin-bottom: 1em;
+    padding: .55em .85em;
+    border: 1px solid #e0b000;
+    border-left-width: 4px;
+    border-radius: 3px;
+    background: #fff8e1;
+    color: #6b5200;
+}
+
+/* Action button row: align <a>, <button> and disabled <span> on one baseline. */
+.wf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5em;
+    align-items: center;
+    margin-bottom: 1em;
+}
+.wf-actions .tl_submit {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+.wf-actions .wf-disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+/* Pending list. The sort arrow is absolutely positioned in a reserved area so
+   toggling it never changes the header width (otherwise the columns shift). */
+.wf-table th.wf-sortable {
+    white-space: nowrap;
+    cursor: pointer;
+}
+.wf-table th.wf-sortable:hover { text-decoration: underline; }
+/* Fixed-width slot right after the header text: always reserved (so toggling the
+   arrow never changes the column width), holds the arrow directly behind the title. */
+.wf-table th.wf-sortable::after {
+    display: inline-block;
+    width: 1em;
+    margin-left: .2em;
+    text-align: center;
+    content: "";
+}
+.wf-table th.wf-sortable[data-dir="asc"]::after { content: "\25B2"; }
+.wf-table th.wf-sortable[data-dir="desc"]::after { content: "\25BC"; }
+.wf-table td.wf-cb, .wf-table th.wf-cb { width: 1.6em; text-align: center; }
+.wf-bulk span { color: var(--info, #666); }
+
+/* Send dialog (overlay + centered card). */
+.wf-dialog {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 10000;
+    padding: 6vh 1em;
+}
+.wf-dialog[hidden] { display: none; }
+.wf-dialog-box {
+    position: relative;
+    background: var(--content-bg, #fff);
+    color: var(--text, #222);
+    border: 1px solid var(--content-border, #ddd);
+    border-radius: 6px;
+    padding: 1.2em 1.4em;
+    width: min(560px, 100%);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+}
+.wf-dialog-box h3 { margin-top: 0; }
+.wf-dialog-close {
+    position: absolute;
+    top: .4em;
+    right: .55em;
+    border: 0;
+    background: none;
+    font-size: 1.5em;
+    line-height: 1;
+    cursor: pointer;
+    color: #888;
+}
+.wf-dialog-close:hover { color: #c0392b; }
+.wf-confirm-list li { margin: 2px 0; }

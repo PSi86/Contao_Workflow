@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use Contao\DC_Table;
 
-$GLOBALS['TL_DCA']['tl_trainer_entry'] = [
+$GLOBALS['TL_DCA']['tl_workflow_entry'] = [
     'config' => [
         'dataContainer' => DC_Table::class,
-        'ptable'        => 'tl_trainer_workflow',
+        'ptable'        => 'tl_workflow',
+        // Entries belong to the imported source data and are never copied when the
+        // workflow is duplicated (they still cascade on delete via the parent ctable).
+        'doNotCopyRecords' => true,
         'sql' => [
             'keys' => [
                 'id'    => 'primary',
@@ -54,7 +57,7 @@ $GLOBALS['TL_DCA']['tl_trainer_entry'] = [
             'sql' => 'int(10) unsigned NOT NULL auto_increment',
         ],
         'pid' => [
-            'foreignKey' => 'tl_trainer_workflow.title',
+            'foreignKey' => 'tl_workflow.title',
             'sql'        => "int(10) unsigned NOT NULL default 0",
             'relation'   => ['type' => 'belongsTo', 'load' => 'lazy'],
         ],
@@ -80,10 +83,6 @@ $GLOBALS['TL_DCA']['tl_trainer_entry'] = [
             'inputType' => 'text',
             'eval'      => ['rgxp' => 'email', 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
-        ],
-        // Legacy column of the old fixed accept/reject decision (SQL only, no UI).
-        'decision' => [
-            'sql' => "varchar(16) NOT NULL default ''",
         ],
         'signature' => [
             'exclude'   => true,

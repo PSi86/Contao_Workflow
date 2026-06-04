@@ -43,9 +43,15 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->logoSrc` | absoluter Dateipfad des Logos (oder `''`) |
 | `$this->signatureSrc` | absoluter Dateipfad der Unterschrift (oder `''`) |
 | `$this->signerName` | Name für die Unterschriftszeile |
-| `$this->ort` | Ort (aus PDF-Variable `Ort`) |
-| `$this->datum` | Antwortdatum `TT.MM.JJJJ` |
-| `$this->footer` | Fußzeile (aus PDF-Variable `Footer`) |
+| `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
+| `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
+| `$this->footer` | optionale Fußzeilen-Variable `Footer`; der mitgelieferte `pdf_master` (TSV-Briefkopf) nutzt stattdessen eine feste 4-spaltige Fußzeile |
+
+> Der mitgelieferte **`pdf_master`** ist der TSV-Briefkopf: blaue Kopfzeile + Logo + Linie und
+> eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
+> `<sethtmlpageheader>/<sethtmlpagefooter>`). Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende
+> Seitenränder; diese setzt `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die
+> Unterschriftszeile ist gespiegelt (Wert über der Linie, Label darunter).
 
 ### Body-Vorlage (`pdf_body_*`)
 | Variable | Inhalt |
@@ -60,9 +66,12 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 
 ### Einfacher Brief (Letter-Modus, ganz ohne Datei)
 Bei „Einfacher Brief" steht im Workflow nur die gemeinsame **Überschrift**; die **Brieftexte**
-werden als **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter im Text: `##Spaltenname##`
-(jede Quellspalte inkl. Antwortfelder), `##Jahr##` / `##Verein##` … (Master-Variablen),
-`##datum##`, `##email##`.
+werden als **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
+E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
+kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
+`##data_davon_spende##`), **`##var_<slug>##`** für Master-Variablen (`##var_jahr##`,
+`##var_verein##`), dazu `##email##`. (Im PDF gilt zusätzlich der Rohspaltenname `##Spalte##`
+als Alias; in Mails nur die kanonische Form.)
 
 > So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Antwortfelds.
 > Die Regel-Engine prüft die Regeln der Reihe nach gegen die gespeicherten Werte; die erste
@@ -107,7 +116,7 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
    [`../contao/templates/pdf_master.html5`](../contao/templates/pdf_master.html5).
 2. Nach `templates/` legen (Name beginnt mit `pdf_master`).
 3. Bietet das Layout feste Variablen, in `contao/config/config.php` unter
-   `$GLOBALS['TL_TRAINER_PDF_VARS']` einen Eintrag
+   `$GLOBALS['TL_WORKFLOW_PDF_VARS']` einen Eintrag
    `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
    Briefkopf automatisch vorgeschlagen.
 
@@ -158,5 +167,5 @@ Die fertig überarbeitete Fassung davon ist `pdf_body_verzicht.html5`.
 ## 6. Namens- & Registry-Konventionen
 - Body-Vorlagen: Dateiname `pdf_body_*.html5`.
 - Master-Vorlagen: Dateiname `pdf_master*.html5`.
-- PDF-Variablen je Master-Layout: `$GLOBALS['TL_TRAINER_PDF_VARS']` in
+- PDF-Variablen je Master-Layout: `$GLOBALS['TL_WORKFLOW_PDF_VARS']` in
   `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`).

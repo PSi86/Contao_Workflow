@@ -2,28 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Model;
+namespace Psimandl\WorkflowBundle\Model;
 
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 
 /**
- * Reads and writes tl_trainer_question (one configurable answer field of a workflow).
+ * Reads and writes tl_workflow_question (one configurable answer field of a workflow).
  *
  * @property int    $id
- * @property int    $pid          Workflow id (tl_trainer_workflow.id).
+ * @property int    $pid          Workflow id (tl_workflow.id).
  * @property int    $sorting
  * @property int    $tstamp
  * @property string $label        Question/field label shown in the form.
  * @property string $type         text | textarea | select | radio | checkbox | date.
  * @property string $storageField Source column the answer value is written into.
  * @property string $mandatory    Whether an answer is required ("1"/"").
+ * @property string $hideInForm   "Aktuelle Zeit" only: hide the field in the form ("1"/"").
  * @property string $options      Serialized list of [value, label] option pairs.
  */
 class QuestionModel extends Model
 {
-    protected static $strTable = 'tl_trainer_question';
+    protected static $strTable = 'tl_workflow_question';
 
     /**
      * @return Collection<QuestionModel>|array<QuestionModel>|null
@@ -49,6 +50,23 @@ class QuestionModel extends Model
     public function isMandatory(): bool
     {
         return '1' === (string) $this->mandatory;
+    }
+
+    /**
+     * Auto-filled date field ("Aktuelle Zeit"): its value is set to the current
+     * date on submission, never taken from the form.
+     */
+    public function isCurrentTime(): bool
+    {
+        return 'currentTime' === (string) $this->type;
+    }
+
+    /**
+     * Whether the field is left out of the public form (auto-filled only).
+     */
+    public function isHiddenInForm(): bool
+    {
+        return $this->isCurrentTime() && '1' === (string) $this->hideInForm;
     }
 
     /**

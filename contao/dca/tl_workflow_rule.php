@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
-use Psimandl\TrainerWorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 
-$GLOBALS['TL_DCA']['tl_trainer_rule'] = [
+$GLOBALS['TL_DCA']['tl_workflow_rule'] = [
     'config' => [
         'dataContainer'    => DC_Table::class,
-        'ptable'           => 'tl_trainer_workflow',
+        'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
         'onload_callback'  => [[AnswerConfigListener::class, 'hideConditionsForDefaultRule']],
         'sql' => [
@@ -57,7 +57,7 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
             'sql' => 'int(10) unsigned NOT NULL auto_increment',
         ],
         'pid' => [
-            'foreignKey' => 'tl_trainer_workflow.title',
+            'foreignKey' => 'tl_workflow.title',
             'sql'        => "int(10) unsigned NOT NULL default 0",
             'relation'   => ['type' => 'belongsTo', 'load' => 'lazy'],
         ],
@@ -87,19 +87,19 @@ $GLOBALS['TL_DCA']['tl_trainer_rule'] = [
                 'tl_class'     => 'clr',
                 'columnFields' => [
                     'field' => [
-                        'label'            => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_field'],
+                        'label'            => &$GLOBALS['TL_LANG']['tl_workflow_rule']['cond_field'],
                         'inputType'        => 'select',
                         'options_callback' => [AnswerConfigListener::class, 'getStorageFieldOptions'],
                         'eval'             => ['includeBlankOption' => true, 'style' => 'width:220px'],
                     ],
                     'operator' => [
-                        'label'            => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_operator'],
+                        'label'            => &$GLOBALS['TL_LANG']['tl_workflow_rule']['cond_operator'],
                         'inputType'        => 'select',
-                        'options'          => &$GLOBALS['TL_LANG']['tl_trainer_rule']['operatorOptions'],
+                        'options'          => &$GLOBALS['TL_LANG']['tl_workflow_rule']['operatorOptions'],
                         'eval'             => ['style' => 'width:160px'],
                     ],
                     'value' => [
-                        'label'     => &$GLOBALS['TL_LANG']['tl_trainer_rule']['cond_value'],
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_rule']['cond_value'],
                         'inputType' => 'text',
                         'eval'      => ['style' => 'width:220px'],
                     ],

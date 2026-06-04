@@ -2,36 +2,36 @@
 
 declare(strict_types=1);
 
-use Psimandl\TrainerWorkflowBundle\Controller\Backend\DashboardModule;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\MasterModel;
-use Psimandl\TrainerWorkflowBundle\Model\QuestionModel;
-use Psimandl\TrainerWorkflowBundle\Model\RuleModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Controller\Backend\DashboardModule;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
+use Psimandl\WorkflowBundle\Model\RuleModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /*
  * Back end modules.
  */
-$GLOBALS['BE_MOD']['trainer'] = [
-    'trainer_overview' => [
+$GLOBALS['BE_MOD']['workflow'] = [
+    'workflow_overview' => [
         'callback' => DashboardModule::class,
     ],
-    'trainer_workflow' => [
-        'tables' => ['tl_trainer_workflow', 'tl_trainer_question', 'tl_trainer_rule', 'tl_trainer_entry'],
+    'workflow_manage' => [
+        'tables' => ['tl_workflow', 'tl_workflow_question', 'tl_workflow_rule', 'tl_workflow_entry'],
     ],
-    'trainer_master' => [
-        'tables' => ['tl_trainer_master'],
+    'workflow_master' => [
+        'tables' => ['tl_workflow_master'],
     ],
 ];
 
 /*
  * Models.
  */
-$GLOBALS['TL_MODELS']['tl_trainer_workflow'] = WorkflowModel::class;
-$GLOBALS['TL_MODELS']['tl_trainer_question'] = QuestionModel::class;
-$GLOBALS['TL_MODELS']['tl_trainer_rule'] = RuleModel::class;
-$GLOBALS['TL_MODELS']['tl_trainer_entry'] = EntryModel::class;
-$GLOBALS['TL_MODELS']['tl_trainer_master'] = MasterModel::class;
+$GLOBALS['TL_MODELS']['tl_workflow'] = WorkflowModel::class;
+$GLOBALS['TL_MODELS']['tl_workflow_question'] = QuestionModel::class;
+$GLOBALS['TL_MODELS']['tl_workflow_rule'] = RuleModel::class;
+$GLOBALS['TL_MODELS']['tl_workflow_entry'] = EntryModel::class;
+$GLOBALS['TL_MODELS']['tl_workflow_master'] = MasterModel::class;
 
 /*
  * PDF variables offered per master (letterhead) template (key => default value).
@@ -39,6 +39,6 @@ $GLOBALS['TL_MODELS']['tl_trainer_master'] = MasterModel::class;
  * "PDF-Variablen" field. Add an entry here when you add a new pdf_master*
  * template that needs static variables.
  */
-$GLOBALS['TL_TRAINER_PDF_VARS'] = [
+$GLOBALS['TL_WORKFLOW_PDF_VARS'] = [
     'pdf_master' => ['Jahr' => date('Y'), 'Verein' => '', 'Ort' => '', 'Footer' => ''],
 ];

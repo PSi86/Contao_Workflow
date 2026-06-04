@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Contao\DC_Table;
 
-$GLOBALS['TL_DCA']['tl_trainer_master'] = [
+$GLOBALS['TL_DCA']['tl_workflow_master'] = [
     'config' => [
         'dataContainer'    => DC_Table::class,
         'enableVersioning' => true,

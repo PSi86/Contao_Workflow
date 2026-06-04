@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Controller\FrontendModule;
+namespace Psimandl\WorkflowBundle\Controller\FrontendModule;
 
 use Contao\CoreBundle\Controller\FrontendModule\AbstractFrontendModuleController;
 use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
@@ -11,17 +11,17 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\QuestionModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
-use Psimandl\TrainerWorkflowBundle\Service\SubmissionProcessor;
-use Psimandl\TrainerWorkflowBundle\Service\WorkflowStatus;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
+use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Csrf\CsrfToken;
 
-#[AsFrontendModule(type: 'trainer_form', category: 'application', template: 'mod_trainer_form')]
-class TrainerFormController extends AbstractFrontendModuleController
+#[AsFrontendModule(type: 'workflow_form', category: 'application', template: 'mod_workflow_form')]
+class WorkflowFormController extends AbstractFrontendModuleController
 {
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -35,9 +35,9 @@ class TrainerFormController extends AbstractFrontendModuleController
     {
         $this->framework->initialize();
 
-        $assetDir = 'bundles/contaotrainerworkflow';
-        $GLOBALS['TL_CSS'][] = $assetDir.'/trainer-form.css';
-        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/trainer-signature.js';
+        $assetDir = 'bundles/contaoworkflow';
+        $GLOBALS['TL_CSS'][] = $assetDir.'/workflow-form.css';
+        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-signature.js';
 
         $token = (string) $this->framework->getAdapter(Input::class)->get('auto_item');
 
@@ -78,7 +78,7 @@ class TrainerFormController extends AbstractFrontendModuleController
         $template->set('email', $entry->email);
         $template->set('questions', $this->buildQuestionViews($questions));
         $template->set('requireSignature', $workflow->isSignatureRequired());
-        $template->set('formId', 'trainer_form_'.$entry->id);
+        $template->set('formId', 'workflow_form_'.$entry->id);
         $template->set('state', 'form');
 
         if ($this->isSubmission($request, (int) $entry->id)) {
@@ -108,6 +108,12 @@ class TrainerFormController extends AbstractFrontendModuleController
         $views = [];
 
         foreach ($questions as $question) {
+            // "Aktuelle Zeit" fields flagged hidden never appear in the form –
+            // they are filled automatically on submission.
+            if ($question->isHiddenInForm()) {
+                continue;
+            }
+
             $views[] = [
                 'id'        => (int) $question->id,
                 'label'     => (string) $question->label,
@@ -115,6 +121,7 @@ class TrainerFormController extends AbstractFrontendModuleController
                 'mandatory' => $question->isMandatory(),
                 'multiple'  => $question->isMultiple(),
                 'options'   => $question->getOptions(),
+                'autoValue' => $question->isCurrentTime() ? date('d.m.Y') : '',
             ];
         }
 
@@ -138,6 +145,19 @@ class TrainerFormController extends AbstractFrontendModuleController
         foreach ($questions as $question) {
             $name = 'q_'.$question->id;
             $storage = trim((string) $question->storageField);
+
+            // "Aktuelle Zeit": always set to the current date on submission,
+            // regardless of (and ignoring) any posted value – no validation.
+            if ($question->isCurrentTime()) {
+                $value = date('d.m.Y');
+                $submitted[(int) $question->id] = $value;
+
+                if ('' !== $storage) {
+                    $answers[$storage] = $value;
+                }
+
+                continue;
+            }
 
             if ($question->isMultiple()) {
                 $values = array_values(array_filter(
@@ -240,6 +260,6 @@ class TrainerFormController extends AbstractFrontendModuleController
     private function isSubmission(Request $request, int $entryId): bool
     {
         return $request->isMethod('POST')
-            && 'trainer_form_'.$entryId === (string) $request->request->get('FORM_SUBMIT');
+            && 'workflow_form_'.$entryId === (string) $request->request->get('FORM_SUBMIT');
     }
 }

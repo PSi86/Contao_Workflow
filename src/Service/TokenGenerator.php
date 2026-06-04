@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 /**
  * Produces unguessable tokens used in the individual participant links.
