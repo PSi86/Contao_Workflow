@@ -8,7 +8,7 @@ use Contao\Model;
 use Contao\StringUtil;
 
 /**
- * Reads tl_workflow_master – a reusable "Briefkopf" (letterhead): the master
+ * Reads tl_workflow_master – a reusable "Briefpapier" (stationery): the master
  * template (chrome), the logo and the static PDF variables. Workflows reference
  * a master; logo and variables are maintained here, not on the workflow.
  *

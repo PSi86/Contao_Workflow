@@ -28,6 +28,8 @@ class DashboardModule extends BackendModule
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
         $GLOBALS['TL_JAVASCRIPT']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.js|static';
 
+        System::loadLanguageFile('workflow_messages');
+
         /** @var WorkflowStatus $status */
         $status = $container->get(WorkflowStatus::class);
         /** @var WorkflowValidator $validator */
@@ -92,6 +94,7 @@ class DashboardModule extends BackendModule
 
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
+        $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
     }
 
     /**

@@ -1,11 +1,11 @@
 # PDF-Vorlagen: Syntax, Variablen & `.docm`-Import
 
-Wie man **Master-** (Briefkopf) und **Body-Vorlagen** für die PDF-Ausgabe erstellt –
+Wie man **Master-** (Briefpapier) und **Body-Vorlagen** für die PDF-Ausgabe erstellt –
 **manuell** (Syntax + Variablen + externe Links) und **reproduzierbar aus einem
 Word-`.docm`** über einen lokalen Konverter.
 
 Architektur (Details: [../../ANLEITUNG.md](../../ANLEITUNG.md) Abschnitt 2b/8):
-ein **Master** liefert Briefkopf/Logo/Unterschrift/Footer + PDF-Variablen, ein
+ein **Master** liefert Briefpapier (Kopf/Fuß, Logo, Unterschrift, Footer) + PDF-Variablen, ein
 **Body** liefert den Brieftext. PDF = Master umschließt Body.
 
 ---
@@ -45,9 +45,9 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->signerName` | Name für die Unterschriftszeile |
 | `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
-| `$this->footer` | optionale Fußzeilen-Variable `Footer`; der mitgelieferte `pdf_master` (TSV-Briefkopf) nutzt stattdessen eine feste 4-spaltige Fußzeile |
+| `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (TSV-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
 
-> Der mitgelieferte **`pdf_master`** ist der TSV-Briefkopf: blaue Kopfzeile + Logo + Linie und
+> Das mitgelieferte **`pdf_master`** ist das TSV-Briefpapier: blaue Kopfzeile + Logo + Linie und
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
 > `<sethtmlpageheader>/<sethtmlpagefooter>`). Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende
 > Seitenränder; diese setzt `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die
@@ -118,7 +118,7 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 3. Bietet das Layout feste Variablen, in `contao/config/config.php` unter
    `$GLOBALS['TL_WORKFLOW_PDF_VARS']` einen Eintrag
    `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
-   Briefkopf automatisch vorgeschlagen.
+   Briefpapier automatisch vorgeschlagen.
 
 ---
 
@@ -143,14 +143,14 @@ ddev exec php scripts/docm-to-template.php <pfad-zur.docm> pdf_body_xyz
 - eine Liste der erkannten Felder.
 
 **Nacharbeiten (Pflicht):**
-1. Briefkopf-/Unterschrift-/„Ort, Datum"-Zeilen entfernen (liefert der Master).
+1. Briefpapier-/Unterschrift-/„Ort, Datum"-Zeilen entfernen (liefert der Master).
 2. Datumsspalten mit `$fmtDate(...)` umschließen, z. B.
    `<?= $esc($fmtDate($d('Geburtsdatum'))) ?>`.
 3. Feste Werte (Verein, Jahr) durch `$x('Verein')` / `$x('Jahr')` ersetzen und als
    PDF-Variablen am **Master** pflegen.
 4. Prüfen, dass jeder `$d('…')`-Spaltenname **exakt** einer Quelldatei-Spalte entspricht.
 5. Datei nach `templates/` kopieren (Name `pdf_body_*`), Logo in die Dateiverwaltung
-   laden und im **Briefkopf (Master)** als PDF-Logo setzen.
+   laden und im **Briefpapier (Master)** als PDF-Logo setzen.
 6. Im Workflow: **PDF-Inhalt = Spezielle Vorlage** → diese Body-Vorlage wählen.
 
 **Beispiel-Output** (aus der TSV-Verzicht-`.docm`):

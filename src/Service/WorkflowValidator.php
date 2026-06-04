@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Contao\System;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
@@ -25,30 +26,32 @@ class WorkflowValidator
      */
     public function getProblems(WorkflowModel $workflow): array
     {
+        System::loadLanguageFile('workflow_messages');
+
         if (!$workflow->sourceFile) {
-            return ['Es ist keine Quelldatei ausgewählt – der Workflow kann erst nach dem Laden einer Quelldatei ausgeführt werden.'];
+            return [$this->msg('no_source')];
         }
 
         $headers = array_keys($this->inspector->getHeaderOptions($workflow));
 
         if ([] === $headers) {
-            return ['Die Quelldatei ist nicht lesbar oder enthält keine Spalten.'];
+            return [$this->msg('source_unreadable')];
         }
 
         $problems = [];
         $email = trim((string) $workflow->emailField);
 
         if ('' === $email) {
-            $problems[] = 'Es ist keine E-Mail-Spalte gewählt.';
+            $problems[] = $this->msg('no_email_col');
         } elseif (!\in_array($email, $headers, true)) {
-            $problems[] = sprintf('Die E-Mail-Spalte „%s" fehlt in der Quelldatei.', $email);
+            $problems[] = sprintf($this->msg('email_col_missing'), $email);
         }
 
         foreach ($workflow->getQuestions() as $question) {
             $field = trim((string) $question->storageField);
 
             if ('' !== $field && !\in_array($field, $headers, true)) {
-                $problems[] = sprintf('Das Speicherfeld „%s" (Antwortfeld „%s") fehlt in der Quelldatei.', $field, (string) $question->label);
+                $problems[] = sprintf($this->msg('storage_missing'), $field, (string) $question->label);
             }
         }
 
@@ -65,10 +68,15 @@ class WorkflowValidator
         }
 
         foreach ($unknownRuleFields as $field => $ruleTitle) {
-            $problems[] = sprintf('Die PDF-Regel „%s" verwendet das unbekannte Feld „%s".', $ruleTitle, $field);
+            $problems[] = sprintf($this->msg('rule_unknown_field'), $ruleTitle, $field);
         }
 
         return $problems;
+    }
+
+    private function msg(string $key): string
+    {
+        return (string) ($GLOBALS['TL_LANG']['workflow_validator'][$key] ?? $key);
     }
 
     public function isRunnable(WorkflowModel $workflow): bool

@@ -56,7 +56,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - `##data_<slug>##` für jede importierte Spalte (inkl. der gespeicherten
      Antwortwerte). `<slug>` = kleingeschrieben, Umlaute transliteriert (ä→ae, ß→ss …);
      z. B. `##data_verzicht##`, „davon Spende“ → `##data_davon_spende##`.
-   - `##var_<slug>##` für jede Briefkopf-Variable (z. B. `##var_jahr##`, `##var_verein##`).
+   - `##var_<slug>##` für jede Briefpapier-Variable (z. B. `##var_jahr##`, `##var_verein##`).
      Dieselben `##data_*##`/`##var_*##`-Tokens gelten **identisch** im PDF.
    - Ergebnis-Mail: Anhang über **„Anhänge über Tokens“** mit `##attachment##`
      (das erzeugte PDF).
@@ -75,7 +75,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      (Wert + Options-Text). **„Aktuelle Zeit"** wird beim Absenden automatisch mit dem Datum gefüllt
      und kann im Formular ausgeblendet werden. Ja/Nein = Radio mit zwei Optionen (z. B.
      „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
-   - **PDF-Inhalt:** Briefkopf-Vorlage, **PDF-Dateiname** (Muster mit Platzhaltern,
+   - **PDF-Inhalt:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern,
      z. B. `Verzicht_##data_name##_##data_vorname##`) + Typ. **Einfacher Brief** → nur die
      gemeinsame *Überschrift* hier; die Brieftexte stehen in den **PDF-Regeln**. **Spezielle
      Vorlage** → eine Datei `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** PDF-Regeln).

@@ -89,9 +89,7 @@
         });
         var hint = dialog.querySelector('.wf-hint');
         if (hint) {
-            hint.textContent = manual
-                ? 'Es werden nur die markierten Teilnehmer mit passendem Status berücksichtigt.'
-                : 'Die Adressaten werden automatisch nach Status gewählt.';
+            hint.textContent = manual ? dialog.dataset.hintManual : dialog.dataset.hintAuto;
         }
     }
 
@@ -130,7 +128,7 @@
                 var targets = matching(box, status, isManual(box));
 
                 if (!targets.length) {
-                    alert('Es gibt keine passenden Empfänger für diese Aktion.');
+                    alert(dialog.dataset.noRecipients);
                     return;
                 }
 
@@ -152,9 +150,8 @@
                 });
 
                 form.querySelector('.wf-send-type').value = type;
-                form.querySelector('.wf-confirm-head').textContent =
-                    'Folgende ' + targets.length + ' Empfänger erhalten die '
-                    + (type === 'invite' ? 'Einladung' : 'Erinnerung') + ':';
+                var confirmTmpl = type === 'invite' ? dialog.dataset.confirmInvite : dialog.dataset.confirmReminder;
+                form.querySelector('.wf-confirm-head').textContent = confirmTmpl.replace('%count%', targets.length);
 
                 step1.hidden = true;
                 form.hidden = false;

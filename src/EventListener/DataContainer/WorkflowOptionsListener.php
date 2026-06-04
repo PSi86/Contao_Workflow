@@ -131,7 +131,7 @@ class WorkflowOptionsListener
     }
 
     /**
-     * Pre-selects the first available master ("Briefkopf") on a new workflow.
+     * Pre-selects the first available master ("Briefpapier") on a new workflow.
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.master.load')]
     public function preselectMaster(mixed $value): mixed

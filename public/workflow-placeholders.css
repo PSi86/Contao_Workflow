@@ -1,0 +1,52 @@
+/* Dropdown for the workflow placeholder helper (see workflow-placeholders.js).
+   Uses the Contao back end CSS variables so it follows the light/dark theme. */
+.wf-ph-box {
+    position: absolute;
+    z-index: 1000;
+    display: none;
+    max-width: 420px;
+    max-height: 260px;
+    margin-top: 2px;
+    overflow-y: auto;
+    background: var(--content-bg, #fff);
+    color: var(--text, #222);
+    border: 1px solid var(--content-border, #bbb);
+    border-radius: var(--border-radius, 3px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+    font-size: 13px;
+}
+
+.wf-ph-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.wf-ph-item {
+    padding: 5px 9px;
+    cursor: pointer;
+    border-top: 1px solid var(--content-border, #eee);
+    white-space: nowrap;
+}
+
+.wf-ph-item:first-child {
+    border-top: 0;
+}
+
+.wf-ph-item.wf-ph-hidden {
+    display: none;
+}
+
+.wf-ph-item.wf-ph-active {
+    background: var(--hover-row, #f3f3f3);
+}
+
+.wf-ph-value {
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.wf-ph-label {
+    margin-left: 8px;
+    color: var(--text-muted, #777);
+}
