@@ -140,7 +140,7 @@ class WorkflowOptionsListener
             return $value;
         }
 
-        $master = MasterModel::findBy([], [], ['order' => 'id', 'limit' => 1]);
+        $master = MasterModel::findAll(['order' => 'id', 'limit' => 1]);
 
         return null !== $master ? (int) $master->id : $value;
     }

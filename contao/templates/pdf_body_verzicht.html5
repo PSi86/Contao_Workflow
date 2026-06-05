@@ -24,7 +24,7 @@ $fmtDate = static function (string $s): string {
     return $s;
 };
 
-$verein = $x('Verein', 'TSV Korntal e.V.');
+$verein = $x('Verein', 'Musterverein e.V.');
 $jahr = $x('Jahr', date('Y'));
 $betrag = '' !== $d('davon Spende') ? $d('davon Spende') : $d('Höhe der ÜLP');
 $name = trim($d('Vorname').' '.$d('Name'));

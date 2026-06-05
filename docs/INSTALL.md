@@ -41,15 +41,24 @@ Das Bundle liegt **nicht auf Packagist**. Wähle eine Verteilform:
 | **C) Path-Repository** | nur lokale Entwicklung (DDEV) | — |
 
 ### Artefakt-ZIP bauen (für A)
-Ein gültiges Composer-Artefakt ist einfach ein ZIP des Bundle-Ordners **mit
-`composer.json im ZIP-Wurzelverzeichnis`**. Auf dem Entwicklungsrechner:
+Ein gültiges Composer-Artefakt ist ein ZIP des Bundles **mit `composer.json` im
+ZIP-Wurzelverzeichnis**. Am saubersten mit Composer selbst (nutzt die feste `"version"`
+aus der `composer.json` und legt `composer.json` an die Wurzel):
 
-```powershell
-# im Repo-Root; erzeugt ein ZIP mit composer.json an der Wurzel
-Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-1.0.0.zip -Force
+```bash
+# im Bundle-Ordner (dort liegt die composer.json)
+composer archive --format=zip --dir=../dist --file=psimandl-contao-workflow-2.0.0
+# -> ../dist/psimandl-contao-workflow-2.0.0.zip
 ```
 
-Das ZIP enthält dank fester `"version": "1.0.0"` eine auflösbare Version.
+Ohne Composer zur Hand tut es auch ein einfaches ZIP des Ordnerinhalts (composer.json
+muss an der ZIP-Wurzel liegen, `vendor/` weglassen):
+
+```powershell
+Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-2.0.0.zip -Force
+```
+
+Das ZIP enthält dank fester `"version": "2.0.0"` eine auflösbare Version.
 
 ---
 
@@ -70,7 +79,7 @@ composer config repositories.workflow vcs https://github.com/<user>/contao-workf
 **Schritt 2 – Paket installieren** (zieht NC, mPDF, PhpSpreadsheet mit):
 
 ```bash
-composer require psimandl/contao-workflow:^1.0 terminal42/notification_center:^2.0
+composer require psimandl/contao-workflow:^2.0 terminal42/notification_center:^2.0
 ```
 
 **Schritt 3 – Datenbank + Assets:**
@@ -104,7 +113,7 @@ hochladen:
         "workflow": { "type": "artifact", "url": "packages" }
     },
     "require": {
-        "psimandl/contao-workflow": "^1.0",
+        "psimandl/contao-workflow": "^2.0",
         "terminal42/notification_center": "^2.0"
     }
 }
@@ -146,6 +155,14 @@ Installiert ist erst die Software. Es fehlt die fachliche Einrichtung:
 Prüfen: Im Backend erscheint links die Modulgruppe **„Workflow"** mit
 „Übersicht" und „Workflows".
 
+**Demo-Workflow:** Bei der Erstinstallation wird automatisch ein **synthetischer**
+Demo-Workflow („Musterverein", `@example.org`) inkl. fünf Beispiel-Teilnehmern angelegt – zum
+Erkunden **und direkt Ausprobieren**: er bringt E-Mail-Vorlagen (Notification Center) und eine
+**Formularseite** gleich mit – **im Menü versteckt**, ein **vorhandenes Site-Layout erbend**,
+Modul per Inhaltselement. Updates legen ihn **nicht** erneut an; in der **Übersicht** kann er per
+Button **„Demo-Workflow wiederherstellen"** neu erzeugt werden. Idempotent und **ohne** bestehende
+Seiten/Layouts/Dateien zu verändern.
+
 ---
 
 ## 5. Updates
@@ -155,7 +172,7 @@ Prüfen: Im Backend erscheint links die Modulgruppe **„Workflow"** mit
 composer update psimandl/contao-workflow
 vendor/bin/contao-console contao:migrate --no-interaction
 ```
-**Ohne CLI:** neues Artefakt-ZIP (höhere Version, z. B. `…-1.1.0.zip`) nach
+**Ohne CLI:** neues Artefakt-ZIP (höhere Version, z. B. `…-2.1.0.zip`) nach
 `packages/` hochladen, Versionsconstraint in `composer.json` ggf. anpassen, im
 Contao-Manager „Update" ausführen, danach Install-Tool → „Datenbank aktualisieren".
 
@@ -168,7 +185,7 @@ Contao-Manager „Update" ausführen, danach Install-Tool → „Datenbank aktua
 | Symptom | Ursache / Lösung |
 |---|---|
 | Manager/Composer findet das Paket nicht | `repositories`-Eintrag in `composer.json` prüfen; ZIP wirklich in `packages/`? Dateiname/Version korrekt? |
-| „Could not find a version …" | feste `"version"` im Bundle vorhanden? Constraint `^1.0` passend? |
+| „Could not find a version …" | feste `"version"` im Bundle vorhanden? Constraint `^2.0` passend? |
 | Backend-Module fehlen nach Install | Migration nicht gelaufen → Install-Tool „Datenbank aktualisieren" bzw. `contao:migrate`. |
 | Formular ohne Stil / Signaturfeld lädt nicht | Assets nicht veröffentlicht → `contao:setup` bzw. Manager-Update erneut; Ordner `public/bundles/contaoworkflow/` vorhanden? |
 | PDF-Fehler (mPDF) | PHP-Erweiterung **`gd`** aktivieren (all-inkl: passende PHP-Version wählen). |

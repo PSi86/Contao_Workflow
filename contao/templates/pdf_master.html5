@@ -1,6 +1,6 @@
 <?php
 /**
- * Global PDF master = TSV Korntal letterhead: a running page header (address line
+ * Global PDF master = neutral example letterhead (Musterverein): a running page header (address line
  * + logo + blue rule) and a running 4-column footer (mPDF page header/footer), a
  * signature block and the injected workflow body ($this->bodyHtml).
  *
@@ -34,7 +34,7 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
 <htmlpageheader name="wfHeader">
     <table class="pdf-head">
         <tr>
-            <td class="addr">TSV Korntal e.V. &bull; Jahnstraße 1 &bull; 70825 Korntal-Münchingen</td>
+            <td class="addr">Musterverein e.V. &bull; Musterstraße 1 &bull; 12345 Musterstadt</td>
             <td class="logo"><?php if ($this->logoSrc): ?><img src="<?= $esc($this->logoSrc) ?>" width="58" style="width:58px;" alt="Logo"><?php endif; ?></td>
         </tr>
     </table>
@@ -44,10 +44,10 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
 <htmlpagefooter name="wfFooter">
     <table class="pdf-foot">
         <tr>
-            <td>Turn- und Sportverein Korntal e.V.<br>Jahnstrasse 1<br>70825 Korntal-Münchingen<br>Gründungsjahr: 1946</td>
-            <td>Vertreten durch die Vorstände:<br>Roman Graser (Vorsitz), Uwe Klatte, Fabian Haupt<br>Vereinsregisternummer: 200 700</td>
-            <td>Homepage: www.tsvkorntal.de<br>Telefon: 0711 837452<br>E-Mail: info@tsvkorntal.de<br>Mitglied des WLSB, Nr. 12091</td>
-            <td>Spendenkonto Kreissparkasse LB<br>IBAN: DE17 6045 0050 0009 9753 18<br>Bankverbindung Volksbank Stuttgart<br>IBAN: DE27 6009 0100 0064 3100 19</td>
+            <td>Musterverein e.V.<br>Musterstraße 1<br>12345 Musterstadt<br>Gründungsjahr: 1900</td>
+            <td>Vertreten durch den Vorstand:<br>Max Mustermann (Vorsitz)<br>Vereinsregister: VR 0000</td>
+            <td>Homepage: www.example.org<br>Telefon: 01234 56789<br>E-Mail: info@example.org<br>Mitglied im Landessportbund</td>
+            <td>Spendenkonto Musterbank<br>IBAN: DE00 0000 0000 0000 0000 00<br>&nbsp;<br>&nbsp;</td>
         </tr>
     </table>
 </htmlpagefooter>

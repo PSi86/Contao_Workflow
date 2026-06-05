@@ -86,7 +86,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'text',
-            'eval'      => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
+            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'published' => [
@@ -218,7 +218,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfFileName' => [
             'exclude'   => true,
             'inputType' => 'text',
-            'eval'      => ['maxlength' => 255, 'tl_class' => 'clr'],
+            'eval'      => ['decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'pdfBodyType' => [
@@ -232,7 +232,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfTitle' => [
             'exclude'   => true,
             'inputType' => 'text',
-            'eval'      => ['maxlength' => 255, 'tl_class' => 'clr'],
+            'eval'      => ['decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'pdfBodyTemplate' => [

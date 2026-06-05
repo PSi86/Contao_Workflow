@@ -73,7 +73,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'text',
-            'eval'      => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
+            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'type' => [
@@ -113,12 +113,12 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                     'value' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_value'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'style' => 'width:220px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:220px'],
                     ],
                     'label' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_label'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'style' => 'width:420px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:420px'],
                     ],
                 ],
             ],

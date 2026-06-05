@@ -61,6 +61,7 @@ class DashboardModule extends BackendModule
                 }
 
                 $problems = $validator->getProblems($workflow);
+                $sendBlockers = [] === $problems ? $validator->getSendBlockers($workflow) : [];
 
                 $base = static fn (string $route): string => $router->generate($route, ['id' => $id]).'?rt='.$rt;
 
@@ -70,6 +71,8 @@ class DashboardModule extends BackendModule
                     'published'     => (bool) $workflow->published,
                     'runnable'      => [] === $problems,
                     'problems'      => $problems,
+                    'canSend'       => [] === $problems && [] === $sendBlockers,
+                    'sendBlockers'  => $sendBlockers,
                     'completed'     => $status->countCompleted($workflow),
                     'open'          => $status->countOpen($workflow),
                     'total'         => $status->countTotal($id),
@@ -83,10 +86,11 @@ class DashboardModule extends BackendModule
                     'sendUrl'       => $router->generate('workflow_send', ['id' => $id]),
                     'rt'            => $rt,
                     'urls'          => [
-                        'import'     => $base('workflow_import'),
-                        'exportXlsx' => $base('workflow_export'),
-                        'exportCsv'  => $base('workflow_export').'&format=csv',
-                        'pdfs'       => $base('workflow_download_pdfs'),
+                        'import'       => $base('workflow_import'),
+                        'exportXlsx'   => $base('workflow_export'),
+                        'exportCsv'    => $base('workflow_export').'&format=csv',
+                        'pdfs'         => $base('workflow_download_pdfs'),
+                        'exportConfig' => $base('workflow_export_config'),
                     ],
                 ];
             }
@@ -95,6 +99,9 @@ class DashboardModule extends BackendModule
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
         $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
+        $this->Template->restoreDemoUrl = $router->generate('workflow_install_demo').'?rt='.$rt;
+        $this->Template->importUrl = $router->generate('workflow_import_config');
+        $this->Template->rt = $rt;
     }
 
     /**

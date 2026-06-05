@@ -71,7 +71,7 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'text',
-            'eval'      => ['maxlength' => 255, 'tl_class' => 'w50'],
+            'eval'      => ['decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'isDefault' => [
@@ -101,7 +101,7 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
                     'value' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_rule']['cond_value'],
                         'inputType' => 'text',
-                        'eval'      => ['style' => 'width:220px'],
+                        'eval'      => ['decodeEntities' => true, 'style' => 'width:220px'],
                     ],
                 ],
             ],
@@ -110,7 +110,7 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
         'pdfBody' => [
             'exclude'   => true,
             'inputType' => 'textarea',
-            'eval'      => ['mandatory' => true, 'rows' => 8, 'tl_class' => 'clr'],
+            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'rows' => 8, 'tl_class' => 'clr'],
             'sql'       => 'text NULL',
         ],
     ],

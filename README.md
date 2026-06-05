@@ -119,4 +119,19 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
   installierte NC-Version das nicht abdeckt, `do-while/contao-pdf-nc-attachment-bundle`
   ergänzen oder die Ergebnis-Mail auf Symfony-Mailer mit direktem Anhang umstellen
   (`NotificationDispatcher::sendResult`).
-- Eine Beispiel-Quelldatei liegt unter `docs/sample-trainers.csv`.
+- **Konfigurationen importieren/exportieren:** In der Übersicht lässt sich jede
+  Workflow-Konfiguration als portable **JSON-Datei** exportieren und eine solche Datei wieder
+  **importieren** (Upload), optional inkl. **Briefpapier** und **E-Mail-Vorlagen**. Der Import
+  erzeugt einen Workflow **ohne Quelldatei** (zunächst „nicht ausführbar", bis eine Quelle
+  zugeordnet wird). Logo/Quelldatei/Formularseite sind site-spezifisch und nicht Teil des
+  Exports. Das Bundle bringt **keine** vorgefertigten Workflows mit (außer dem Demo).
+- **Demo-Workflow:** Bei der Erstinstallation wird einmalig ein **synthetischer**
+  Demo-Workflow („Musterverein") mit fünf Beispiel-Teilnehmern angelegt (Updates nicht
+  erneut, Marker `var/workflow_demo_installed`). In der Übersicht per **„Demo-Workflow
+  wiederherstellen"** neu erzeugbar (idempotent). Er bringt **alles zum Ausprobieren** mit:
+  E-Mail-Vorlagen (Notification Center, „(Demo)") und eine **Formularseite**, die **im Menü
+  versteckt** ist, ein **vorhandenes Site-Layout erbt** und das Modul per Inhaltselement einbindet.
+  Idempotent und **ohne** bestehende Seiten/Layouts/Dateien zu verändern (ohne veröffentlichte
+  Root-Seite bzw. ohne nutzbares Site-Layout entfällt nur die Formularseite).
+- Eine Beispiel-Quelldatei (die Quelle des mitgelieferten Demos) liegt unter
+  `src/Resources/demo/demo-teilnehmer.csv`.

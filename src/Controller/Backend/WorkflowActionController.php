@@ -11,13 +11,17 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\Message;
 use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
+use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
+use Psimandl\WorkflowBundle\Service\WorkflowConfigImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowMailer;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -41,6 +45,9 @@ class WorkflowActionController
         private readonly WorkflowMailer $workflowMailer,
         private readonly PdfStorage $pdfStorage,
         private readonly WorkflowValidator $validator,
+        private readonly DemoWorkflowSeeder $demoSeeder,
+        private readonly WorkflowConfigExporter $configExporter,
+        private readonly WorkflowConfigImporter $configImporter,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
@@ -99,6 +106,110 @@ class WorkflowActionController
         }
 
         return $this->backToDashboard();
+    }
+
+    /**
+     * (Re-)creates the synthetic demo workflow from the overview. Idempotent: an
+     * existing demo is replaced, so the button always yields a clean demo.
+     */
+    #[Route('/install-demo', name: 'workflow_install_demo', methods: ['GET'])]
+    public function installDemo(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+
+        try {
+            $workflow = $this->demoSeeder->seed();
+            Message::addConfirmation(sprintf(
+                'Demo-Workflow „%s" wurde mit synthetischen Daten angelegt.',
+                StringUtil::specialchars((string) $workflow->title),
+            ));
+        } catch (\Throwable $e) {
+            Message::addError('Demo-Workflow konnte nicht angelegt werden: '.$e->getMessage());
+        }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * Downloads a workflow's configuration as a portable JSON document (without the
+     * source file, form page or logo). Can be re-imported on this or another site.
+     */
+    #[Route('/export-config/{id}', name: 'workflow_export_config', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function exportConfig(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        $response = new Response($this->configExporter->exportJson($workflow));
+        $response->headers->set('Content-Type', 'application/json; charset=utf-8');
+        $response->headers->set(
+            'Content-Disposition',
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $this->configFilename($workflow)),
+        );
+
+        return $response;
+    }
+
+    /**
+     * Imports a workflow configuration from an uploaded JSON file (the export format),
+     * optionally creating the letterhead and the e-mail templates. The new workflow has
+     * no source file, so it is "not runnable" until the user attaches one (intended).
+     */
+    #[Route('/import-config', name: 'workflow_import_config', methods: ['POST'])]
+    public function importConfig(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+
+        $createMaster = (bool) $request->request->get('createMaster');
+        $createNotifications = (bool) $request->request->get('createNotifications');
+
+        try {
+            $config = $this->resolveImportConfig($request);
+            $workflow = $this->configImporter->materialize($config, $createMaster, $createNotifications);
+
+            Message::addConfirmation(sprintf(
+                'Workflow „%s" wurde aus der Konfigurationsdatei erstellt. Er ist noch nicht ausführbar – bitte eine passende Quelldatei zuordnen%s.',
+                StringUtil::specialchars((string) $workflow->title),
+                $createNotifications ? ' und die Absenderadresse der E-Mail-Vorlagen anpassen' : '',
+            ));
+        } catch (\Throwable $e) {
+            Message::addError('Import der Konfiguration fehlgeschlagen: '.$e->getMessage());
+        }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveImportConfig(Request $request): array
+    {
+        $file = $request->files->get('configFile');
+
+        if (!$file instanceof UploadedFile || !$file->isValid() || $file->getSize() <= 0) {
+            throw new \RuntimeException('Bitte eine JSON-Konfigurationsdatei hochladen.');
+        }
+
+        $config = json_decode((string) file_get_contents($file->getPathname()), true);
+
+        if (!\is_array($config)) {
+            throw new \RuntimeException('Die hochgeladene Datei ist kein gültiges JSON.');
+        }
+
+        return $config;
+    }
+
+    private function configFilename(WorkflowModel $workflow): string
+    {
+        $base = trim((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $workflow->title), '-');
+
+        return ('' !== $base ? $base : 'workflow-'.$workflow->id).'.json';
     }
 
     /**

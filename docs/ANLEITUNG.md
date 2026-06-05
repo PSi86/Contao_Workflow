@@ -32,13 +32,32 @@ Spalte.
 
 ## 1. Einmalig: Formularseite + Modul
 
-1. **Layout → Themes → (Theme) → Module → Neu** → Typ **„Workflow-Formular"**
+So wird die Formularseite **sauber** in eine bestehende Website eingebaut – sie übernimmt das
+**Layout der Website**, taucht **nicht** in der Navigation auf und verändert **keine** anderen
+Seiten:
+
+1. **Modul anlegen:** *Layout → Themes → (dein Theme) → Module → Neu* → Typ **„Workflow-Formular"**
    (Kategorie *Anwendungen*), Name z. B. „Workflow-Formular". Speichern.
-2. **Seitenstruktur → Neue Seite** „Workflow-Formular" (Typ *Reguläre Seite*),
-   **veröffentlicht**.
-3. In dieser Seite einen **Artikel** anlegen → darin ein **Inhaltselement „Modul"**
-   einfügen und das eben erstellte „Workflow-Formular"-Modul auswählen. Speichern.
-   *(Die Seite akzeptiert automatisch das Token als `/workflow/<token>`.)*
+2. **Seite anlegen:** *Seitenstruktur → Neue Seite* (Typ **Reguläre Seite**), z. B. „Formular",
+   **veröffentlicht**. Dabei:
+   - **Layout der Website übernehmen:** das Häkchen **„Eigenes Seitenlayout"** *nicht* setzen –
+     dann **erbt** die Seite das Layout der übergeordneten Seite und sieht aus wie der Rest der
+     Site. *(Alternativ ein bereits vorhandenes Layout explizit zuweisen – aber **kein** neues,
+     leeres Layout anlegen, sonst erscheint die Seite ohne Kopf/Fuß.)*
+   - **Aus dem Menü nehmen:** unter **Experteneinstellungen** die Option **„Seite im Menü
+     verbergen"** aktivieren (sonst erscheint die Seite in der Navigation). Optional zusätzlich
+     „Diese Seite nicht durchsuchen".
+3. **Modul auf die Seite:** in dieser Seite einen **Artikel** in der **Hauptspalte** anlegen →
+   darin ein **Inhaltselement „Modul"** einfügen und das „Workflow-Formular"-Modul auswählen.
+   Speichern.
+4. Am Workflow diese Seite als **Formularseite** wählen (Abschnitt 3 b, Punkt 8).
+
+Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `/formular/<token>`),
+**nicht** zwangsläufig `/workflow/…`. Den exakten Link zeigt jeder **Eintrag** beim Feld *Token*.
+
+> Der mitgelieferte **Demo-Workflow** legt genau so eine Seite automatisch an – im Menü
+> versteckt, ein vorhandenes Site-Layout erbend, Modul per Inhaltselement – **ohne** bestehende
+> Seiten/Layouts zu verändern. Du kannst sie als Vorlage ansehen.
 
 ---
 
@@ -67,7 +86,7 @@ von Workflows wiederverwendet. **Logo und PDF-Variablen werden nur hier gepflegt
 nicht mehr im Workflow.
 
 1. **Workflow → Briefkopf-Vorlagen → Neu.**
-2. **Titel** (z. B. „TSV Korntal Briefkopf").
+2. **Titel** (z. B. „Musterverein Briefkopf").
 3. **Layout-Vorlage** wählen (z. B. `pdf_master` – Kopf/Fuß/Unterschrift).
 4. **PDF-Logo** auswählen (Bilddatei aus der Dateiverwaltung).
 5. **PDF-Variablen**: werden nach Wahl der Layout-Vorlage automatisch vorgeschlagen
@@ -77,6 +96,13 @@ nicht mehr im Workflow.
 ---
 
 ## 3. Pro Workflow: Admin-Einrichtung
+
+> **Abkürzung – Konfiguration importieren:** Statt alles von Hand anzulegen, kannst du in der
+> **Übersicht** unter *„Workflow-Konfiguration importieren"* eine exportierte/bereitgestellte
+> **`.json`-Datei** hochladen und optional **Briefpapier** + **E-Mail-Vorlagen** mit anlegen lassen. Der so erzeugte Workflow ist noch **ohne Quelldatei** und damit „nicht
+> ausführbar" – es bleibt also nur Schritt 3 a (Quelldatei hochladen) + die Spalten-Zuordnung
+> (3 b, Punkte 3–6). Umgekehrt exportiert *„Konfiguration exportieren"* an jedem Workflow seine
+> Einstellungen als portable Datei (ohne Logo/Quelldatei/Formularseite).
 
 ### 3 a. Quelldatei hochladen
 **Dateiverwaltung → Ordner `files`** → CSV/XLSX hochladen
@@ -219,10 +245,15 @@ Folge: Status → **2**; das **PDF** wird erzeugt und sicher gespeichert; eine
 zeigt „bereits übermittelt".
 
 ### 4 b. Ohne Mail an den Link kommen (zum Testen)
-**Workflows → (Workflow) → Einträge → (Eintrag öffnen):** das Feld **„Token"**
-ist sichtbar. Der Link lautet:
-`https://<deine-domain>/workflow/<Token>`
-So kannst du das Formular sofort im Browser testen, ohne auf die E-Mail zu warten.
+**Workflows → (Workflow) → Einträge → (Eintrag öffnen):** beim Feld **„Token"** wird direkt
+der **fertige Formular-Link** angezeigt (zum Kopieren). Die URL ist immer
+`<URL deiner Formularseite>/<Token>` – also der **Alias deiner Formularseite** (nicht
+zwangsläufig `/workflow/…`) plus Token, **ohne** abschließenden Slash. Einfach den
+angezeigten Link öffnen.
+
+> **Häufige 404-Ursache:** eine selbst getippte URL wie `/workflow/<Token>` trifft nur, wenn
+> deine Formularseite tatsächlich den Alias `workflow` hat. Maßgeblich ist immer der Alias der
+> Seite, die am Workflow als *Formularseite* gewählt ist – nutze den im Eintrag angezeigten Link.
 
 ---
 
@@ -323,7 +354,7 @@ anlegen (Logo/Header/Unterschrift/Footer; bekommt `$this->bodyHtml`, `$this->log
 `$this->signatureSrc`, `$this->signerName`, `$this->ort`, `$this->datum`, `$this->footer`),
 nach `templates/` legen → erscheint in „Briefkopf-Vorlagen → Layout-Vorlage".
 `$this->ort`/`$this->datum` stammen aus den Workflow-Feldern *Ort/Datum für Unterschriftszeile*
-(nicht mehr automatisch). Die mitgelieferte `pdf_master` ist der **TSV-Briefkopf** mit
+(nicht mehr automatisch). Die mitgelieferte `pdf_master` ist ein **neutraler Beispiel-Briefkopf** (Musterverein) mit
 Lauf-Kopf-/Fußzeile (siehe [PDF-TEMPLATES.md](PDF-TEMPLATES.md)).
 Feste Variablen, die ein Master-Layout anbietet, in
 `contao/config/config.php` unter `$GLOBALS['TL_WORKFLOW_PDF_VARS']` als

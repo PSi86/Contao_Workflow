@@ -15,8 +15,10 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class WorkflowValidator
 {
-    public function __construct(private readonly SpreadsheetInspector $inspector)
-    {
+    public function __construct(
+        private readonly SpreadsheetInspector $inspector,
+        private readonly LinkGenerator $linkGenerator,
+    ) {
     }
 
     /**
@@ -82,6 +84,33 @@ class WorkflowValidator
     public function isRunnable(WorkflowModel $workflow): bool
     {
         return [] === $this->getProblems($workflow);
+    }
+
+    /**
+     * Reasons why invitations/reminders cannot be sent (in addition to being runnable):
+     * a valid form page is required for the link, and at least one notification must be
+     * assigned. An empty list means sending is possible.
+     *
+     * @return array<int, string>
+     */
+    public function getSendBlockers(WorkflowModel $workflow): array
+    {
+        $blockers = [];
+
+        if (null === $this->linkGenerator->resolveFormPage($workflow)) {
+            $blockers[] = 'keine (gültige) Formularseite zugeordnet – ohne sie kann kein Einladungslink erzeugt werden';
+        }
+
+        if ((int) $workflow->ncInvite <= 0 && (int) $workflow->ncReminder <= 0) {
+            $blockers[] = 'keine E-Mail-Benachrichtigung (Einladung/Erinnerung) zugeordnet';
+        }
+
+        return $blockers;
+    }
+
+    public function canSend(WorkflowModel $workflow): bool
+    {
+        return $this->isRunnable($workflow) && [] === $this->getSendBlockers($workflow);
     }
 
     /**

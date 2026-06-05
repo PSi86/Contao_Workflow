@@ -32,3 +32,11 @@ services:
     # Used from the no-ctor AnswerConfigListener (MCW callback) via the container.
     Psimandl\WorkflowBundle\Service\SpreadsheetInspector:
         public: true
+
+    # DCA callback class for the answer-field / PDF-rule child tables, referenced
+    # by class name in tl_workflow*.php and resolved via System::importStatic() by
+    # Contao core, MultiColumnWizard and dcaWizard. Must be public, otherwise
+    # importStatic() fails on the inlined private service in the compiled prod
+    # container ("service has been removed or inlined").
+    Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener:
+        public: true

@@ -4,6 +4,131 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 [Keep a Changelog](https://keepachangelog.com/de/1.1.0/); Versionierung nach
 [SemVer](https://semver.org/lang/de/).
 
+## [2.3.3] – 2026-06-05
+
+### Behoben
+- **Demo-Formularseite: „Unterseitenlayout" zeigte „Unbekannte Option".** Beim Anlegen und beim
+  Heilen der Seite wird `subpageLayout` jetzt explizit auf **0 (= Seitenlayout vererben)** gesetzt
+  – vorher blieb dort ein ungültiger Wert (Verweis auf das entfernte dedizierte Demo-Layout).
+
+## [2.3.2] – 2026-06-05
+
+### Behoben
+- **Demo-Formularseite erschien in der Navigation und brachte ein eigenes, nacktes Layout mit.**
+  Sie wird jetzt **aus dem Menü versteckt** (`hide`), **erbt ein vorhandenes Site-Layout** (statt
+  eines eigenen) und bindet das „Workflow-Formular"-Modul über **Artikel + Inhaltselement** ein –
+  ohne bestehende Seiten/Layouts zu verändern. Das frühere dedizierte Demo-Layout wird entfernt;
+  eine bereits angelegte Demo-Seite wird beim Wiederherstellen entsprechend korrigiert.
+
+### Doku
+- ANLEITUNG Abschnitt 1: genaue Anleitung, wie die Formularseite das **Website-Layout übernimmt**,
+  **aus dem Menü** genommen wird und das Modul per Inhaltselement erhält – ohne andere Teile der
+  Website zu verändern oder Fehler zu verursachen.
+
+## [2.3.1] – 2026-06-05
+
+### Behoben
+- **Sonderzeichen wurden beim Speichern kodiert.** Text-/Textarea-Felder ohne `decodeEntities`
+  ließen Contao `( ) # < > = \` als HTML-Entities speichern – z. B. wurde ein Titel
+  „… (synthetische Daten)" beim erneuten Speichern zu „… &#40;synthetische Daten&#41;", und
+  `##platzhalter##` wären über `#` → `&#35;` zerstört worden. `decodeEntities => true` an allen
+  Inhalts-Textfeldern ergänzt (Titel/Label, `pdfTitle`, `pdfFileName`, `pdfBody`, Antwort-Optionen,
+  PDF-Variablen, Bedingungswerte). Bereits verfälschte Werte heilen beim nächsten Speichern bzw.
+  beim Wiederherstellen des Demos.
+
+## [2.3.0] – 2026-06-05
+
+### Hinzugefügt
+- **Der Demo bringt eine Formularseite mit** und ist damit end-to-end versendbar. Beim Anlegen/
+  Wiederherstellen wird (idempotent) eine funktionierende Formularseite erzeugt: Theme + Layout +
+  „Workflow-Formular"-Modul + eine reguläre Seite unter einer vorhandenen **veröffentlichten
+  Root-Seite**; danach wird sie am Demo-Workflow als *Formularseite* gesetzt. Vorhandene Records
+  werden per Marker-Name **wiederverwendet** (kein Duplikat), **keine Datei wird überschrieben**.
+  Ohne veröffentlichte Root-Seite entfällt nur die Formularseite.
+- **Echter Formular-Link im Backend-Eintrag.** Beim Token wird jetzt der **tatsächliche** Link
+  (`<URL der Formularseite>/<Token>`) angezeigt statt des statischen „…/workflow/…".
+
+### Geändert
+- Klargestellt (ANLEITUNG/Eintrag): Die Formular-URL ergibt sich aus dem **Alias der
+  Formularseite** + Token (nicht fix `/workflow/…`); häufige 404-Ursache (falscher Alias /
+  abschließender Slash) dokumentiert.
+
+## [2.2.3] – 2026-06-05
+
+### Behoben
+- **Versand-Versuch ohne Formularseite scheiterte ohne sichtbare Rückmeldung.** Ein Workflow ohne
+  (gültige) Formularseite oder ohne zugeordnete E-Mail-Benachrichtigung kann keine Einladungen
+  versenden (der `##link##` braucht die Formularseite) – der Versand brach erst beim Klick mit
+  einer leicht zu übersehenden Meldung ab. Die Übersicht zeigt das jetzt **vorab** als deutliche
+  Warnung („Versand nicht möglich: …") und **deaktiviert** den Senden-Button. Betrifft u. a. den
+  nicht-invasiven Demo-Workflow (keine Formularseite).
+
+## [2.2.2] – 2026-06-05
+
+### Geändert
+- Redundante Beispiel-CSV `docs/sample-trainers.csv` entfernt. Als Beispiel-Quelldatei dient
+  jetzt die (synthetische) Demo-Quelle `src/Resources/demo/demo-teilnehmer.csv` – es gibt nur
+  noch **eine** Demo-CSV.
+
+## [2.2.1] – 2026-06-05
+
+### Geändert
+- **Keine vorgefertigten Workflow-Vorlagen mehr im Paket** (außer dem synthetischen Demo). Der
+  Konfigurations-Import erfolgt jetzt **nur per Datei-Upload** (JSON-Export); die Auswahl
+  mitgelieferter Presets entfällt. Vereinsspezifische Vorlagen werden als externe Dateien
+  bereitgestellt, nicht im Paket/Repo.
+- **Vereinsspezifische Inhalte entfernt.** Die mitgelieferten Templates (`pdf_master`,
+  `pdf_body_verzicht`), die Hilfetexte und die Doku verwenden jetzt durchgängig neutrale
+  Platzhalter („Musterverein e.V."). `pdf_master` ist damit ein **neutraler Beispiel-Briefkopf**.
+
+### Hinzugefügt
+- Der **Demo-Workflow** legt jetzt zusätzlich passende **E-Mail-Vorlagen** an (Notification
+  Center, jeweils mit „(Demo)" im Namen) und verknüpft sie; beim Wiederherstellen werden sie
+  ersetzt. Das gemeinsame E-Mail-Gateway bleibt unangetastet.
+
+## [2.2.0] – 2026-06-05
+
+### Hinzugefügt
+- **Workflow-Konfigurationen importieren/exportieren.** In der Workflow-Übersicht lässt sich
+  jede Workflow-Konfiguration als portable **JSON-Datei exportieren** und eine solche Datei
+  wieder **importieren** (Datei-Upload). Beim Import optional auch die
+  **Briefpapier-Konfiguration** und die **E-Mail-Vorlagen** (Notification Center:
+  Einladung/Erinnerung/Ergebnis) mit anlegen (vorhandenes E-Mail-Gateway wird wiederverwendet).
+  Der importierte Workflow hat bewusst **keine Quelldatei** → nach der bestehenden Prüfung
+  „nicht ausführbar", bis eine passende Quelle zugeordnet wird.
+- Export/Import lassen Logo, Quelldatei-UUID und Formularseite (site-spezifisch) bewusst aus.
+  Der Demo-Seeder nutzt jetzt denselben Materializer (`WorkflowConfigImporter`).
+
+## [2.1.0] – 2026-06-05
+
+### Hinzugefügt
+- **Synthetischer Demo-Workflow.** Bei der Erstinstallation wird einmalig ein komplett
+  synthetischer Demo-Workflow („Musterverein", `@example.org`) angelegt: Briefkopf
+  (`pdf_master_generic`), Antwortfelder (Radio + „Aktuelle Zeit"), PDF-Regeln und fünf
+  importierte Beispiel-Teilnehmer. Updates legen ihn **nicht** erneut an (Marker-Datei
+  `var/workflow_demo_installed`). In der Workflow-Übersicht gibt es den Button **„Demo-Workflow
+  wiederherstellen"**, der den Demo idempotent neu anlegt (vorhandener gleichen Namens wird
+  ersetzt). Nicht-invasiv: legt **keine** Seiten/Module/Notification-Center-Datensätze an –
+  das Live-Formular braucht weiterhin die dokumentierte Formularseite (siehe ANLEITUNG.md).
+
+## [2.0.2] – 2026-06-05
+
+### Behoben
+- Bearbeiten eines Workflows warf im **Produktiv**-Container eine
+  `ServiceNotFoundException` für `AnswerConfigListener` („removed or inlined"), weil der
+  per `System::importStatic()` aufgelöste DCA-Callback-Service privat war. Jetzt `public`
+  (wie die übrigen container-aufgelösten Helfer). Nur in Prod sichtbar – der dev-Container
+  inlinet private Services nicht.
+
+## [2.0.1] – 2026-06-05
+
+### Behoben
+- Anlegen/Bearbeiten eines Workflows schlug auf einer frischen Installation mit einem
+  SQL-Syntaxfehler fehl (`… WHERE  ORDER BY id …`). Ursache war ein `findBy([], …)` im
+  Master-Vorauswahl-Callback (`WorkflowOptionsListener::preselectMaster`); ersetzt durch
+  `findAll(['order' => 'id', 'limit' => 1])`. Trat auf, sobald das Feld „Briefkopf-Vorlage"
+  leer war (also wenn noch kein Master angelegt ist).
+
 ## [2.0.0] – 2026-06-04
 
 Großer Umbau: Umbenennung **Trainer → Workflow** auf allen Ebenen (Code, DB, UI)
@@ -77,8 +202,8 @@ Umbenennung von Paket, Namespace und DB-Tabellen.
 - Jeder Workflow wieder als **eigene Karte** (`.wf-box`), mit Contao-Theme-Variablen → **Dark-Mode-fest**.
 - Workflow-Liste **neueste zuerst** als flache Liste (mode 1, `tstamp DESC`, `disableGrouping`).
 
-### Added – TSV-Briefkopf (Master-Vorlage)
-- `pdf_master.html5` neu als TSV-Briefkopf: blaue **Kopfzeile** „TSV Korntal e.V. • Jahnstraße 1 • …"
+### Added – Beispiel-Briefkopf (Master-Vorlage)
+- `pdf_master.html5` neu als neutraler Beispiel-Briefkopf: blaue **Kopfzeile** „Musterverein e.V. • Musterstraße 1 • …"
   oben links, Logo oben rechts, blaue Linie darunter; **4-spaltige blaue Fußzeile** (Anschrift,
   Vorstände, Kontakt, Bankverbindungen) – umgesetzt als echte **mPDF-Lauf-Kopf/Fußzeile**
   (`<htmlpageheader>/<htmlpagefooter>`, dazu Seitenränder in `PdfGenerator::renderPdf`).
@@ -86,7 +211,7 @@ Umbenennung von Paket, Namespace und DB-Tabellen.
   rechts Unterschriftsbild über der Linie + „Unterschrift <Name>".
 
 ### Added – Demo
-- Zwei zusätzliche Demo-Workflows aus den TSV-Vorlagen: **„EStG Übungsleiter"** (§ 3 Nr. 26 EStG)
+- Zwei zusätzliche Demo-Workflows als weitere Vorlagen: **„EStG Übungsleiter"** (§ 3 Nr. 26 EStG)
   und **„Verzicht Ehrenamtspauschale"** (je eine `isDefault`-Regel, Signatur-Formular,
   verstecktes „Aktuelle Zeit"-Datumsfeld). `scripts/configure-demo-basistabelle.php` legt nun drei
   Workflows idempotent (nach Titel) an.

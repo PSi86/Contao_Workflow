@@ -44,10 +44,10 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->signerName` | Name für die Unterschriftszeile |
 | `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
-| `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (TSV-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
+| `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (Beispiel-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
 | `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Jahr']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
 
-> Das mitgelieferte **`pdf_master`** ist das TSV-Briefpapier: blaue Kopfzeile + Logo + Linie und
+> Das mitgelieferte **`pdf_master`** ist ein neutraler Beispiel-Briefkopf (Musterverein): blaue Kopfzeile + Logo + Linie und
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
 > `<sethtmlpageheader>/<sethtmlpagefooter>`). Kopf-/Fußzeilentext ist hier **fest** im Template.
 > Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende Seitenränder; diese setzt
