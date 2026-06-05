@@ -23,6 +23,9 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 #[AsFrontendModule(type: 'workflow_form', category: 'application', template: 'mod_workflow_form')]
 class WorkflowFormController extends AbstractFrontendModuleController
 {
+    /** Reject signatures larger than this (base64 data-URI length) – DoS/tamper guard. */
+    private const MAX_SIGNATURE_BYTES = 1_500_000;
+
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly SubmissionProcessor $submissionProcessor,
@@ -217,17 +220,41 @@ class WorkflowFormController extends AbstractFrontendModuleController
     /**
      * @return string|null|false the signature data URI, null when not provided
      *                           (and not required), or false when required but missing
+     *                           or unusable (too large / not a genuine PNG)
      */
     private function resolveSignature(Request $request, bool $required): string|null|false
     {
-        $signature = (string) $request->request->get('signature');
-        $hasSignature = '' !== trim($signature) && str_contains($signature, 'base64,');
+        $signature = trim((string) $request->request->get('signature'));
 
-        if ($required && !$hasSignature) {
+        if ('' === $signature) {
+            return $required ? false : null;
+        }
+
+        // Accept only a reasonably sized, genuine base64 PNG – the signature pad
+        // emits canvas.toDataURL('image/png'). Length is checked first so an
+        // oversized payload is rejected before any decoding. Guards against DoS
+        // (huge blobs in the longtext column / on disk) and tampered, non-image
+        // data before it is stored or embedded in the PDF. These checks are pure
+        // string/byte comparisons – no code execution.
+        if (\strlen($signature) > self::MAX_SIGNATURE_BYTES || !$this->isValidPngDataUri($signature)) {
+            return $required ? false : null;
+        }
+
+        return $signature;
+    }
+
+    private function isValidPngDataUri(string $signature): bool
+    {
+        $prefix = 'data:image/png;base64,';
+
+        if (!str_starts_with($signature, $prefix)) {
             return false;
         }
 
-        return $hasSignature ? $signature : null;
+        $binary = base64_decode(substr($signature, \strlen($prefix)), true);
+
+        // PNG magic bytes.
+        return false !== $binary && str_starts_with($binary, "\x89PNG\r\n\x1a\n");
     }
 
     private function invalidChoice(QuestionModel $question): string

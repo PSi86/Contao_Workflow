@@ -225,6 +225,11 @@ class PdfGenerator
             'margin_right'  => 20,
             'margin_header' => 8,
             'margin_footer' => 8,
+            // Block remote (http/https) and file:// resources so a stray <img>/<link>
+            // in a body (e.g. an unescaped custom template) cannot trigger an SSRF or
+            // read local files. Our logo/signature use plain local paths (no scheme),
+            // which bypass this check and keep working.
+            'whitelistStreamWrappers' => [],
         ]);
 
         $mpdf->WriteHTML($html);
@@ -271,7 +276,9 @@ class PdfGenerator
 
         $binary = base64_decode(strtr(trim($signature), [' ' => '+', "\n" => '', "\r" => '']), true);
 
-        if (false === $binary || '' === $binary) {
+        // Only embed a genuine PNG (defence in depth; the front-end controller
+        // already validates the submitted signature on the way in).
+        if (false === $binary || !str_starts_with($binary, "\x89PNG\r\n\x1a\n")) {
             return '';
         }
 
