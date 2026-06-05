@@ -22,7 +22,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Require signature', '
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF content', 'Simple letter: the body texts are maintained via PDF rules (per answer). Specific template: a file that handles everything itself – then there are no PDF rules.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'] = ['letter' => 'Simple letter (texts via PDF rules)', 'template' => 'Specific template (file)'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfTitle']        = ['Heading', 'Shared heading for all letter variants. Placeholders allowed, e.g. ##data_vorname## ##data_name##, ##var_jahr##.'];
-$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body template', 'Body template (file "pdf_body_*"). The template contains its own logic – PDF rules do not apply. Its PDF variables are then suggested automatically.'];
+$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body template', 'Body template (file "pdf_body_*"). The template contains its own logic – PDF rules do not apply.'];
 $GLOBALS['TL_LANG']['tl_workflow']['master']        = ['Stationery', 'Stationery (header/footer, logo, variables). Maintained under "Stationery".'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureDate'] = ['Signature date field', 'Data field whose value is printed as the date in the PDF signature line (e.g. a "Current time" answer field). Empty = no date.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocation'] = ['Signature place field', "Data field (e.g. the participant's town from the source file) whose value is printed as the place in the PDF signature line. Empty = no place."];
