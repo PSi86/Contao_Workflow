@@ -41,4 +41,16 @@ $GLOBALS['TL_MODELS']['tl_workflow_master'] = MasterModel::class;
  */
 $GLOBALS['TL_WORKFLOW_PDF_VARS'] = [
     'pdf_master' => ['Jahr' => date('Y'), 'Verein' => '', 'Ort' => '', 'Footer' => ''],
+    // Generic, fully variable-driven letterhead (header line + 4 footer columns;
+    // footer columns use "|" as line break). Jahr/Verein/Ort feed the body texts.
+    'pdf_master_generic' => [
+        'HeaderLine' => '',
+        'Footer1'    => '',
+        'Footer2'    => '',
+        'Footer3'    => '',
+        'Footer4'    => '',
+        'Jahr'       => date('Y'),
+        'Verein'     => '',
+        'Ort'        => '',
+    ],
 ];

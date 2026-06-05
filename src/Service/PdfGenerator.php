@@ -117,6 +117,10 @@ class PdfGenerator
             'ort'          => $this->resolveSignatureLocation($workflow, $data),
             'datum'        => $this->resolveSignatureDate($workflow, $data),
             'footer'       => (string) ($extra['Footer'] ?? ''),
+            // Full letterhead variables, so a master template can build its header
+            // and footer entirely from the configured PDF variables (e.g. the
+            // generic pdf_master_generic). Legacy templates simply ignore this.
+            'extra'        => $extra,
         ]);
 
         return $master->parse();

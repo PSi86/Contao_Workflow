@@ -46,12 +46,26 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
 | `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (TSV-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
+| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Jahr']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
 
 > Das mitgelieferte **`pdf_master`** ist das TSV-Briefpapier: blaue Kopfzeile + Logo + Linie und
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
-> `<sethtmlpageheader>/<sethtmlpagefooter>`). Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende
-> Seitenränder; diese setzt `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die
-> Unterschriftszeile ist gespiegelt (Wert über der Linie, Label darunter).
+> `<sethtmlpageheader>/<sethtmlpagefooter>`). Kopf-/Fußzeilentext ist hier **fest** im Template.
+> Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende Seitenränder; diese setzt
+> `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die Unterschriftszeile ist
+> gespiegelt (Wert über der Linie, Label darunter).
+
+> **Generischer Master `pdf_master_generic`** (organisationsneutral): identisches Layout, aber
+> **aller** Kopf-/Fußzeilentext kommt aus den PDF-Variablen des Briefpapiers, nichts ist fest
+> verdrahtet:
+> - `HeaderLine` – Absenderzeile über der Linie
+> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **`|`** trennt Zeilen (keyValueWizard-Werte
+>   sind einzeilig), z. B. `Verein e.V.|Straße 1|12345 Ort`
+> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##var_jahr##` …)
+>
+> Beispiel-Briefpapier dafür: **„TSV Korntal Briefpapier (Variablen)"** (siehe
+> `scripts/configure-demo-basistabelle.php`). Werte werden beim Auswählen des Templates aus
+> `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']` vorgeschlagen.
 
 ### Body-Vorlage (`pdf_body_*`)
 | Variable | Inhalt |
