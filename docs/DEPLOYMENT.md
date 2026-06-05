@@ -18,12 +18,13 @@ Contao versendet E-Mails **asynchron über Symfony Messenger**. Beim Klick auf
 „Einladungen senden" (bzw. `workflow:send`) passiert nur:
 
 1. pro Empfänger wird eine Nachricht in die Queue-Tabelle **`tl_message_queue`**
-   (Transport `contao_prio_high`) geschrieben,
-2. der Eintrag wird auf Status `1` gesetzt.
+   (Transport `contao_prio_high`) geschrieben — die Aktion meldet „**zum Versand eingereiht**".
 
 Der **eigentliche SMTP-Versand** passiert erst, wenn ein **Worker** die Queue
-abarbeitet. Ohne laufenden Worker bleibt alles in der Queue liegen — die Aktion
-meldet trotzdem „versendet" (= erfolgreich **eingereiht**).
+abarbeitet. **Erst dann** wechselt der Eintrag auf Status `1` (eingeladen); ein
+**fehlgeschlagener** Versand lässt den Status unverändert und erscheint in der Übersicht
+als **„Versandfehler"**. Ohne laufenden Worker bleibt alles in der Queue liegen — die Mail
+geht nicht raus **und** der Status springt nicht um.
 
 Gemessen (Dev-Container, Referenzwerte):
 - **Einreihen von 300 Einladungen: ~1,5 s** (reiner DB-Schreibvorgang, kein Timeout-Risiko, auch im Backend-Klick).
@@ -172,7 +173,7 @@ Wenn die Reports über einige Tage sauber sind (SPF/DKIM bestehen), schrittweise
 ## 9. Troubleshooting
 | Symptom | Ursache / Lösung |
 |---|---|
-| „Versendet", aber keine Mail kommt an | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). |
+| „Eingereiht", aber keine Mail / Status bleibt `0` | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). Der Status wechselt erst nach echtem Versand. |
 | Mails landen im Spam | SPF/DKIM/DMARC fehlen oder Absender-Domain ≠ signierte Domain (Abschnitt 3a/4). |
 | Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben. |
 | Einzelne Personen ohne Mail | Transport `contao_failure` prüfen (Abschnitt 6). |

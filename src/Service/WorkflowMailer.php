@@ -76,15 +76,11 @@ class WorkflowMailer
                 continue;
             }
 
+            // Count what was handed to the mailer (queued). The status is NOT advanced
+            // here: it is updated from the real send result by WorkflowMailResultListener
+            // (an invitation only becomes "invited" once the mail was actually sent; a
+            // failed send leaves the entry untouched and is flagged in the dashboard).
             ++$sent;
-
-            // Advance the status only for the initial invitation.
-            if (!$isReminder) {
-                $entry->status = WorkflowStatus::STATUS_INVITED;
-                $entry->sentAt = time();
-                $entry->tstamp = time();
-                $entry->save();
-            }
         }
 
         return $sent;

@@ -7,8 +7,11 @@ namespace Psimandl\WorkflowBundle\Service;
 use Doctrine\DBAL\Connection;
 
 /**
- * Ensures a working front end form page for the demo workflow so invitations can be sent
- * (the invitation link needs a page hosting the "workflow_form" module).
+ * Ensures a working, general-purpose front end form page so invitations can be sent (the
+ * invitation link needs a page hosting the "workflow_form" module). Bootstrapped by the
+ * demo, but **shared by every workflow**: the module resolves the entry and its workflow
+ * purely from the token in the URL, so a single page at "/workflow-formular/<token>" serves
+ * all workflows. New workflows simply point their "form page" at it.
  *
  * Built deliberately non-intrusively:
  *  - the page is **hidden from the navigation menu** (hide = 1),
@@ -16,20 +19,22 @@ use Doctrine\DBAL\Connection;
  *    one – so it looks like the rest of the site,
  *  - the module is placed via an **article + a "module" content element** (the standard
  *    way for a page that inherits the site layout),
- *  - only a dedicated demo theme holds the module; no existing page, layout, theme or file
+ *  - only a dedicated theme holds the module; no existing page, layout, theme or file
  *    is modified.
  *
  * Strictly idempotent: records are looked up by marker name/alias and reused; an existing
- * demo page is healed (hidden + re-pointed at a site layout). Returns the page id, or 0 when
+ * page is healed (hidden + re-pointed at a site layout). Returns the page id, or 0 when
  * there is neither a published root nor a usable site layout to adopt.
  */
 class DemoFormPage
 {
-    private const THEME_NAME = 'Workflow Demo';
-    private const MODULE_NAME = 'Workflow-Formular (Demo)';
-    private const PAGE_TITLE = 'Workflow-Formular (Demo)';
-    private const PAGE_ALIAS = 'workflow-formular-demo';
+    private const THEME_NAME = 'Workflow';
+    private const MODULE_NAME = 'Workflow-Formular';
+    private const PAGE_TITLE = 'Workflow-Formular';
+    private const PAGE_ALIAS = 'workflow-formular';
     private const OLD_LAYOUT_NAME = 'Workflow Demo';
+    // The form page is reached only via individual token links and must never be indexed.
+    private const ROBOTS = 'noindex,nofollow';
 
     public function __construct(private readonly Connection $connection)
     {
@@ -52,11 +57,11 @@ class DemoFormPage
                 // subpageLayout = 0 → "inherit page layout" (the page has no subpages); also
                 // clears a stale value that pointed at the now-removed demo layout.
                 $this->connection->executeStatement(
-                    "UPDATE tl_page SET hide = 1, includeLayout = '1', layout = ?, subpageLayout = 0, published = '1' WHERE id = ?",
-                    [$layoutId, $pageId],
+                    "UPDATE tl_page SET hide = 1, includeLayout = '1', layout = ?, subpageLayout = 0, published = '1', robots = ? WHERE id = ?",
+                    [$layoutId, self::ROBOTS, $pageId],
                 );
             } else {
-                $this->connection->executeStatement('UPDATE tl_page SET hide = 1 WHERE id = ?', [$pageId]);
+                $this->connection->executeStatement('UPDATE tl_page SET hide = 1, robots = ? WHERE id = ?', [self::ROBOTS, $pageId]);
             }
         } else {
             $rootId = (int) $this->connection->fetchOne(
@@ -72,9 +77,9 @@ class DemoFormPage
 
             // subpageLayout = 0 → "inherit page layout" (the form page has no subpages).
             $this->connection->executeStatement(
-                'INSERT INTO tl_page (pid, sorting, tstamp, title, alias, type, published, hide, includeLayout, layout, subpageLayout) '
-                ."VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, 'regular', 1, 1, '1', ?, 0)",
-                [$rootId, $sorting, self::PAGE_TITLE, self::PAGE_ALIAS, $layoutId],
+                'INSERT INTO tl_page (pid, sorting, tstamp, title, alias, type, published, hide, includeLayout, layout, subpageLayout, robots) '
+                ."VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, 'regular', 1, 1, '1', ?, 0, ?)",
+                [$rootId, $sorting, self::PAGE_TITLE, self::PAGE_ALIAS, $layoutId, self::ROBOTS],
             );
             $pageId = (int) $this->connection->lastInsertId();
         }

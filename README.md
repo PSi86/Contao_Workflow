@@ -105,8 +105,10 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 - **Produktiv-Betrieb & Mailversand:** siehe [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
   (Worker/Cron, SMTP, SPF/DKIM/DMARC, Skalierung 100–300, all-inkl-Hosting).
 - **E-Mails werden asynchron** über Symfony Messenger versendet (Queue
-  `tl_message_queue`). Ohne laufenden Worker/Cron (`contao:cron` bzw.
-  `messenger:consume`) wird nichts zugestellt, obwohl der Versand als erfolgreich gilt.
+  `tl_message_queue`). Der Klick reiht die Mail nur **ein**; der Teilnehmer-Status wechselt
+  **erst nach dem tatsächlichen Versand** auf „eingeladen", ein Fehlversand wird als
+  **„Versandfehler"** angezeigt. Ohne laufenden Worker/Cron (`contao:cron` bzw.
+  `messenger:consume`) wird nichts zugestellt – und der Status bleibt dann auf **0**.
 - Generierte PDFs liegen unter `%kernel.project_dir%/var/workflow_pdfs/` (nicht
   öffentlich) und werden nur über die authentifizierten Backend-Routen gestreamt.
 - **Quelldateien & Datenschutz:** Die hochgeladene Quelltabelle enthält personenbezogene
@@ -119,19 +121,24 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
   installierte NC-Version das nicht abdeckt, `do-while/contao-pdf-nc-attachment-bundle`
   ergänzen oder die Ergebnis-Mail auf Symfony-Mailer mit direktem Anhang umstellen
   (`NotificationDispatcher::sendResult`).
-- **Konfigurationen importieren/exportieren:** In der Übersicht lässt sich jede
-  Workflow-Konfiguration als portable **JSON-Datei** exportieren und eine solche Datei wieder
-  **importieren** (Upload), optional inkl. **Briefpapier** und **E-Mail-Vorlagen**. Der Import
-  erzeugt einen Workflow **ohne Quelldatei** (zunächst „nicht ausführbar", bis eine Quelle
-  zugeordnet wird). Logo/Quelldatei/Formularseite sind site-spezifisch und nicht Teil des
-  Exports. Das Bundle bringt **keine** vorgefertigten Workflows mit (außer dem Demo).
+- **Konfigurationen importieren/exportieren:** In der **Workflow-Liste** lädt *„Konfiguration
+  herunterladen"* (Symbol je Zeile) jede Workflow-Konfiguration als portable **JSON-Datei**
+  herunter; in der **Übersicht** lässt sich eine solche Datei wieder **importieren** (Upload),
+  optional inkl. **Briefpapier** und **E-Mail-Vorlagen**. Der Import **überschreibt nichts**:
+  gleichnamiges Briefpapier/Vorlagen werden übersprungen und gemeldet, ein bereits vergebener
+  Workflow-Titel bricht ab. Der Import erzeugt einen Workflow **ohne Quelldatei** (zunächst
+  „nicht ausführbar", bis eine Quelle zugeordnet wird). Logo/Quelldatei/Formularseite sind
+  site-spezifisch und nicht Teil des Exports. Das Bundle bringt **keine** vorgefertigten
+  Workflows mit (außer dem Demo).
 - **Demo-Workflow:** Bei der Erstinstallation wird einmalig ein **synthetischer**
   Demo-Workflow („Musterverein") mit fünf Beispiel-Teilnehmern angelegt (Updates nicht
   erneut, Marker `var/workflow_demo_installed`). In der Übersicht per **„Demo-Workflow
   wiederherstellen"** neu erzeugbar (idempotent). Er bringt **alles zum Ausprobieren** mit:
-  E-Mail-Vorlagen (Notification Center, „(Demo)") und eine **Formularseite**, die **im Menü
-  versteckt** ist, ein **vorhandenes Site-Layout erbt** und das Modul per Inhaltselement einbindet.
-  Idempotent und **ohne** bestehende Seiten/Layouts/Dateien zu verändern (ohne veröffentlichte
-  Root-Seite bzw. ohne nutzbares Site-Layout entfällt nur die Formularseite).
+  E-Mail-Vorlagen (Notification Center, „(Demo)") und eine **Formularseite** „Workflow-Formular"
+  (Alias `/workflow-formular`, auf **noindex,nofollow** gesetzt), die **im Menü versteckt** ist,
+  ein **vorhandenes Site-Layout erbt** und das Modul per Inhaltselement einbindet – **von jedem
+  Workflow nutzbar** (die Zuordnung läuft über den Token). Idempotent und **ohne** bestehende
+  Seiten/Layouts/Dateien zu verändern (ohne veröffentlichte Root-Seite bzw. ohne nutzbares
+  Site-Layout entfällt nur die Formularseite).
 - Eine Beispiel-Quelldatei (die Quelle des mitgelieferten Demos) liegt unter
   `src/Resources/demo/demo-teilnehmer.csv`.

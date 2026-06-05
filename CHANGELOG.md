@@ -4,6 +4,107 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 [Keep a Changelog](https://keepachangelog.com/de/1.1.0/); Versionierung nach
 [SemVer](https://semver.org/lang/de/).
 
+## [2.3.11] – 2026-06-06
+
+### Geändert
+- **„Konfiguration herunterladen" jetzt in der Workflow-Liste.** Der Konfigurations-Export ist als
+  eigene Operation (Symbol) in der Liste unter „Workflows" (workflow_manage) verfügbar – neben
+  „Bearbeiten", „Einträge", „Kopieren" usw. – und wurde dafür aus der Übersicht entfernt.
+- **„Bearbeiten"-Button in der Workflow-Übersicht.** Jeder Workflow in der Übersicht hat jetzt einen
+  „Bearbeiten"-Button, der direkt in die Bearbeiten-Ansicht (workflow_manage) dieses Workflows führt.
+- Die Zugriffsprüfung der Workflow-Aktionsrouten akzeptiert nun das Übersichts- **oder** das
+  Verwalten-Modul (damit der Export auch aus der Liste heraus funktioniert).
+
+## [2.3.10] – 2026-06-05
+
+### Behoben
+- **Status-Aktualisierung nach Mailversand funktionierte bei asynchronem Versand nicht.** Der in
+  2.3.6 eingeführte Ansatz stempelte einen Korrelations-Header über das `MessageEvent` auf die
+  Mail – Symfony verwirft beim Einreihen in die Queue aber genau diese Änderungen (es stellt
+  bewusst die *originale* Nachricht zu), sodass der Header beim echten Versand im Worker fehlte
+  und der Teilnehmer-Status auf „0" stehen blieb, obwohl die Mail erfolgreich versendet wurde.
+  Die Zuordnung läuft jetzt über die **Parcel-ID des Notification Centers** und dessen
+  `AsynchronousReceiptEvent`: Beim Versand wird die Parcel-ID am Eintrag vermerkt und beim
+  tatsächlichen (auch asynchronen) Zustellergebnis wieder aufgelöst. Erfolg → Einladung wechselt
+  auf „eingeladen"; Fehler → Status bleibt unverändert und wird im Dashboard als „Versandfehler"
+  angezeigt. Gilt für Einladung, Erinnerung und Ergebnis-Mail. (Neue Spalten
+  `tl_workflow_entry.sendParcelId` / `sendKind` – Datenbank-Migration erforderlich.)
+
+## [2.3.9] – 2026-06-05
+
+### Geändert
+- **Formularseite „Workflow-Formular" ist auf `noindex,nofollow` gesetzt.** Die Seite wird nur
+  über individuelle Token-Links erreicht und soll nicht von Suchmaschinen indexiert werden. Das
+  Robots-Tag wird beim Anlegen/Heilen der Seite gesetzt; eine Migration setzt es zudem auf einer
+  bereits vorhandenen Formularseite (neuer und alter Alias).
+
+## [2.3.8] – 2026-06-05
+
+### Behoben
+- **„Ausstehende Antworten" zeigte keinen Nachnamen.** Die Übersicht suchte die Namensspalte fest
+  unter „Name" – Quelldaten mit „Nachname" (u. a. der Demo) blieben so ohne Namensspalte. Vor-/
+  Nachname (und als Fallback die E-Mail) werden jetzt **automatisch anhand gängiger Feldnamen
+  erkannt**, normalisiert (Groß-/Kleinschreibung, Leer-/Sonderzeichen) – z. B. Vorname/Rufname/
+  First Name/Given Name, Nachname/Familienname/Surname/Last Name/Family Name (generisches „Name"
+  als Fallback) sowie E-Mail/Mail/E-Mail-Adresse. Die Spalte „Status" bleibt unverändert (vom
+  Plugin vorgegeben).
+
+## [2.3.7] – 2026-06-05
+
+### Geändert
+- **Formularseite ist jetzt allgemein nutzbar statt demo-spezifisch.** Die bei der Installation
+  angelegte Seite heißt nun „Workflow-Formular" mit Alias **`/workflow-formular`** (vorher
+  „… (Demo)" / `workflow-formular-demo`). Da das Formularmodul Eintrag *und* Workflow allein aus
+  dem Token in der URL auflöst, kann **eine einzige Seite alle Workflows bedienen** – neue
+  Workflows verweisen einfach mit ihrer „Formularseite" darauf. Theme/Modul entsprechend generisch
+  benannt. Eine Migration benennt eine vorhandene Demo-Seite (inkl. Artikel/Modul/Theme) in place
+  um – die Seiten-ID bleibt erhalten, nur die URL wird zu `/workflow-formular/<token>` (bereits
+  versendete Demo-Links auf die alte Adresse verlieren dadurch ihre Gültigkeit).
+
+## [2.3.6] – 2026-06-05
+
+### Geändert
+- **Workflow-Schritt wird erst nach dem tatsächlichen Mail-Versand weitergesetzt.** Bisher
+  wurde der Status sofort beim Klick hochgezählt – auch wenn die Mail (oft asynchron über die
+  Queue) danach am SMTP-Server scheiterte; die grüne Meldung bestätigte fälschlich „versendet".
+  Jetzt wird der Status ereignisgesteuert aus dem echten Sendeergebnis aktualisiert
+  (`SentMessageEvent`/`FailedMessageEvent`): eine Einladung wechselt erst nach erfolgreicher
+  Zustellung auf „eingeladen", ein **Fehlversand lässt den Schritt unverändert**. Gilt für
+  Einladung, Erinnerung und Ergebnis-Mail. Die Bestätigungsmeldung lautet entsprechend
+  „… zum Versand eingereiht".
+
+### Hinzugefügt
+- **Versandfehler im Dashboard.** Fehlgeschlagene Zustellungen werden pro Workflow in einer
+  eigenen „Versandfehler"-Box (Empfänger + Fehlertext) sowie als Markierung an der betroffenen
+  Zeile angezeigt. Ein späterer erfolgreicher Versand räumt die Markierung automatisch wieder ab.
+  (Korrelation Mail↔Zeile über gestempelte Mail-Header; neue Spalten `tl_workflow_entry.sendError`
+  / `sendErrorAt` – Datenbank-Migration erforderlich.)
+
+## [2.3.5] – 2026-06-05
+
+### Behoben
+- **Hinweis auf übersprungene Elemente wurde nicht angezeigt.** Die Import-Meldungen (Erfolg sowie
+  „… wegen Namenskonflikt übersprungen") wurden zwar gesetzt, aber in der Workflow-Übersicht nicht
+  ausgegeben – ein eigenes Backend-Modul wird (anders als DC-Listen/Masken) nicht automatisch mit
+  der Meldungsausgabe umrahmt. Das Dashboard rendert die Flash-Meldungen jetzt selbst.
+
+## [2.3.4] – 2026-06-05
+
+### Behoben
+- **Import legte Duplikate mit gleichem Namen an.** Beim „Workflow-Konfiguration importieren"
+  wurden Briefpapier und E-Mail-Vorlagen auch dann (doppelt) angelegt, wenn bereits gleichnamige
+  Elemente existierten. Jetzt wird **nichts überschrieben und nichts unter einem bereits
+  vergebenen Namen angelegt**: Ein belegter **Workflow-Titel** bricht den gesamten Import ab
+  (keine verwaisten Elemente), ein belegtes **Briefpapier** bzw. eine belegte **E-Mail-Vorlage**
+  wird einzeln übersprungen. Übersprungene Elemente werden nach dem Import **namentlich gemeldet**
+  (vorhandenes umbenennen oder Namen in der JSON ändern und erneut importieren).
+
+### Geändert
+- **Eindeutige Namen erzwungen (Anlegen/Bearbeiten/Duplizieren).** Workflow- und Briefpapier-Titel
+  müssen jetzt eindeutig sein (`eval.unique`): beim Duplizieren wird der Titel geleert und im
+  Bearbeiten-Formular ein freier Name verlangt; ein bereits vergebener Name wird beim Speichern mit
+  einer Warnung abgelehnt.
+
 ## [2.3.3] – 2026-06-05
 
 ### Behoben

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Controller\Backend;
 
 use Contao\BackendModule;
+use Contao\Message;
 use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -20,6 +21,14 @@ use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 class DashboardModule extends BackendModule
 {
     protected $strTemplate = 'be_workflow_dashboard';
+
+    // Candidate source-column names for the pending list, in priority order. Compared
+    // normalized (lower-cased, all non-alphanumerics stripped), so "First Name",
+    // "first_name", "E-Mail" etc. all match. The generic "name" is the last fallback so
+    // a dedicated "Nachname"/"Surname" wins over it.
+    private const FIRST_NAME_ALIASES = ['vorname', 'rufname', 'firstname', 'givenname', 'forename', 'christianname', 'prename'];
+    private const LAST_NAME_ALIASES = ['nachname', 'familienname', 'zuname', 'surname', 'lastname', 'familyname', 'name'];
+    private const EMAIL_ALIASES = ['email', 'emailadresse', 'emailaddress', 'mail', 'mailadresse', 'mailaddress', 'epost'];
 
     protected function compile(): void
     {
@@ -77,6 +86,7 @@ class DashboardModule extends BackendModule
                     'open'          => $status->countOpen($workflow),
                     'total'         => $status->countTotal($id),
                     'breakdown'     => $status->getBreakdown($workflow),
+                    'sendErrors'    => $status->getSendErrors($id),
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
@@ -86,15 +96,21 @@ class DashboardModule extends BackendModule
                     'sendUrl'       => $router->generate('workflow_send', ['id' => $id]),
                     'rt'            => $rt,
                     'urls'          => [
-                        'import'       => $base('workflow_import'),
-                        'exportXlsx'   => $base('workflow_export'),
-                        'exportCsv'    => $base('workflow_export').'&format=csv',
-                        'pdfs'         => $base('workflow_download_pdfs'),
-                        'exportConfig' => $base('workflow_export_config'),
+                        // Direct link into the workflow_manage edit view for this workflow.
+                        'manage'     => $router->generate('contao_backend', ['do' => 'workflow_manage', 'act' => 'edit', 'id' => $id, 'rt' => $rt]),
+                        'import'     => $base('workflow_import'),
+                        'exportXlsx' => $base('workflow_export'),
+                        'exportCsv'  => $base('workflow_export').'&format=csv',
+                        'pdfs'       => $base('workflow_download_pdfs'),
                     ],
                 ];
             }
         }
+
+        // Flash messages (e.g. import result / skipped-on-name-conflict notices set by
+        // WorkflowActionController). Unlike DC-driven views, a custom back end module is
+        // not wrapped with the message output, so render it here explicitly.
+        $this->Template->messages = Message::generate();
 
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
@@ -123,24 +139,78 @@ class DashboardModule extends BackendModule
             return [];
         }
 
+        // The source columns are identical for all entries of a workflow, so resolve the
+        // first-name / last-name / e-mail columns once from the first row's keys.
+        $firstNameKey = null;
+        $lastNameKey = null;
+        $emailKey = null;
+        $keysResolved = false;
+
         foreach ($entries as $entry) {
             $row = $entry->getData();
-            $name = (string) ($row['Name'] ?? '');
-            $vorname = (string) ($row['Vorname'] ?? '');
+
+            if (!$keysResolved) {
+                $keys = array_keys($row);
+                $firstNameKey = $this->detectColumn($keys, self::FIRST_NAME_ALIASES);
+                $lastNameKey = $this->detectColumn($keys, self::LAST_NAME_ALIASES);
+                $emailKey = $this->detectColumn($keys, self::EMAIL_ALIASES);
+                $keysResolved = true;
+            }
+
+            $vorname = null !== $firstNameKey ? (string) ($row[$firstNameKey] ?? '') : '';
+            $name = null !== $lastNameKey ? (string) ($row[$lastNameKey] ?? '') : '';
+            // The configured e-mail field is canonical; fall back to a detected column.
+            $email = (string) $entry->email;
+
+            if ('' === $email && null !== $emailKey) {
+                $email = (string) ($row[$emailKey] ?? '');
+            }
 
             $hasName = $hasName || '' !== $name;
             $hasVorname = $hasVorname || '' !== $vorname;
 
             $pending[] = [
                 'id'          => (int) $entry->id,
-                'email'       => (string) $entry->email,
+                'email'       => $email,
                 'statusIndex' => (int) $entry->status,
                 'status'      => $status->getStepLabel($workflow, (int) $entry->status),
                 'name'        => $name,
                 'vorname'     => $vorname,
+                'sendError'   => (string) $entry->sendError,
             ];
         }
 
         return $pending;
+    }
+
+    /**
+     * Returns the first source column whose normalized name matches one of the aliases
+     * (in alias priority order), or null if none matches. Normalization lower-cases the
+     * name and strips every non-alphanumeric character, so spelling/spacing/punctuation
+     * variants ("First Name", "first_name", "E-Mail-Adresse") map onto the same alias.
+     *
+     * @param array<int, string> $keys    available source column names
+     * @param array<int, string> $aliases normalized candidate names, most specific first
+     */
+    private function detectColumn(array $keys, array $aliases): ?string
+    {
+        $normalized = [];
+
+        foreach ($keys as $key) {
+            $normalized[$this->normalizeColumn((string) $key)] = (string) $key;
+        }
+
+        foreach ($aliases as $alias) {
+            if (isset($normalized[$alias])) {
+                return $normalized[$alias];
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeColumn(string $value): string
+    {
+        return (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($value, 'UTF-8'));
     }
 }

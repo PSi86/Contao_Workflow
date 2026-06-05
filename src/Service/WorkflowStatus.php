@@ -100,4 +100,27 @@ class WorkflowStatus
 
         return $steps[$status] ?? (string) $status;
     }
+
+    /**
+     * Entries whose last mail send failed (any status), so the back end can flag them.
+     *
+     * @return array<int, array{email: string, error: string, at: int}>
+     */
+    public function getSendErrors(int $workflowId): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT email, sendError, sendErrorAt FROM tl_workflow_entry "
+            ."WHERE pid = ? AND sendError IS NOT NULL AND sendError != '' ORDER BY sendErrorAt DESC",
+            [$workflowId],
+        );
+
+        return array_map(
+            static fn (array $row): array => [
+                'email' => (string) $row['email'],
+                'error' => (string) $row['sendError'],
+                'at'    => (int) $row['sendErrorAt'],
+            ],
+            $rows,
+        );
+    }
 }

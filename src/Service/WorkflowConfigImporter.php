@@ -31,29 +31,56 @@ class WorkflowConfigImporter
     }
 
     /**
+     * Materialises the configuration. Nothing is overwritten and nothing is created
+     * under an already used name: a conflicting workflow title aborts the whole import
+     * (so no orphaned letterhead/templates are left behind), while a conflicting
+     * letterhead or e-mail template is skipped individually and reported back.
+     *
      * @param array<string, mixed> $config a decoded configuration document
      *
+     * @return array{workflow: WorkflowModel, skippedMaster: string|null, skippedNotifications: array<int, string>}
+     *
      * @throws \InvalidArgumentException on an unknown/unsupported document
+     * @throws \RuntimeException         when the workflow title is already taken
      */
     public function materialize(
         array $config,
         bool $createMaster = false,
         bool $createNotifications = false,
         ?string $sourceUuid = null,
-    ): WorkflowModel {
+    ): array {
         $this->framework->initialize();
         $this->assertValid($config);
 
+        $workflowTitle = (string) $config['workflow']['title'];
+
+        if ($this->workflowTitleExists($workflowTitle)) {
+            throw new \RuntimeException(sprintf(
+                'Es existiert bereits ein Workflow mit dem Titel „%s". Bitte den vorhandenen Workflow '
+                .'umbenennen oder den Titel in der JSON-Datei ändern und erneut importieren.',
+                $workflowTitle,
+            ));
+        }
+
         $masterId = 0;
+        $skippedMaster = null;
 
         if ($createMaster && \is_array($config['master'] ?? null)) {
-            $masterId = $this->createMaster($config['master']);
+            $masterTitle = (string) ($config['master']['title'] ?? 'Briefpapier');
+
+            if ($this->masterTitleExists($masterTitle)) {
+                $skippedMaster = $masterTitle;
+            } else {
+                $masterId = $this->createMaster($config['master']);
+            }
         }
 
         $nc = ['invite' => 0, 'reminder' => 0, 'result' => 0];
+        $skippedNotifications = [];
 
         if ($createNotifications && \is_array($config['notifications'] ?? null)) {
-            $nc = array_merge($nc, $this->createNotifications($config['notifications']));
+            [$created, $skippedNotifications] = $this->createNotifications($config['notifications']);
+            $nc = array_merge($nc, $created);
         }
 
         $workflowId = $this->createWorkflow((array) $config['workflow'], $masterId, $nc, $sourceUuid);
@@ -66,7 +93,11 @@ class WorkflowConfigImporter
             throw new \RuntimeException('Imported workflow could not be loaded.');
         }
 
-        return $workflow;
+        return [
+            'workflow'             => $workflow,
+            'skippedMaster'        => $skippedMaster,
+            'skippedNotifications' => $skippedNotifications,
+        ];
     }
 
     /**
@@ -118,16 +149,19 @@ class WorkflowConfigImporter
     /**
      * Creates the three workflow e-mail templates (invite/reminder/result) in the
      * Notification Center, reusing an existing e-mail gateway (creating one only if
-     * none exists). Returns the new notification ids keyed by invite|reminder|result.
+     * none exists). A template whose title is already taken is skipped (never
+     * duplicated/overwritten). Returns the new notification ids keyed by
+     * invite|reminder|result and the titles of any skipped templates.
      *
      * @param array<string, mixed> $notifications
      *
-     * @return array<string, int>
+     * @return array{0: array<string, int>, 1: array<int, string>}
      */
     private function createNotifications(array $notifications): array
     {
         $gateway = $this->resolveGateway();
         $ids = [];
+        $skipped = [];
 
         foreach (['invite', 'reminder', 'result'] as $kind) {
             if (!\is_array($notifications[$kind] ?? null)) {
@@ -135,10 +169,19 @@ class WorkflowConfigImporter
             }
 
             $tpl = $notifications[$kind];
+            $title = (string) ($tpl['title'] ?? ucfirst($kind));
+
+            // Re-checked per insert, so even identical titles within the same document
+            // are not duplicated (the first one wins, the rest are skipped).
+            if ($this->notificationTitleExists($title)) {
+                $skipped[] = $title;
+
+                continue;
+            }
 
             $this->connection->executeStatement(
                 "INSERT INTO tl_nc_notification (tstamp, title, type) VALUES (UNIX_TIMESTAMP(), ?, 'workflow')",
-                [(string) ($tpl['title'] ?? ucfirst($kind))],
+                [$title],
             );
             $notificationId = (int) $this->connection->lastInsertId();
 
@@ -167,7 +210,31 @@ class WorkflowConfigImporter
             $ids[$kind] = $notificationId;
         }
 
-        return $ids;
+        return [$ids, $skipped];
+    }
+
+    private function workflowTitleExists(string $title): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT id FROM tl_workflow WHERE title = ? LIMIT 1',
+            [$title],
+        );
+    }
+
+    private function masterTitleExists(string $title): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT id FROM tl_workflow_master WHERE title = ? LIMIT 1',
+            [$title],
+        );
+    }
+
+    private function notificationTitleExists(string $title): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT id FROM tl_nc_notification WHERE title = ? LIMIT 1',
+            [$title],
+        );
     }
 
     private function resolveGateway(): int

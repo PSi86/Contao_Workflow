@@ -7,6 +7,8 @@ $l = $this->dash;
   <a href="<?= $esc($this->restoreDemoUrl) ?>" class="tl_submit" style="float:none;display:inline-block;" onclick="return confirm('Demo-Workflow mit synthetischen Daten (neu) anlegen? Ein vorhandener Demo-Workflow gleichen Namens wird dabei ersetzt.');">Demo-Workflow wiederherstellen</a>
 </div>
 
+<?= $this->messages ?>
+
 <h2 class="sub_headline"><?= $l['heading'] ?></h2>
 
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
@@ -51,6 +53,24 @@ $l = $this->dash;
         <?php endif; ?>
       <?php endif; ?>
 
+      <?php if (!empty($wf['sendErrors'])): ?>
+        <details open class="wf-send-errors" style="margin-bottom:1em;">
+          <summary class="tl_error" style="cursor:pointer;font-weight:bold;">Versandfehler (<?= \count($wf['sendErrors']) ?>) – diese E-Mails wurden nicht zugestellt</summary>
+          <table class="tl_listing" style="margin-top:.6em;">
+            <thead><tr><th><?= $l['col_email'] ?></th><th>Fehler</th></tr></thead>
+            <tbody>
+            <?php foreach ($wf['sendErrors'] as $err): ?>
+              <tr>
+                <td><?= $esc($err['email']) ?></td>
+                <td><?= $esc($err['error']) ?></td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+          <p class="tl_info" style="margin:.4em 0 0;">Der Workflow-Schritt dieser Einträge wurde bewusst nicht weitergesetzt. Ursache beheben (z. B. Absenderadresse/SMTP) und erneut „<?= $l['btn_send'] ?>".</p>
+        </details>
+      <?php endif; ?>
+
       <div style="display:flex;gap:2em;flex-wrap:wrap;margin-bottom:1em;">
         <div><strong style="font-size:1.6em;"><?= (int) $wf['completed'] ?></strong><br><?= $l['completed'] ?></div>
         <div><strong style="font-size:1.6em;"><?= (int) $wf['open'] ?></strong><br><?= $l['open'] ?></div>
@@ -71,6 +91,7 @@ $l = $this->dash;
       </table>
 
       <div class="wf-actions">
+        <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
         <?php if ($wf['runnable']): ?>
           <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['btn_import'] ?></a>
           <?php if ($wf['canSend']): ?>
@@ -85,7 +106,6 @@ $l = $this->dash;
         <a class="tl_submit" href="<?= $esc($wf['urls']['exportXlsx']) ?>"><?= $l['btn_export_xlsx'] ?></a>
         <a class="tl_submit" href="<?= $esc($wf['urls']['exportCsv']) ?>"><?= $l['btn_export_csv'] ?></a>
         <a class="tl_submit" href="<?= $esc($wf['urls']['pdfs']) ?>"><?= $l['btn_pdfs'] ?></a>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['exportConfig']) ?>">Konfiguration exportieren</a>
       </div>
 
       <?php if (!empty($wf['pending'])): ?>
@@ -115,7 +135,7 @@ $l = $this->dash;
             <?php foreach ($wf['pending'] as $p): ?>
               <tr data-status="<?= (int) $p['statusIndex'] ?>">
                 <td class="wf-cb"><input type="checkbox" class="wf-row" value="<?= (int) $p['id'] ?>" data-status="<?= (int) $p['statusIndex'] ?>" data-email="<?= $esc($p['email']) ?>" data-name="<?= $esc(trim($p['vorname'].' '.$p['name'])) ?>"></td>
-                <td data-k="email"><?= $esc($p['email']) ?></td>
+                <td data-k="email"><?= $esc($p['email']) ?><?php if (!empty($p['sendError'])): ?> <span class="wf-badge" style="background:#b33;" title="<?= $esc($p['sendError']) ?>">Versand fehlgeschlagen</span><?php endif; ?></td>
                 <?php if ($wf['hasName']): ?><td data-k="name"><?= $esc($p['name']) ?></td><?php endif; ?>
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>

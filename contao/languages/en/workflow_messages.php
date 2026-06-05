@@ -16,6 +16,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'col_step'         => 'Step',
     'col_status'       => 'Status',
     'col_count'        => 'Count',
+    'btn_edit'         => 'Edit',
     'btn_import'       => 'Run import',
     'btn_send'         => 'Send e-mails',
     'btn_export_xlsx'  => 'Export (XLSX)',

@@ -40,3 +40,8 @@ services:
     # container ("service has been removed or inlined").
     Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener:
         public: true
+
+    # DCA button_callback for the workflow list "download configuration" operation,
+    # referenced by class name and resolved via System::importStatic() – must be public.
+    Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener:
+        public: true

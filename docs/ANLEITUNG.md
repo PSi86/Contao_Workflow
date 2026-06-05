@@ -55,9 +55,12 @@ Seiten:
 Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `/formular/<token>`),
 **nicht** zwangsläufig `/workflow/…`. Den exakten Link zeigt jeder **Eintrag** beim Feld *Token*.
 
-> Der mitgelieferte **Demo-Workflow** legt genau so eine Seite automatisch an – im Menü
-> versteckt, ein vorhandenes Site-Layout erbend, Modul per Inhaltselement – **ohne** bestehende
-> Seiten/Layouts zu verändern. Du kannst sie als Vorlage ansehen.
+> Der mitgelieferte **Demo-Workflow** legt genau so eine Seite automatisch an: **„Workflow-Formular"**
+> (Alias **`/workflow-formular`**), im Menü versteckt, ein vorhandenes Site-Layout erbend, Modul per
+> Inhaltselement und auf **„noindex,nofollow"** gesetzt – **ohne** bestehende Seiten/Layouts zu
+> verändern. Diese Seite ist **generisch**: Da das Modul Eintrag und Workflow allein am **Token**
+> erkennt, kann **jeder** Workflow sie als Formularseite verwenden – du brauchst i. d. R. keine
+> zweite anzulegen.
 
 ---
 
@@ -101,8 +104,12 @@ nicht mehr im Workflow.
 > **Übersicht** unter *„Workflow-Konfiguration importieren"* eine exportierte/bereitgestellte
 > **`.json`-Datei** hochladen und optional **Briefpapier** + **E-Mail-Vorlagen** mit anlegen lassen. Der so erzeugte Workflow ist noch **ohne Quelldatei** und damit „nicht
 > ausführbar" – es bleibt also nur Schritt 3 a (Quelldatei hochladen) + die Spalten-Zuordnung
-> (3 b, Punkte 3–6). Umgekehrt exportiert *„Konfiguration exportieren"* an jedem Workflow seine
-> Einstellungen als portable Datei (ohne Logo/Quelldatei/Formularseite).
+> (3 b, Punkte 3–6). **Es wird nichts überschrieben:** Briefpapier oder E-Mail-Vorlagen mit
+> **bereits vergebenem Namen** werden **übersprungen** und nach dem Import namentlich gemeldet
+> (vorhandenes umbenennen oder Namen in der JSON ändern und erneut importieren); ein bereits
+> vergebener **Workflow-Titel** bricht den Import ab. Umgekehrt lädt *„Konfiguration
+> herunterladen"* in der **Workflow-Liste** (Symbol je Zeile) die Einstellungen eines Workflows
+> als portable Datei herunter (ohne Logo/Quelldatei/Formularseite).
 
 ### 3 a. Quelldatei hochladen
 **Dateiverwaltung → Ordner `files`** → CSV/XLSX hochladen
@@ -112,7 +119,8 @@ nicht mehr im Workflow.
 **Workflow → Workflows → Neu.** Die **gesamte** Konfiguration liegt in
 **„Bearbeiten"** (in Abschnitte gegliedert: *Allgemein · Schritte · Quelldaten · Formular &
 Antwortfelder · PDF – Standard-Inhalt · PDF-Regeln · Benachrichtigungen*). In der Workflow-Liste
-gibt es pro Zeile nur **Bearbeiten** (Konfiguration) und **Einträge** (Antworten/Daten).
+gibt es pro Zeile **Bearbeiten** (Konfiguration), **Einträge** (Antworten/Daten) und
+**Konfiguration herunterladen** (JSON-Export).
 Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Datei):
 
 1. **Titel**, **Veröffentlicht** ankreuzen.
@@ -224,16 +232,18 @@ gleichwertig unterstützt; die Regel-Variante ist für einfache Fälle transpare
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen mit **Status 0**.
 
 ### 3 d. Einladungen senden
-**Übersicht → „Einladungen senden"** → Status wird auf **1** gesetzt, pro Person
-wird eine Einladungsmail mit individuellem Link eingereiht.
-*(Jetzt muss ein Worker/Cron laufen, damit die Mail wirklich rausgeht – Abschnitt 6.)*
+**Übersicht → „Einladungen senden"** → pro Person wird eine Einladungsmail mit individuellem
+Link **zum Versand eingereiht**. Der Status wechselt **erst nach dem tatsächlichen Versand** auf
+**1 (eingeladen)**; ein **fehlgeschlagener** Versand lässt den Status auf **0** und wird in der
+Übersicht als **„Versandfehler"** angezeigt.
+*(Es muss also ein Worker/Cron laufen, damit die Mail rausgeht **und** der Status umspringt – Abschnitt 6.)*
 
 ---
 
 ## 4. Trainer-Bedienung (Frontend)
 
 ### 4 a. Üblicher Weg: Link aus der E-Mail
-Der Trainer öffnet den Link aus der Einladungsmail (`…/workflow/<token>`) und:
+Der Trainer öffnet den Link aus der Einladungsmail (`…/workflow-formular/<token>`) und:
 1. sieht oben seine **vorausgefüllten, schreibgeschützten Daten** (zur Kontrolle),
 2. füllt die **Antwortfelder** aus (je nach Konfiguration Auswahl, Freitext, Datum …),
 3. **unterschreibt** im Unterschriftenfeld (Maus/Finger/Stift) – nur wenn am Workflow
@@ -252,7 +262,8 @@ zwangsläufig `/workflow/…`) plus Token, **ohne** abschließenden Slash. Einfa
 angezeigten Link öffnen.
 
 > **Häufige 404-Ursache:** eine selbst getippte URL wie `/workflow/<Token>` trifft nur, wenn
-> deine Formularseite tatsächlich den Alias `workflow` hat. Maßgeblich ist immer der Alias der
+> deine Formularseite genau diesen Alias hat – die **mitgelieferte** Seite hat den Alias
+> `workflow-formular` (Link also `/workflow-formular/<Token>`). Maßgeblich ist immer der Alias der
 > Seite, die am Workflow als *Formularseite* gewählt ist – nutze den im Eintrag angezeigten Link.
 
 ---
@@ -272,6 +283,10 @@ angezeigten Link öffnen.
 - **„Export (XLSX)" / „Export (CSV)"** → die **Quellspalten in Originalreihenfolge**,
   gefüllt mit den aktuellen Daten (inkl. der gespeicherten Antwortwerte).
 - **„PDFs herunterladen"** → ZIP der erzeugten PDFs (nur die dieses Workflows).
+- **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
+- **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
+  betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein
+  späterer erfolgreicher Versand räumt die Markierung automatisch wieder ab.
 
 ---
 

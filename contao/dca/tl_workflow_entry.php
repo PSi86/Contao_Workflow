@@ -108,5 +108,26 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
         'respondedAt' => [
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
+        // Internal: last mail send failure (kind + message); empty when the last send
+        // succeeded. Written by WorkflowMailResultListener, shown in the dashboard.
+        'sendError' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => 'text NULL',
+        ],
+        'sendErrorAt' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "int(10) unsigned NOT NULL default 0",
+        ],
+        // Internal: Notification Center parcel id of the in-flight mail and its kind
+        // (invite|reminder|result). Set on dispatch, used to map the real (asynchronous)
+        // send result back to this entry, then cleared.
+        'sendParcelId' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(64) NOT NULL default ''",
+        ],
+        'sendKind' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(16) NOT NULL default ''",
+        ],
     ],
 ];

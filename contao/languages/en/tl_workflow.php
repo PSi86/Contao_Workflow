@@ -35,6 +35,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Answer fields', 'Fields the 
 $GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['PDF rules (letter texts)', 'Each rule = conditions + a body text. The first matching rule provides the text; a rule WITHOUT conditions is marked "(default text)" and always applies (place it last, only one allowed).'];
 $GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] = 'No body texts yet. Add one with "New" – a rule without conditions is the "(default text)".';
 $GLOBALS['TL_LANG']['tl_workflow']['entries'] = ['Entries', 'Manage the entries of this workflow.'];
+$GLOBALS['TL_LANG']['tl_workflow']['exportConfig'] = ['Download configuration', 'Download the workflow configuration as a JSON file.'];
 $GLOBALS['TL_LANG']['tl_workflow']['edit']    = ['Edit', 'Edit the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['copy']    = ['Copy', 'Copy the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['delete']  = ['Delete', 'Delete the workflow.'];

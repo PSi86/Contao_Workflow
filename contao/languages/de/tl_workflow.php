@@ -35,6 +35,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Antwortfelder', 'Felder, die
 $GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['PDF-Regeln (Brieftexte)', 'Jede Regel = Bedingungen + Brieftext. Die erste passende Regel liefert den Text; eine Regel OHNE Bedingung wird als „(Standardtext)" geführt und gilt immer (ans Ende stellen, nur eine erlaubt).'];
 $GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] = 'Noch keine Brieftexte. Mit „Neu" anlegen – eine Regel ohne Bedingung ist der „(Standardtext)".';
 $GLOBALS['TL_LANG']['tl_workflow']['entries'] = ['Einträge', 'Einträge dieses Workflows verwalten.'];
+$GLOBALS['TL_LANG']['tl_workflow']['exportConfig'] = ['Konfiguration herunterladen', 'Workflow-Konfiguration als JSON-Datei herunterladen.'];
 $GLOBALS['TL_LANG']['tl_workflow']['edit']    = ['Bearbeiten', 'Workflow bearbeiten.'];
 $GLOBALS['TL_LANG']['tl_workflow']['copy']    = ['Kopieren', 'Workflow kopieren.'];
 $GLOBALS['TL_LANG']['tl_workflow']['delete']  = ['Löschen', 'Workflow löschen.'];

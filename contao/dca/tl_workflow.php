@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
 
 $GLOBALS['TL_DCA']['tl_workflow'] = [
     'config' => [
@@ -48,6 +49,13 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'href' => 'table=tl_workflow_entry',
                 'icon' => 'edit.svg',
             ],
+            // Downloads the workflow's portable JSON configuration. Uses a custom route
+            // (not a do=… action), so the link is rendered by a button_callback.
+            'exportConfig' => [
+                'href'            => '',
+                'icon'            => 'share.svg',
+                'button_callback' => [ConfigExportListener::class, 'renderButton'],
+            ],
             'copy' => [
                 'href' => 'act=copy',
                 'icon' => 'copy.svg',
@@ -86,7 +94,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'text',
-            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
+            // unique: blocks saving a duplicate title (and empties the title on copy, so a
+            // duplicated workflow must be given a free name before it can be saved).
+            'eval'      => ['mandatory' => true, 'unique' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'published' => [

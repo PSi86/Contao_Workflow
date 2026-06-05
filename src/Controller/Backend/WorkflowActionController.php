@@ -171,13 +171,16 @@ class WorkflowActionController
 
         try {
             $config = $this->resolveImportConfig($request);
-            $workflow = $this->configImporter->materialize($config, $createMaster, $createNotifications);
+            $result = $this->configImporter->materialize($config, $createMaster, $createNotifications);
+            $workflow = $result['workflow'];
 
             Message::addConfirmation(sprintf(
                 'Workflow „%s" wurde aus der Konfigurationsdatei erstellt. Er ist noch nicht ausführbar – bitte eine passende Quelldatei zuordnen%s.',
                 StringUtil::specialchars((string) $workflow->title),
                 $createNotifications ? ' und die Absenderadresse der E-Mail-Vorlagen anpassen' : '',
             ));
+
+            $this->reportSkipped($result['skippedMaster'], $result['skippedNotifications']);
         } catch (\Throwable $e) {
             Message::addError('Import der Konfiguration fehlgeschlagen: '.$e->getMessage());
         }
@@ -203,6 +206,36 @@ class WorkflowActionController
         }
 
         return $config;
+    }
+
+    /**
+     * Reports the letterhead/e-mail templates that were skipped during import because a
+     * record with the same name already exists. Nothing is overwritten, so the user has
+     * to rename the existing element or change the name in the JSON file and re-import.
+     *
+     * @param array<int, string> $skippedNotifications
+     */
+    private function reportSkipped(?string $skippedMaster, array $skippedNotifications): void
+    {
+        if (null !== $skippedMaster) {
+            Message::addInfo(sprintf(
+                'Briefpapier „%s" wurde nicht angelegt, da bereits ein Briefpapier mit diesem Namen '
+                .'existiert. Der Workflow wurde ohne Briefpapier importiert – benenne das vorhandene '
+                .'Briefpapier um oder ändere den Namen in der JSON-Datei und importiere erneut.',
+                StringUtil::specialchars($skippedMaster),
+            ));
+        }
+
+        if ([] !== $skippedNotifications) {
+            $titles = implode('", „', array_map([StringUtil::class, 'specialchars'], $skippedNotifications));
+
+            Message::addInfo(sprintf(
+                'Folgende E-Mail-Vorlage(n) wurden nicht angelegt, da bereits Vorlagen mit diesen Namen '
+                .'existieren: „%s". Benenne die vorhandenen Vorlagen um oder ändere die Namen in der '
+                .'JSON-Datei und importiere erneut.',
+                $titles,
+            ));
+        }
     }
 
     private function configFilename(WorkflowModel $workflow): string
@@ -238,7 +271,9 @@ class WorkflowActionController
                 : $this->workflowMailer->sendInvitations($workflow, $ids ?: null);
 
             Message::addConfirmation(sprintf(
-                $reminder ? '%d Erinnerungen wurden versendet.' : '%d Einladungen wurden versendet.',
+                $reminder
+                    ? '%d Erinnerungen wurden zum Versand eingereiht. Der Status wird erst nach dem tatsächlichen Versand aktualisiert; fehlgeschlagene Zustellungen werden hier als „Versandfehler" angezeigt.'
+                    : '%d Einladungen wurden zum Versand eingereiht. Der Status wechselt erst nach dem tatsächlichen Versand auf „eingeladen"; fehlgeschlagene Zustellungen werden hier als „Versandfehler" angezeigt.',
                 $sent,
             ));
         } catch (\Throwable $e) {
@@ -329,14 +364,19 @@ class WorkflowActionController
     /**
      * These custom routes sit behind the backend firewall (authentication) but,
      * unlike Contao's do=… modules, are NOT gated by module permissions. Require
-     * access to the workflow overview module so a low-privilege back end user
-     * cannot import/send or download another workflow's data. Admins always pass.
+     * access to a workflow back end module (the overview, or – for the config export
+     * triggered from the workflow list – the manage module) so a low-privilege back end
+     * user cannot import/send or download another workflow's data. Admins always pass.
      */
     private function assertAccess(): void
     {
-        if (!$this->security->isGranted(ContaoCorePermissions::USER_CAN_ACCESS_MODULE, 'workflow_overview')) {
-            throw new AccessDeniedException('Access to the workflow overview module is required.');
+        foreach (['workflow_overview', 'workflow_manage'] as $module) {
+            if ($this->security->isGranted(ContaoCorePermissions::USER_CAN_ACCESS_MODULE, $module)) {
+                return;
+            }
         }
+
+        throw new AccessDeniedException('Access to a workflow back end module is required.');
     }
 
     private function backToDashboard(): RedirectResponse

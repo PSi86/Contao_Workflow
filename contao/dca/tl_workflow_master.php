@@ -57,7 +57,9 @@ $GLOBALS['TL_DCA']['tl_workflow_master'] = [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'text',
-            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
+            // unique: blocks saving a duplicate title (and empties the title on copy, so a
+            // duplicated letterhead must be given a free name before it can be saved).
+            'eval'      => ['mandatory' => true, 'unique' => true, 'decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
             'sql'       => "varchar(255) NOT NULL default ''",
         ],
         'masterTemplate' => [

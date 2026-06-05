@@ -47,12 +47,14 @@ class DemoWorkflowSeeder
 
         $sourceUuid = $this->ensureSourceFile();
 
+        // The previous demo (with the same titles) was just removed, so there is no name
+        // conflict and the letterhead/templates are always (re)created. Skip info ignored.
         $workflow = $this->configImporter->materialize(
             $this->config(),
             createMaster: true,
             createNotifications: true,
             sourceUuid: $sourceUuid,
-        );
+        )['workflow'];
 
         // Attach a working front end form page so invitations can actually be sent.
         // Idempotent (reuses an existing demo page); 0 when there is no published root.
