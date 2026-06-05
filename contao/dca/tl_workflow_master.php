@@ -80,9 +80,23 @@ $GLOBALS['TL_DCA']['tl_workflow_master'] = [
         ],
         'pdfData' => [
             'exclude'   => true,
-            'inputType' => 'keyValueWizard',
-            'eval'      => ['tl_class' => 'clr'],
-            'sql'       => 'blob NULL',
+            'inputType' => 'multiColumnWizard',
+            'eval'      => [
+                'tl_class'     => 'clr',
+                'columnFields' => [
+                    'key' => [
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_master']['pdfData_key'],
+                        'inputType' => 'text',
+                        'eval'      => ['style' => 'width:180px'],
+                    ],
+                    'value' => [
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_master']['pdfData_value'],
+                        'inputType' => 'textarea',
+                        'eval'      => ['style' => 'width:460px', 'rows' => 3],
+                    ],
+                ],
+            ],
+            'sql' => 'blob NULL',
         ],
     ],
 ];

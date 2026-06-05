@@ -9,6 +9,8 @@ $GLOBALS['TL_LANG']['tl_workflow_master']['title']          = ['Titel', 'Name de
 $GLOBALS['TL_LANG']['tl_workflow_master']['masterTemplate'] = ['Layout-Vorlage (Template)', 'Master-Template mit Kopf/Fuß/Unterschrift-Layout, z. B. pdf_master.'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['pdfLogo']        = ['PDF-Logo', 'Bilddatei (Logo fürs Briefpapier), die im PDF oben eingebunden wird.'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['pdfData']        = ['PDF-Variablen', 'Feste Werte für das PDF, z. B. Jahr → 2026, Verein → TSV Korntal e.V., Ort, Footer.'];
+$GLOBALS['TL_LANG']['tl_workflow_master']['pdfData_key']    = 'Variable';
+$GLOBALS['TL_LANG']['tl_workflow_master']['pdfData_value']  = 'Wert (mehrzeilig möglich)';
 
 $GLOBALS['TL_LANG']['tl_workflow_master']['edit']   = ['Bearbeiten', 'Briefpapier bearbeiten.'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['copy']   = ['Kopieren', 'Briefpapier kopieren.'];

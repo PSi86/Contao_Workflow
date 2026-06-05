@@ -59,8 +59,8 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 > **aller** Kopf-/Fußzeilentext kommt aus den PDF-Variablen des Briefpapiers, nichts ist fest
 > verdrahtet:
 > - `HeaderLine` – Absenderzeile über der Linie
-> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **`|`** trennt Zeilen (keyValueWizard-Werte
->   sind einzeilig), z. B. `Verein e.V.|Straße 1|12345 Ort`
+> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig** (eine Zeile je Eingabezeile;
+>   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
 > - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##var_jahr##` …)
 >
 > Beispiel-Briefpapier dafür: **„TSV Korntal Briefpapier (Variablen)"** (siehe
