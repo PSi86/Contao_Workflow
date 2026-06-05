@@ -5,7 +5,7 @@ declare(strict_types=1);
 $GLOBALS['TL_LANG']['tl_workflow_question']['question_legend'] = 'Answer field';
 
 $GLOBALS['TL_LANG']['tl_workflow_question']['label']        = ['Label', 'Question/field label shown in the form.'];
-$GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Type', 'Type of the answer field.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Type', 'Type of the answer field. Note: a change is saved immediately.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['storageField'] = ['Storage column', 'Source column the selected value is written into (mandatory).'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['mandatory']    = ['Mandatory', 'The field must be filled in the form.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['hideInForm']   = ['Hide field in the form', 'The field is not shown in the form and is filled automatically with the current date on submission.'];

@@ -238,9 +238,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfBodyTemplate' => [
             'exclude'   => true,
             'inputType' => 'select',
-            // No submitOnChange: nothing in the edit mask depends on the selected
-            // value, so it would only persist the selection prematurely.
-            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            // submitOnChange kept for consistency with the other source/PDF fields;
+            // the selection is saved at once (pointed out in the help text).
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(64) NOT NULL default ''",
         ],
         // Internal: checksum of the last imported source file (change detection).

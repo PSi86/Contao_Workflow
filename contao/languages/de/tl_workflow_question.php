@@ -5,7 +5,7 @@ declare(strict_types=1);
 $GLOBALS['TL_LANG']['tl_workflow_question']['question_legend'] = 'Antwortfeld';
 
 $GLOBALS['TL_LANG']['tl_workflow_question']['label']        = ['Beschriftung', 'Frage-/Feldbeschriftung, die im Formular angezeigt wird.'];
-$GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Typ', 'Art des Antwortfelds.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Typ', 'Art des Antwortfelds. Hinweis: Eine Änderung wird sofort gespeichert.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['storageField'] = ['Speicherfeld', 'Spalte der Quelldatei, in die der gewählte Wert geschrieben wird (Pflicht).'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['mandatory']    = ['Pflichtfeld', 'Das Feld muss im Formular ausgefüllt werden.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['hideInForm']   = ['Feld im Formular ausblenden', 'Das Feld wird im Formular nicht angezeigt und beim Absenden automatisch mit dem aktuellen Datum gefüllt.'];
