@@ -19,7 +19,7 @@ Ablage, Versand über das Notification Center und eine Admin-Übersicht mit Expo
 - `phpoffice/phpspreadsheet`, `mpdf/mpdf` (werden als Abhängigkeiten installiert)
 
 > **Installation auf einer echten Contao-Installation** (mit *und* ohne CLI /
-> Contao-Manager): siehe [../INSTALL.md](../INSTALL.md). Der folgende Abschnitt
+> Contao-Manager): siehe [docs/INSTALL.md](docs/INSTALL.md). Der folgende Abschnitt
 > beschreibt nur das lokale Entwicklungs-Setup als Path-Repo.
 
 ## Installation in einer Contao Managed Edition (lokal, als Path-Repo)
@@ -100,9 +100,9 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 8. **E-Mails senden → Erinnerungen senden** → nur Einträge mit Status 1 erhalten eine Erinnerung.
 
 ## Hinweise
-- **PDF-Vorlagen (Master/Body) erstellen** – Syntax, Variablen, mPDF-Regeln und der
-  `.docm`-Konverter: siehe [docs/PDF-TEMPLATES.md](docs/PDF-TEMPLATES.md).
-- **Produktiv-Betrieb & Mailversand:** siehe [../DEPLOYMENT.md](../DEPLOYMENT.md)
+- **PDF-Vorlagen (Master/Body) erstellen** – Syntax, Variablen und mPDF-Regeln:
+  siehe [docs/PDF-TEMPLATES.md](docs/PDF-TEMPLATES.md).
+- **Produktiv-Betrieb & Mailversand:** siehe [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
   (Worker/Cron, SMTP, SPF/DKIM/DMARC, Skalierung 100–300, all-inkl-Hosting).
 - **E-Mails werden asynchron** über Symfony Messenger versendet (Queue
   `tl_message_queue`). Ohne laufenden Worker/Cron (`contao:cron` bzw.

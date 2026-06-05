@@ -1,10 +1,9 @@
-# PDF-Vorlagen: Syntax, Variablen & `.docm`-Import
+# PDF-Vorlagen: Syntax & Variablen
 
-Wie man **Master-** (Briefpapier) und **Body-Vorlagen** für die PDF-Ausgabe erstellt –
-**manuell** (Syntax + Variablen + externe Links) und **reproduzierbar aus einem
-Word-`.docm`** über einen lokalen Konverter.
+Wie man **Master-** (Briefpapier) und **Body-Vorlagen** für die PDF-Ausgabe **manuell**
+erstellt: Vorlagen-Syntax, verfügbare Variablen und mPDF-Regeln.
 
-Architektur (Details: [../../ANLEITUNG.md](../../ANLEITUNG.md) Abschnitt 2b/8):
+Architektur (Details: [ANLEITUNG.md](ANLEITUNG.md) Abschnitt 2b/8):
 ein **Master** liefert Briefpapier (Kopf/Fuß, Logo, Unterschrift, Footer) + PDF-Variablen, ein
 **Body** liefert den Brieftext. PDF = Master umschließt Body.
 
@@ -63,8 +62,8 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 >   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
 > - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##var_jahr##` …)
 >
-> Beispiel-Briefpapier dafür: **„TSV Korntal Briefpapier (Variablen)"** (siehe
-> `scripts/configure-demo-basistabelle.php`). Werte werden beim Auswählen des Templates aus
+> Beispiel-Briefpapier dafür: ein Briefpapier mit Layout-Vorlage `pdf_master_generic`; die
+> Werte werden beim Auswählen des Templates aus
 > `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']` vorgeschlagen.
 
 ### Body-Vorlage (`pdf_body_*`)
@@ -121,8 +120,8 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 1. Datei `pdf_body_xyz.html5` anlegen (Helfer-Kopf wie oben, dann der Inhalt – **kein**
    Logo/Unterschrift, das liefert der Master). Vorlage zum Abschauen:
    [`../contao/templates/pdf_body_verzicht.html5`](../contao/templates/pdf_body_verzicht.html5).
-2. Nach `contao-app/templates/` (lokal) bzw. produktiv per FTP in `templates/` legen.
-   Name **muss mit `pdf_body_`** beginnen → erscheint automatisch in der Auswahl.
+2. In den **`templates/`**-Ordner des Projekts legen (produktiv per FTP). Name **muss
+   mit `pdf_body_`** beginnen → erscheint automatisch in der Auswahl.
 
 **Master-Vorlage (selten nötig):**
 1. Datei `pdf_master_xyz.html5` anlegen (nutzt `bodyHtml`, `logoSrc`, `signatureSrc`,
@@ -134,51 +133,13 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
    `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
    Briefpapier automatisch vorgeschlagen.
 
----
-
-## 5. `.docm` → Body-Vorlage (lokaler, reproduzierbarer Workflow)
-
-Eine `.docx/.docm`-Mailmerge-Vorlage lässt sich **nicht** direkt zu PDF rendern
-(bräuchte LibreOffice/Word, steht auf dem Server nicht zur Verfügung). Stattdessen
-erzeugt ein **lokaler Konverter** ein **Body-Template-Gerüst** + extrahiert die Bilder.
-Das Gerüst ist ein **Startpunkt** (Text + Felder + Bilder), kein pixelgenaues Ergebnis.
-
-**Ausführen (in DDEV, im Projekt-Root):**
-```powershell
-ddev exec php scripts/docm-to-template.php <pfad-zur.docm> pdf_body_xyz
-```
-(z. B. eine `.docm` zuvor nach `contao-app/files/…` legen und diesen Pfad angeben.)
-
-**Ergebnis:**
-- `scripts/generated/pdf_body_xyz.html5` – das Gerüst (Überschrift → `<h1>`, Absätze →
-  `<p>`, jedes `MERGEFIELD` → `<?= $esc($d('Spalte')) ?>`, Unterstriche im Feldnamen
-  werden zu Leerzeichen).
-- `scripts/generated/pdf_body_xyz-media/` – die eingebetteten Bilder (Logo …).
-- eine Liste der erkannten Felder.
-
-**Nacharbeiten (Pflicht):**
-1. Briefpapier-/Unterschrift-/„Ort, Datum"-Zeilen entfernen (liefert der Master).
-2. Datumsspalten mit `$fmtDate(...)` umschließen, z. B.
-   `<?= $esc($fmtDate($d('Geburtsdatum'))) ?>`.
-3. Feste Werte (Verein, Jahr) durch `$x('Verein')` / `$x('Jahr')` ersetzen und als
-   PDF-Variablen am **Master** pflegen.
-4. Prüfen, dass jeder `$d('…')`-Spaltenname **exakt** einer Quelldatei-Spalte entspricht.
-5. Datei nach `templates/` kopieren (Name `pdf_body_*`), Logo in die Dateiverwaltung
-   laden und im **Briefpapier (Master)** als PDF-Logo setzen.
-6. Im Workflow: **PDF-Inhalt = Spezielle Vorlage** → diese Body-Vorlage wählen.
-
-**Beispiel-Output** (aus der TSV-Verzicht-`.docm`):
-```html
-<h1>Verzichtserklärung für Trainer / Übungsleiter / Betreuer …</h1>
-<p>Name <?= $esc($d('Vorname')) ?> <?= $esc($d('Name')) ?> geb. am <?= $esc($d('Geburtsdatum')) ?></p>
-<p>Adresse: <?= $esc($d('Straße')) ?>, <?= $esc($d('PLZ')) ?> <?= $esc($d('Wohnort')) ?></p>
-…
-```
-Die fertig überarbeitete Fassung davon ist `pdf_body_verzicht.html5`.
+> **Eine Mailmerge-Vorlage (`.docm`) als Ausgangspunkt?** Ein lokaler Konverter kann aus
+> einer Word-`.docm` ein Body-Gerüst erzeugen – das ist ein **Entwickler-Werkzeug** der
+> lokalen Entwicklungsumgebung und nicht Teil des Bundles.
 
 ---
 
-## 6. Namens- & Registry-Konventionen
+## 5. Namens- & Registry-Konventionen
 - Body-Vorlagen: Dateiname `pdf_body_*.html5`.
 - Master-Vorlagen: Dateiname `pdf_master*.html5`.
 - PDF-Variablen je Master-Layout: `$GLOBALS['TL_WORKFLOW_PDF_VARS']` in
