@@ -1,6 +1,7 @@
 .mod_workflow_form { max-width: 640px; }
 .mod_workflow_form .tw-heading { margin: 0 0 .5rem; }
-.mod_workflow_form .tw-intro { margin: 0 0 1.25rem; color: #333; }
+/* One blank line between the heading and the intro paragraph. */
+.mod_workflow_form .tw-intro { margin: 1.25rem 0; color: #333; }
 .mod_workflow_form .tw-question--readonly input,
 .mod_workflow_form .tw-question--readonly textarea,
 .mod_workflow_form .tw-question--readonly select { background: #f3f3f3; color: #555; }
