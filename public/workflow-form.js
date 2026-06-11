@@ -3,8 +3,8 @@
  *
  * Each editable question with an explicitly configured document text
  * ("Textbaustein") carries data attributes rendered by mod_workflow_form.html5:
- *   - fieldset[data-tw-question]                 the question container
- *   - fieldset[data-statement-template]          per-question template with ##value##
+ *   - .tw-field[data-tw-question]                the question container
+ *   - [data-statement-template]                  per-question template with ##value##
  *   - input/option[data-statement]               choice questions: resolved option statement
  *   - [data-statement-hint] > [data-statement-text]  the hint output
  *
@@ -23,8 +23,8 @@
         return m ? m[3] + '.' + m[2] + '.' + m[1] : value;
     }
 
-    function selectedStatements(fieldset) {
-        var select = fieldset.querySelector('select');
+    function selectedStatements(field) {
+        var select = field.querySelector('select');
 
         if (select) {
             var option = select.options[select.selectedIndex];
@@ -38,7 +38,7 @@
 
         var parts = [];
 
-        fieldset.querySelectorAll('input[data-statement]:checked').forEach(function (box) {
+        field.querySelectorAll('input[data-statement]:checked').forEach(function (box) {
             if (box.getAttribute('data-statement') !== '') {
                 parts.push(box.getAttribute('data-statement'));
             }
@@ -47,19 +47,19 @@
         return parts;
     }
 
-    function update(fieldset) {
-        var hint = fieldset.querySelector('[data-statement-hint]');
-        var text = fieldset.querySelector('[data-statement-text]');
+    function update(field) {
+        var hint = field.querySelector('[data-statement-hint]');
+        var text = field.querySelector('[data-statement-text]');
 
         if (!hint || !text) {
             return;
         }
 
-        var template = fieldset.getAttribute('data-statement-template');
+        var template = field.getAttribute('data-statement-template');
         var result = '';
 
-        if (fieldset.querySelector('[data-statement]')) {
-            var parts = selectedStatements(fieldset);
+        if (field.querySelector('[data-statement]')) {
+            var parts = selectedStatements(field);
 
             if (parts.length) {
                 result = template !== null
@@ -67,7 +67,7 @@
                     : parts.join('\n');
             }
         } else if (template !== null) {
-            var input = fieldset.querySelector('input:not([type=hidden]), textarea');
+            var input = field.querySelector('input:not([type=hidden]), textarea');
             var value = input ? input.value.trim() : '';
 
             if (value !== '') {
@@ -83,14 +83,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.tw-form fieldset[data-tw-question]').forEach(function (fieldset) {
+        document.querySelectorAll('.tw-form [data-tw-question]').forEach(function (field) {
             ['input', 'change'].forEach(function (event) {
-                fieldset.addEventListener(event, function () {
-                    update(fieldset);
+                field.addEventListener(event, function () {
+                    update(field);
                 });
             });
 
-            update(fieldset);
+            update(field);
         });
     });
 })();

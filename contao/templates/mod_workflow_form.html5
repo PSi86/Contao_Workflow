@@ -27,18 +27,25 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
     <p class="tw-message tw-error"><?= $esc($this->error) ?></p>
   <?php endif; ?>
 
+  <?php
+    // Every form element shares the same wrapper structure so it styles
+    // uniformly: .tw-field.tw-field--<kind> > label/legend + control(s).
+    // Radio/checkbox groups keep their (semantically correct) fieldset; the
+    // CSS resets it so it looks identical to the div-based fields.
+  ?>
   <form method="post" class="tw-form" novalidate>
     <input type="hidden" name="FORM_SUBMIT" value="<?= $esc($this->formId) ?>">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->requestToken) ?>">
 
-    <div class="tw-row">
-      <label>E-Mail</label>
-      <input type="email" value="<?= $esc($this->email) ?>" readonly>
+    <div class="tw-field tw-field--email tw-field--readonly">
+      <label for="ctrl_tw_email">E-Mail</label>
+      <input type="email" id="ctrl_tw_email" value="<?= $esc($this->email) ?>" readonly>
     </div>
 
     <?php foreach ($this->questions as $q): ?>
       <?php
         $fieldName = 'q_'.$q['id'];
+        $ctrlId = 'ctrl_'.$fieldName;
         $ro = $q['readOnly'];
         $answer = $ro ? $q['initial'] : ($this->answers[$q['id']] ?? $q['initial']);
         $req = $q['mandatory'] ? ' required' : '';
@@ -53,22 +60,27 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
         $isStatic = $ro || 'currentTime' === $q['type'];
         $tplAttr = $hint && !$isStatic && '' !== $q['statementTemplate'] ? ' data-statement-template="'.$esc($q['statementTemplate']).'"' : '';
         $stmtAttr = static fn (array $opt): string => $hint && !$isStatic ? ' data-statement="'.$esc($opt['statement']).'"' : '';
+        $isChoiceGroup = \in_array($q['type'], ['radio', 'checkbox'], true);
+        $tag = $isChoiceGroup ? 'fieldset' : 'div';
+        $labelTag = $isChoiceGroup ? 'legend' : 'label';
+        $forAttr = $isChoiceGroup ? '' : ' for="'.$esc($ctrlId).'"';
+        $classes = 'tw-field tw-field--'.$q['type'].($ro ? ' tw-field--readonly' : '');
       ?>
-      <fieldset class="tw-question tw-question--<?= $esc($q['type']) ?><?= $ro ? ' tw-question--readonly' : '' ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
-        <legend><?= $esc($q['label']).$star ?></legend>
+      <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
+        <<?= $labelTag ?><?= $forAttr ?>><?= $esc($q['label']).$star ?></<?= $labelTag ?>>
 
         <?php if ('currentTime' === $q['type']): ?>
-          <input type="text" value="<?= $esc($q['autoValue']) ?>" readonly>
+          <input type="text" id="<?= $esc($ctrlId) ?>" value="<?= $esc($q['autoValue']) ?>" readonly>
 
         <?php elseif ('text' === $q['type'] || 'date' === $q['type'] || 'number' === $q['type']): ?>
           <?php $inputType = ['text' => 'text', 'date' => 'date', 'number' => 'number'][$q['type']]; ?>
-          <input type="<?= $inputType ?>"<?= 'number' === $q['type'] ? ' step="any"' : '' ?> name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
+          <input type="<?= $inputType ?>"<?= 'number' === $q['type'] ? ' step="any"' : '' ?> id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
 
         <?php elseif ('textarea' === $q['type']): ?>
-          <textarea name="<?= $esc($fieldName) ?>" rows="4"<?= $req.$roInput ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>
+          <textarea id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" rows="4"<?= $req.$roInput ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>
 
         <?php elseif ('select' === $q['type']): ?>
-          <select name="<?= $esc($fieldName) ?>"<?= $req.$roChoice ?>>
+          <select id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>"<?= $req.$roChoice ?>>
             <option value="">–</option>
             <?php foreach ($q['options'] as $opt): ?>
               <option value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' selected' : '' ?><?= $stmtAttr($opt) ?>><?= $esc($opt['label']) ?></option>
@@ -95,19 +107,19 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
             <span class="tw-statement-text" data-statement-text><?= $esc($q['statement']) ?></span>
           </p>
         <?php endif; ?>
-      </fieldset>
+      </<?= $tag ?>>
     <?php endforeach; ?>
 
     <?php if ($this->requireSignature): ?>
-      <div class="tw-signature" data-workflow-signature>
-        <label>Unterschrift</label>
+      <div class="tw-field tw-field--signature" data-workflow-signature>
+        <label>Unterschrift <span class="tw-required">*</span></label>
         <canvas data-signature-canvas width="600" height="200"></canvas>
         <input type="hidden" name="signature" data-signature-input value="">
         <button type="button" data-signature-clear>Unterschrift löschen</button>
       </div>
     <?php endif; ?>
 
-    <div class="tw-row">
+    <div class="tw-field tw-field--submit">
       <button type="submit" class="tw-submit">Absenden</button>
     </div>
   </form>
