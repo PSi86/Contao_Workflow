@@ -4,6 +4,48 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 [Keep a Changelog](https://keepachangelog.com/de/1.1.0/); Versionierung nach
 [SemVer](https://semver.org/lang/de/).
 
+## [2.4.0] – 2026-06-12
+
+### Hinzugefügt
+- **Formular/PDF-Parität über Dokument-Texte (Textbausteine).** Formular und PDF nutzen
+  dieselben Texte: Auswahl-Optionen tragen einen optionalen **Dokument-Text** (leer = der
+  sichtbare Options-Text gilt wörtlich), Wert-Felder (Freitext, Zahl, Datum, Aktuelle Zeit)
+  ein Satz-Template mit `##value##` (leer = „Beschriftung: Wert"). Das Formular zeigt den
+  Text live unter dem Feld („So erscheint dies im Dokument"). Neue Platzhalter
+  `##stmt_<speicherfeld>##` und `##stmt_all##` (alle Felder in Formular-Reihenfolge; Felder
+  mit eigenem Dokument-Text beginnen als eigener Absatz) – identisch in PDF-Texten,
+  Notification-Center-Mails und Body-Vorlagen (`$this->statements`). Der Dokument-Body wird
+  zentral im neuen `DocumentBodyComposer` gerendert.
+- **Überschrift & Einleitungstext für Formular und PDF.** Die Überschrift (bisher nur PDF)
+  erscheint jetzt auch oben im Formular; dazu ein optionaler **Einleitungstext** nach der
+  Überschrift in beiden. Beide stehen im neuen Workflow-Abschnitt **„Inhalt (Formular & PDF)"**;
+  Body-Vorlagen erhalten sie als `$this->heading`/`$this->intro`.
+- **Antwortfeld-Optionen „Mit Wert aus den Daten vorbelegen" und „Schreibgeschützt".**
+  Vorbelegen füllt das editierbare Feld mit dem gespeicherten Wert (Outputfeld = Inputfeld;
+  unpassende Werte bei Auswahlfeldern bleiben leer, das Backend warnt). Schreibgeschützt
+  zeigt den Wert nur an (jeder Typ; ersetzt die bisherigen Workflow-„Anzeige-Felder" –
+  eine Migration wandelt sie automatisch in schreibgeschützte Antwortfelder um).
+- **Neuer Antwortfeld-Typ „Zahl"** (Zahleneingabe inkl. Dezimalwerte, automatische
+  Komma-Konvertierung).
+- **Antwortfelder per Drag & Drop sortieren** – direkt in der eingebetteten Liste der
+  Bearbeitungsmaske (Griff links, sofort gespeichert).
+- Neuer CLI-Befehl `workflow:demo:restore` (entspricht dem Wiederherstellen-Button).
+
+### Geändert
+- Formular-Validierung läuft über Contaos Form-Widgets (Pflichtfelder, Options-Whitelist,
+  lokalisierte Fehlermeldungen).
+- Einheitliches Formular-Markup: alle Felder als `.tw-field.tw-field--<art>` mit
+  Label/Legende über dem Feld, randlos (die bisherige Fieldset-Box-Optik entfällt).
+- Konfigurationsformat **v3** (Dokument-Texte, Vorbelegen/Schreibgeschützt, Zahl,
+  Einleitungstext); ältere v1/v2-Dateien bleiben importierbar (`inputFields` bzw. der
+  kurzlebige Typ „Anzeige" werden beim Import umgewandelt).
+- Demo-Workflow zeigt die neuen Funktionen end-to-end (schreibgeschützte Felder,
+  vorbelegtes Feld, Options-Dokument-Texte, Brieftexte aus `##stmt_all##`).
+
+### Entfernt
+- Workflow-Einstellung **„Anzeige-Felder (Input)"** (`tl_workflow.inputFields`) – ersetzt
+  durch schreibgeschützte Antwortfelder (automatische Migration).
+
 ## [2.3.11] – 2026-06-06
 
 ### Geändert
