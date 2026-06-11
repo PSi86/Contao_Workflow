@@ -22,7 +22,8 @@ use Contao\StringUtil;
  * @property string $requireSignature Whether the form requires a signature ("1"/"").
  * @property int    $formPage        Page id hosting the form module.
  * @property string $pdfBodyType     "letter" (backend text) or "template" (body template file).
- * @property string $pdfTitle        Letter heading (letter mode), supports ##tokens##.
+ * @property string $pdfTitle        Shared heading (form + PDF), supports ##tokens##.
+ * @property string $introText       Optional intro after the heading (form + PDF), supports ##tokens##.
  * @property string $pdfSignatureDate Data column whose value is printed as the signature date.
  * @property string $pdfSignatureLocation Data column whose value is printed as the signature place.
  * @property string $pdfBodyTemplate Body template name (template mode), e.g. pdf_body_verzicht.

@@ -51,6 +51,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         $template->set('requestToken', $this->csrfTokenManager->getDefaultTokenValue());
         $template->set('error', '');
+        $template->set('heading', '');
+        $template->set('intro', '');
         $template->set('questions', []);
         $template->set('answers', []);
         $template->set('requireSignature', true);
@@ -70,6 +72,13 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
             return $template->getResponse();
         }
+
+        // Heading + intro are the same texts the PDF shows (resolved by the
+        // shared composer), so the form page mirrors the document.
+        $data = $entry->getData();
+        $extra = $workflow->getMasterVars();
+        $template->set('heading', $this->bodyComposer->resolveHeading($workflow, $data, $extra, (string) $entry->email));
+        $template->set('intro', $this->bodyComposer->resolveIntro($workflow, $data, $extra, (string) $entry->email));
 
         if ((int) $entry->status >= WorkflowStatus::STATUS_RESPONDED) {
             $template->set('state', 'done');
@@ -123,21 +132,6 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
             $storage = trim((string) $question->storageField);
 
-            // Read-only display of a source column at its sorting position.
-            if ($question->isDisplay()) {
-                $views[] = [
-                    'id'        => (int) $question->id,
-                    'label'     => (string) $question->label,
-                    'type'      => 'display',
-                    'mandatory' => false,
-                    'multiple'  => false,
-                    'options'   => [],
-                    'autoValue' => '',
-                    'initial'   => (string) ($data[$storage] ?? ''),
-                ];
-                continue;
-            }
-
             // The statement parts let the form show exactly the text the
             // document will contain (live-updated in the browser).
             $parts = $this->bodyComposer->statementParts($question, $workflow, $data, $extra, $email);
@@ -150,13 +144,20 @@ class WorkflowFormController extends AbstractFrontendModuleController
             }
 
             $autoValue = $question->isCurrentTime() ? date('d.m.Y') : '';
+            $readOnly = $question->isReadOnly() && !$question->isCurrentTime();
+            $storedValue = '' !== $storage ? trim((string) ($data[$storage] ?? '')) : '';
+
+            // Static statement for fields the user cannot change (the JS hint
+            // only tracks editable inputs).
+            $staticValue = '' !== $autoValue ? $autoValue : ($readOnly ? $storedValue : '');
 
             $views[] = [
                 'id'                => (int) $question->id,
                 'label'             => (string) $question->label,
                 'type'              => (string) $question->type,
-                'mandatory'         => $question->isMandatory(),
+                'mandatory'         => !$readOnly && $question->isMandatory(),
                 'multiple'          => $question->isMultiple(),
+                'readOnly'          => $readOnly,
                 'options'           => $options,
                 'autoValue'         => $autoValue,
                 'initial'           => $this->resolveInitialValue($question, $data),
@@ -164,7 +165,9 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 // one the visible label/option text counts verbatim anyway.
                 'hasStatement'      => $question->hasExplicitStatement(),
                 'statementTemplate' => $parts['template'],
-                'statement'         => '' !== $autoValue ? str_replace('##value##', $autoValue, $parts['template']) : '',
+                'statement'         => '' !== $staticValue
+                    ? $this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title)
+                    : '',
             ];
         }
 
@@ -185,7 +188,9 @@ class WorkflowFormController extends AbstractFrontendModuleController
     {
         $empty = $question->isMultiple() ? [] : '';
 
-        if (!$question->isPrefilled()) {
+        // Read-only fields always show the stored value; otherwise the prefill
+        // flag decides.
+        if (!$question->isPrefilled() && !$question->isReadOnly()) {
             return $empty;
         }
 
@@ -273,8 +278,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
         foreach ($questions as $question) {
             $storage = trim((string) $question->storageField);
 
-            // Display fields are read-only output – never validated, never stored.
-            if ($question->isDisplay()) {
+            // Read-only fields are output only – never validated, never stored.
+            if ($question->isReadOnly() && !$question->isCurrentTime()) {
                 continue;
             }
 

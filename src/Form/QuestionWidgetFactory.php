@@ -26,6 +26,7 @@ class QuestionWidgetFactory
 {
     private const TYPE_MAP = [
         'text'     => 'text',
+        'number'   => 'text',
         'date'     => 'text',
         'textarea' => 'textarea',
         'select'   => 'select',
@@ -73,6 +74,9 @@ class QuestionWidgetFactory
             'mandatory' => $question->isMandatory(),
             'multiple'  => $question->isMultiple(),
             'options'   => $options,
+            // Numeric validation incl. decimals; Contao converts a German
+            // decimal comma automatically.
+            'rgxp'      => 'number' === (string) $question->type ? 'digit' : '',
             // Plain-text values like the form generator (tags are still
             // stripped by Contao's input cleaning, entities come back decoded).
             'decodeEntities' => true,

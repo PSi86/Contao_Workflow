@@ -16,13 +16,14 @@ use Contao\StringUtil;
  * @property int    $sorting
  * @property int    $tstamp
  * @property string $label        Question/field label shown in the form.
- * @property string $type         text | textarea | select | radio | checkbox | date | currentTime | display.
+ * @property string $type         text | textarea | number | date | select | radio | checkbox | currentTime.
  * @property string $storageField Source column the answer value is written into.
  * @property string $mandatory    Whether an answer is required ("1"/"").
  * @property string $hideInForm   "Aktuelle Zeit" only: hide the field in the form ("1"/"").
  * @property string $options      Serialized list of [value, label, statement] option rows.
- * @property string $pdfStatement Statement template of a value-based question (##value## = entered value).
+ * @property string $pdfStatement Statement template (##value## = entered value / option statement).
  * @property string $prefill      Prefill the field with the stored data value ("1"/"").
+ * @property string $readOnly     Show the stored data value read-only ("1"/"").
  */
 class QuestionModel extends Model
 {
@@ -64,12 +65,12 @@ class QuestionModel extends Model
     }
 
     /**
-     * Read-only display of a source column at the question's sorting position –
-     * never validated, never stored back.
+     * Read-only field: shows the stored data value, never validated, never
+     * stored back. Available for every type.
      */
-    public function isDisplay(): bool
+    public function isReadOnly(): bool
     {
-        return 'display' === (string) $this->type;
+        return '1' === (string) $this->readOnly;
     }
 
     /**
@@ -135,12 +136,22 @@ class QuestionModel extends Model
     }
 
     /**
-     * Statement template of a value-based question; ##value## marks the spot
-     * for the entered value. Default: "<label>: ##value##".
+     * The configured statement template (##value## marks the value spot);
+     * empty when none is maintained.
      */
     public function getStatementTemplate(): string
     {
-        $template = trim((string) $this->pdfStatement);
+        return trim((string) $this->pdfStatement);
+    }
+
+    /**
+     * Statement template of a value-based question, with the default
+     * "<label>: ##value##" when none is configured. Option-based questions use
+     * the bare template instead (their default is the option statement/label).
+     */
+    public function getValueStatementTemplate(): string
+    {
+        $template = $this->getStatementTemplate();
 
         return '' !== $template ? $template : trim((string) $this->label).': ##value##';
     }

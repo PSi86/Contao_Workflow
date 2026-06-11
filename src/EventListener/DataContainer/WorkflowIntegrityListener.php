@@ -141,7 +141,7 @@ class WorkflowIntegrityListener
         foreach ($questions as $question) {
             $field = trim((string) $question->storageField);
 
-            if ('' !== $field && !$question->isDisplay()) {
+            if ('' !== $field) {
                 $valid[] = 'stmt_'.$this->placeholders->normalize($field);
             }
         }

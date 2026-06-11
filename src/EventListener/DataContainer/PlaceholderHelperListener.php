@@ -40,9 +40,9 @@ class PlaceholderHelperListener
     {
         $workflow = $dc->id ? WorkflowModel::findByPk((int) $dc->id) : null;
 
-        // The file name resolves without statement tokens, the title with them.
-        $this->applyTo('tl_workflow', ['pdfFileName'], $workflow, false);
-        $this->applyTo('tl_workflow', ['pdfTitle'], $workflow, true);
+        // No ##stmt_*## tokens here: heading and intro are also shown in the
+        // form (before answering), the file name resolves raw values only.
+        $this->applyTo('tl_workflow', ['pdfFileName', 'pdfTitle', 'introText'], $workflow, false);
     }
 
     #[AsCallback(table: 'tl_workflow_rule', target: 'config.onload')]
@@ -136,7 +136,7 @@ class PlaceholderHelperListener
                 $label = trim((string) $question->label);
                 $add('data_'.$this->placeholders->normalize($field), 'Antwortfeld: '.('' !== $label ? $label : $field));
 
-                if ($withStatements && !$question->isDisplay()) {
+                if ($withStatements) {
                     $hasStatements = true;
                     $add('stmt_'.$this->placeholders->normalize($field), 'Textbaustein: '.('' !== $label ? $label : $field));
                 }

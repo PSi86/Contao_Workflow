@@ -73,14 +73,18 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
     ],
     'palettes' => [
         '__selector__' => ['pdfBodyType', 'requireSignature'],
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        // Functional grouping: workflow basics → source data → shared document
+        // content (heading + intro, shown in the FORM and the PDF) → the form
+        // (page, signature, answer fields) → the PDF (stationery, file name,
+        // body) → notifications.
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
         // The signature-line fields only matter when a signature is required.
         'requireSignature'     => 'pdfSignatureDate,pdfSignatureLocation',
-        // Letter mode: shared heading + the rules that carry the body texts.
+        // Letter mode: the rules that carry the body texts.
         // Template mode: just the template file (it handles branching itself).
-        'pdfBodyType_letter'   => 'pdfTitle,rules',
+        'pdfBodyType_letter'   => 'rules',
         'pdfBodyType_template' => 'pdfBodyTemplate',
     ],
     'fields' => [
@@ -157,10 +161,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['fieldType' => 'radio', 'tl_class' => 'clr', 'mandatory' => true],
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
-        // Answer fields (tl_workflow_question), embedded in the edit mask.
-        // hideButton: only the inline list (with its own new/edit/delete that open
-        // clean record popups) – NOT the main button, which would open the foreign
-        // table's mode-4 parent list (recursive "edit workflow" header).
+        // Answer fields (tl_workflow_question), embedded in the edit mask. The
+        // main button opens the native mode-4 child list in a popup, where the
+        // fields can be reordered with Contao's drag&drop (cut operation).
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
@@ -168,7 +171,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'foreignField' => 'pid',
             'eval'      => [
                 'tl_class'          => 'clr',
-                'hideButton'        => true,
+                'editButtonLabel'   => $GLOBALS['TL_LANG']['tl_workflow']['questionsButton'] ?? 'Antwortfelder verwalten & sortieren',
                 'fields'            => ['label', 'type', 'storageField', 'mandatory'],
                 'orderField'        => 'sorting',
                 'showOperations'    => true,
@@ -233,11 +236,22 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
+        // Shared heading: shown at the top of the FORM and as the PDF heading.
+        // No ##stmt_*## tokens here – the form renders it before answering, so
+        // only tokens that resolve identically in both places are supported.
         'pdfTitle' => [
             'exclude'   => true,
             'inputType' => 'text',
             'eval'      => ['decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
+        ],
+        // Optional intro paragraph after the heading, in the FORM and the PDF.
+        'introText' => [
+            'exclude'   => true,
+            'search'    => true,
+            'inputType' => 'textarea',
+            'eval'      => ['decodeEntities' => true, 'style' => 'height:80px', 'tl_class' => 'clr'],
+            'sql'       => 'text NULL',
         ],
         'pdfBodyTemplate' => [
             'exclude'   => true,

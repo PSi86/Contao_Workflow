@@ -10,10 +10,12 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Converts the legacy tl_workflow.inputFields setting (source columns shown
- * read-only above the questions) into "display" answer fields, then drops the
- * column. The display questions are inserted before the existing questions so
+ * read-only above the questions) into read-only text answer fields, then drops
+ * the column. The new questions are inserted before the existing questions so
  * the rendered form keeps its order. Runs before the schema update, so the
- * column still exists on the first migrate after deploying this version.
+ * column still exists on the first migrate after deploying this version (and
+ * the readOnly target column is created here when the schema diff has not run
+ * yet).
  */
 class InputFieldsToDisplayQuestionsMigration extends AbstractMigration
 {
@@ -36,6 +38,12 @@ class InputFieldsToDisplayQuestionsMigration extends AbstractMigration
 
     public function run(): MigrationResult
     {
+        // The schema diff (which would add the column) runs after this
+        // migration on a fresh upgrade.
+        $this->connection->executeStatement(
+            "ALTER TABLE tl_workflow_question ADD COLUMN IF NOT EXISTS readOnly char(1) NOT NULL default ''",
+        );
+
         $workflows = $this->connection->fetchAllAssociative('SELECT id, inputFields FROM tl_workflow');
         $created = 0;
 
@@ -47,6 +55,7 @@ class InputFieldsToDisplayQuestionsMigration extends AbstractMigration
             }
 
             $workflowId = (int) $workflow['id'];
+            $newIds = [];
 
             // Insert before the existing questions (sorting is unsigned, so
             // renumber everything instead of going below the current minimum).
@@ -58,26 +67,30 @@ class InputFieldsToDisplayQuestionsMigration extends AbstractMigration
                     'tstamp'       => time(),
                     'sorting'      => $sorting += 64,
                     'label'        => $field,
-                    'type'         => 'display',
+                    'type'         => 'text',
+                    'readOnly'     => '1',
                     'storageField' => $field,
                 ]);
 
+                $newIds[] = (int) $this->connection->lastInsertId();
                 ++$created;
             }
 
             $existing = $this->connection->fetchFirstColumn(
-                "SELECT id FROM tl_workflow_question WHERE pid = ? AND type != 'display' ORDER BY sorting",
+                'SELECT id FROM tl_workflow_question WHERE pid = ? ORDER BY sorting',
                 [$workflowId],
             );
 
             foreach ($existing as $id) {
-                $this->connection->update('tl_workflow_question', ['sorting' => $sorting += 64], ['id' => (int) $id]);
+                if (!\in_array((int) $id, $newIds, true)) {
+                    $this->connection->update('tl_workflow_question', ['sorting' => $sorting += 64], ['id' => (int) $id]);
+                }
             }
         }
 
         $this->connection->executeStatement('ALTER TABLE tl_workflow DROP COLUMN `inputFields`');
 
-        return $this->createResult(true, sprintf('Converted inputFields into %d display question(s).', $created));
+        return $this->createResult(true, sprintf('Converted inputFields into %d read-only question(s).', $created));
     }
 
     /**

@@ -48,24 +48,55 @@ class DocumentBodyComposer
                 'data'       => $data,
                 'extra'      => $extra,
                 'statements' => $statements,
+                'heading'    => $this->resolveHeading($workflow, $data, $extra, $email),
+                'intro'      => $this->resolveIntro($workflow, $data, $extra, $email),
             ]);
 
             return $bodyTpl->parse();
         }
 
-        // Letter mode: shared heading from the workflow, body text from the rule.
-        // Placeholders resolve through the shared PlaceholderResolver, so the same
-        // ##data_*##/##var_*## tokens work here, in the mails and in the export.
+        // Letter mode: shared heading + intro from the workflow (also shown in
+        // the form), body text from the rule. Placeholders resolve through the
+        // shared PlaceholderResolver, so the same ##data_*##/##var_*## tokens
+        // work here, in the mails and in the export.
         $rule = $this->ruleEvaluator->resolveRule($workflow, $entry);
         $body = null !== $rule ? $rule->getPdfBody() : '';
 
         $esc = fn (string $value): string => $this->esc($value);
         $title = (string) $workflow->title;
 
-        $renderedTitle = $this->placeholderResolver->renderPdfText((string) $workflow->pdfTitle, $data, $extra, $email, $title, $esc, $statements);
+        $renderedTitle = $esc($this->resolveHeading($workflow, $data, $extra, $email));
+        $renderedIntro = nl2br($esc($this->resolveIntro($workflow, $data, $extra, $email)));
         $renderedBody = nl2br($this->placeholderResolver->renderPdfText($body, $data, $extra, $email, $title, $esc, $statements));
 
-        return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '').'<div class="letter-body">'.$renderedBody.'</div>';
+        return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '')
+            .('' !== $renderedIntro ? '<div class="letter-intro">'.$renderedIntro.'</div>' : '')
+            .'<div class="letter-body">'.$renderedBody.'</div>';
+    }
+
+    /**
+     * The shared heading (workflow "Überschrift"), tokens resolved, plain text.
+     * Used identically by the form and the PDF – no ##stmt_*## tokens, the form
+     * shows it before the questions are answered.
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function resolveHeading(WorkflowModel $workflow, array $data, array $extra, string $email): string
+    {
+        return trim($this->placeholderResolver->fill((string) $workflow->pdfTitle, $data, $extra, $email, (string) $workflow->title));
+    }
+
+    /**
+     * The optional intro paragraph after the heading, tokens resolved, plain
+     * text (multi-line). Shared between form and PDF like the heading.
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function resolveIntro(WorkflowModel $workflow, array $data, array $extra, string $email): string
+    {
+        return trim($this->placeholderResolver->fill((string) $workflow->introText, $data, $extra, $email, (string) $workflow->title));
     }
 
     /**
@@ -139,12 +170,18 @@ class DocumentBodyComposer
                 );
             }
 
-            return ['template' => '', 'options' => $options];
+            // Optional per-question template wrapping the selected option
+            // statement(s) (##value## = the joined statements); empty = the
+            // option statements stand on their own.
+            return [
+                'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
+                'options'  => $options,
+            ];
         }
 
         // ##value## is no known resolver token, so it survives the fill().
         return [
-            'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
+            'template' => $this->placeholderResolver->fill($question->getValueStatementTemplate(), $data, $extra, $email, $title),
             'options'  => [],
         ];
     }
@@ -152,11 +189,13 @@ class DocumentBodyComposer
     /**
      * The statement of one question for a stored value (empty value = no
      * statement). Checkbox values arrive as the ", "-joined stored string.
+     * A configured per-question template wraps the option statement(s)
+     * (##value## = the joined statements, ", " for multi-select).
      *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
      */
-    private function renderStatement(QuestionModel $question, string $value, array $data, array $extra, string $email, string $title): string
+    public function renderStatement(QuestionModel $question, string $value, array $data, array $extra, string $email, string $title): string
     {
         if ('' === trim($value)) {
             return '';
@@ -174,10 +213,16 @@ class DocumentBodyComposer
                 }
             }
 
+            $template = $question->getStatementTemplate();
+
+            if ('' !== $template && [] !== $parts) {
+                return $this->resolveStatementText($template, implode(', ', $parts), $data, $extra, $email, $title);
+            }
+
             return implode("\n", $parts);
         }
 
-        return $this->resolveStatementText($question->getStatementTemplate(), $value, $data, $extra, $email, $title);
+        return $this->resolveStatementText($question->getValueStatementTemplate(), $value, $data, $extra, $email, $title);
     }
 
     /**

@@ -1,4 +1,9 @@
 .mod_workflow_form { max-width: 640px; }
+.mod_workflow_form .tw-heading { margin: 0 0 .5rem; }
+.mod_workflow_form .tw-intro { margin: 0 0 1.25rem; color: #333; }
+.mod_workflow_form .tw-question--readonly input,
+.mod_workflow_form .tw-question--readonly textarea,
+.mod_workflow_form .tw-question--readonly select { background: #f3f3f3; color: #555; }
 .mod_workflow_form .tw-message { padding: .75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
 .mod_workflow_form .tw-error { background: #fdecea; color: #611a15; }
 .mod_workflow_form .tw-info { background: #e8f0fe; color: #1a3a61; }

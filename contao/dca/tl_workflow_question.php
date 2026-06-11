@@ -36,6 +36,12 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'operations' => [
             'edit'   => ['href' => 'act=edit', 'icon' => 'edit.svg'],
             'copy'   => ['href' => 'act=copy', 'icon' => 'copy.svg'],
+            // Enables Contao's native drag&drop reordering in the child list.
+            'cut'    => [
+                'href'       => 'act=paste&mode=cut',
+                'icon'       => 'cut.svg',
+                'attributes' => 'onclick="Backend.getScrollOffset()"',
+            ],
             'delete' => [
                 'href'       => 'act=delete',
                 'icon'       => 'delete.svg',
@@ -46,18 +52,13 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
     ],
     'palettes' => [
         '__selector__' => ['type'],
-        'default'      => '{question_legend},label,type,storageField,mandatory,prefill',
-        // Read-only output of a source column – no validation, no prefill flag.
-        'display'      => '{question_legend},label,type,storageField',
+        'default'      => '{question_legend},label,type,storageField,mandatory,prefill,readOnly,pdfStatement',
     ],
     'subpalettes' => [
-        'type_text'        => 'pdfStatement',
-        'type_textarea'    => 'pdfStatement',
-        'type_date'        => 'pdfStatement',
         'type_select'      => 'options',
         'type_radio'       => 'options',
         'type_checkbox'    => 'options',
-        'type_currentTime' => 'hideInForm,pdfStatement',
+        'type_currentTime' => 'hideInForm',
     ],
     'fields' => [
         'id' => [
@@ -84,7 +85,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'type' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'options'   => ['text', 'textarea', 'select', 'radio', 'checkbox', 'date', 'currentTime', 'display'],
+            'options'   => ['text', 'textarea', 'number', 'date', 'select', 'radio', 'checkbox', 'currentTime'],
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'],
             'eval'      => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'text'",
@@ -104,6 +105,14 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // Prefill the (editable) field with the stored data value (Excel source
         // value or previous answer) – "output field = input field".
         'prefill' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default ''",
+        ],
+        // Read-only: the field shows the stored data value but cannot be edited
+        // (never validated, never stored back). Available for every type.
+        'readOnly' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
             'eval'      => ['tl_class' => 'w50 m12'],

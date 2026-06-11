@@ -179,6 +179,7 @@ class DemoWorkflowSeeder
                 'pdfBodyType'          => 'letter',
                 'pdfBodyTemplate'      => '',
                 'pdfTitle'             => 'Einverständniserklärung (Demo)',
+                'introText'            => 'Bitte prüfen Sie die folgenden Angaben und treffen Sie Ihre Entscheidung für den ##var_verein##.',
                 'pdfSignatureDate'     => 'Unterschriftsdatum',
                 'pdfSignatureLocation' => 'Ort',
                 'pdfFileName'          => 'Einverstaendnis_##data_nachname##_##data_vorname##',
@@ -186,17 +187,20 @@ class DemoWorkflowSeeder
             'questions' => [
                 [
                     'label'        => 'Vorname',
-                    'type'         => 'display',
+                    'type'         => 'text',
+                    'readOnly'     => true,
                     'storageField' => 'Vorname',
                 ],
                 [
                     'label'        => 'Nachname',
-                    'type'         => 'display',
+                    'type'         => 'text',
+                    'readOnly'     => true,
                     'storageField' => 'Nachname',
                 ],
                 [
                     'label'        => 'Abteilung',
-                    'type'         => 'display',
+                    'type'         => 'text',
+                    'readOnly'     => true,
                     'storageField' => 'Abteilung',
                 ],
                 [
