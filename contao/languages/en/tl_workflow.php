@@ -16,7 +16,6 @@ $GLOBALS['TL_LANG']['tl_workflow']['sourceFile']    = ['Source file', 'CSV or XL
 $GLOBALS['TL_LANG']['tl_workflow']['sourceSheet']   = ['Worksheet', 'Which sheet of the workbook to read (empty = active sheet). Note: a change is saved immediately.'];
 $GLOBALS['TL_LANG']['tl_workflow']['headerRow']     = ['Header row', 'Row number that holds the column headers (default 1). Note: a change is saved immediately.'];
 $GLOBALS['TL_LANG']['tl_workflow']['emailField']    = ['E-mail column', 'Column holding the e-mail address (invitation recipient).'];
-$GLOBALS['TL_LANG']['tl_workflow']['inputFields']   = ['Display fields (input)', 'Columns shown prefilled and read-only in the form.'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPage']      = ['Form page', 'Page that hosts the workflow form module (link target).'];
 $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Require signature', 'When enabled, the form requires a signature (embedded into the PDF).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF content', 'Simple letter: the body texts are maintained via PDF rules (per answer). Specific template: a file that handles everything itself – then there are no PDF rules. Note: a change is saved immediately.'];

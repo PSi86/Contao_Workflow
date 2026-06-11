@@ -26,7 +26,7 @@ class PdfGenerator
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly PdfStorage $pdfStorage,
-        private readonly RuleEvaluator $ruleEvaluator,
+        private readonly DocumentBodyComposer $bodyComposer,
         private readonly PlaceholderResolver $placeholderResolver,
         private readonly string $projectDir,
     ) {
@@ -103,7 +103,7 @@ class PdfGenerator
         $data = $entry->getData();
         $extra = null !== $masterModel ? $masterModel->getPdfData() : [];
 
-        $bodyHtml = $this->renderBody($entry, $workflow, $data, $extra);
+        $bodyHtml = $this->bodyComposer->compose($workflow, $entry, $data, $extra);
 
         $templateName = null !== $masterModel ? $masterModel->getMasterTemplate() : self::MASTER_TEMPLATE;
 
@@ -160,53 +160,6 @@ class PdfGenerator
         }
 
         return $this->framework->getAdapter(MasterModel::class)->findByPk((int) $workflow->master);
-    }
-
-    /**
-     * Builds the body HTML.
-     *
-     * - Template mode: the selected body template handles everything itself
-     *   (it receives all data, incl. answers, and branches internally) – PDF
-     *   rules are NOT consulted.
-     * - Letter mode: the shared heading comes from the workflow; the body text
-     *   comes from the first matching PDF rule (a rule without conditions is the
-     *   "else" case). If no rule matches, the body stays empty.
-     *
-     * @param array<string, mixed>  $data
-     * @param array<string, string> $extra
-     */
-    private function renderBody(EntryModel $entry, WorkflowModel $workflow, array $data, array $extra): string
-    {
-        if ('template' === (string) $workflow->pdfBodyType && '' !== (string) $workflow->pdfBodyTemplate) {
-            /** @var FrontendTemplate $bodyTpl */
-            $bodyTpl = $this->framework->createInstance(FrontendTemplate::class, [(string) $workflow->pdfBodyTemplate]);
-            $bodyTpl->setData([
-                'data'  => $data,
-                'extra' => $extra,
-            ]);
-
-            return $bodyTpl->parse();
-        }
-
-        // Letter mode: shared heading from the workflow, body text from the rule.
-        // Placeholders resolve through the shared PlaceholderResolver, so the same
-        // ##data_*##/##var_*## tokens work here, in the mails and in the export.
-        $rule = $this->ruleEvaluator->resolveRule($workflow, $entry);
-        $body = null !== $rule ? $rule->getPdfBody() : '';
-
-        $esc = fn (string $value): string => $this->esc($value);
-        $email = (string) $entry->email;
-        $title = (string) $workflow->title;
-
-        $renderedTitle = $this->placeholderResolver->renderPdfText((string) $workflow->pdfTitle, $data, $extra, $email, $title, $esc);
-        $renderedBody = nl2br($this->placeholderResolver->renderPdfText($body, $data, $extra, $email, $title, $esc));
-
-        return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '').'<div class="letter-body">'.$renderedBody.'</div>';
-    }
-
-    private function esc(string $value): string
-    {
-        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
 
     private function renderPdf(string $html): string

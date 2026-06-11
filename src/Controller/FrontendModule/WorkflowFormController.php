@@ -11,9 +11,11 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
+use Psimandl\WorkflowBundle\Form\QuestionWidgetFactory;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,6 +31,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly SubmissionProcessor $submissionProcessor,
+        private readonly DocumentBodyComposer $bodyComposer,
+        private readonly QuestionWidgetFactory $widgetFactory,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $csrfTokenName,
     ) {
@@ -41,13 +45,12 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $assetDir = 'bundles/contaoworkflow';
         $GLOBALS['TL_CSS'][] = $assetDir.'/workflow-form.css';
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-signature.js';
+        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-form.js';
 
         $token = (string) $this->framework->getAdapter(Input::class)->get('auto_item');
 
         $template->set('requestToken', $this->csrfTokenManager->getDefaultTokenValue());
         $template->set('error', '');
-        $template->set('inputFields', []);
-        $template->set('data', []);
         $template->set('questions', []);
         $template->set('answers', []);
         $template->set('requireSignature', true);
@@ -76,10 +79,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         $questions = $workflow->getQuestions();
 
-        $template->set('inputFields', $workflow->getInputFields());
-        $template->set('data', $entry->getData());
         $template->set('email', $entry->email);
-        $template->set('questions', $this->buildQuestionViews($questions));
+        $template->set('questions', $this->buildQuestionViews($questions, $workflow, $entry));
         $template->set('requireSignature', $workflow->isSignatureRequired());
         $template->set('formId', 'workflow_form_'.$entry->id);
         $template->set('state', 'form');
@@ -104,11 +105,14 @@ class WorkflowFormController extends AbstractFrontendModuleController
     /**
      * @param array<int, QuestionModel> $questions
      *
-     * @return array<int, array{id: int, label: string, type: string, mandatory: bool, multiple: bool, options: array<int, array{value: string, label: string}>}>
+     * @return array<int, array<string, mixed>>
      */
-    private function buildQuestionViews(array $questions): array
+    private function buildQuestionViews(array $questions, WorkflowModel $workflow, EntryModel $entry): array
     {
         $views = [];
+        $data = $entry->getData();
+        $extra = $workflow->getMasterVars();
+        $email = (string) $entry->email;
 
         foreach ($questions as $question) {
             // "Aktuelle Zeit" fields flagged hidden never appear in the form –
@@ -117,18 +121,139 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 continue;
             }
 
+            $storage = trim((string) $question->storageField);
+
+            // Read-only display of a source column at its sorting position.
+            if ($question->isDisplay()) {
+                $views[] = [
+                    'id'        => (int) $question->id,
+                    'label'     => (string) $question->label,
+                    'type'      => 'display',
+                    'mandatory' => false,
+                    'multiple'  => false,
+                    'options'   => [],
+                    'autoValue' => '',
+                    'initial'   => (string) ($data[$storage] ?? ''),
+                ];
+                continue;
+            }
+
+            // The statement parts let the form show exactly the text the
+            // document will contain (live-updated in the browser).
+            $parts = $this->bodyComposer->statementParts($question, $workflow, $data, $extra, $email);
+
+            $options = [];
+
+            foreach ($question->getOptions() as $option) {
+                $option['statement'] = $parts['options'][$option['value']] ?? $option['label'];
+                $options[] = $option;
+            }
+
+            $autoValue = $question->isCurrentTime() ? date('d.m.Y') : '';
+
             $views[] = [
-                'id'        => (int) $question->id,
-                'label'     => (string) $question->label,
-                'type'      => (string) $question->type,
-                'mandatory' => $question->isMandatory(),
-                'multiple'  => $question->isMultiple(),
-                'options'   => $question->getOptions(),
-                'autoValue' => $question->isCurrentTime() ? date('d.m.Y') : '',
+                'id'                => (int) $question->id,
+                'label'             => (string) $question->label,
+                'type'              => (string) $question->type,
+                'mandatory'         => $question->isMandatory(),
+                'multiple'          => $question->isMultiple(),
+                'options'           => $options,
+                'autoValue'         => $autoValue,
+                'initial'           => $this->resolveInitialValue($question, $data),
+                // Hint only when a statement was explicitly configured – without
+                // one the visible label/option text counts verbatim anyway.
+                'hasStatement'      => $question->hasExplicitStatement(),
+                'statementTemplate' => $parts['template'],
+                'statement'         => '' !== $autoValue ? str_replace('##value##', $autoValue, $parts['template']) : '',
             ];
         }
 
         return $views;
+    }
+
+    /**
+     * Prefill value of a question from the entry data (Excel source value or a
+     * previously stored answer). Choice values must match a configured option
+     * (exactly, then trimmed/case-insensitively); on no match the prefill is
+     * discarded – never silently invent a selection.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return string|array<int, string>
+     */
+    private function resolveInitialValue(QuestionModel $question, array $data): string|array
+    {
+        $empty = $question->isMultiple() ? [] : '';
+
+        if (!$question->isPrefilled()) {
+            return $empty;
+        }
+
+        $storage = trim((string) $question->storageField);
+        $value = '' !== $storage ? trim((string) ($data[$storage] ?? '')) : '';
+
+        if ('' === $value) {
+            return $empty;
+        }
+
+        if ($question->isMultiple()) {
+            $values = [];
+
+            foreach (preg_split('/\s*,\s*/', $value) ?: [] as $single) {
+                $match = $this->matchOption($question, $single);
+
+                if (null !== $match && !\in_array($match, $values, true)) {
+                    $values[] = $match;
+                }
+            }
+
+            return $values;
+        }
+
+        if ($question->hasOptions()) {
+            return $this->matchOption($question, $value) ?? '';
+        }
+
+        // The HTML date input needs ISO format; unparseable values are discarded.
+        if ('date' === (string) $question->type) {
+            return $this->toIsoDate($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Canonical option value for a prefill candidate, or null when it matches
+     * no configured option.
+     */
+    private function matchOption(QuestionModel $question, string $value): ?string
+    {
+        $allowed = $question->getAllowedValues();
+
+        if (\in_array($value, $allowed, true)) {
+            return $value;
+        }
+
+        foreach ($allowed as $candidate) {
+            if (0 === strcasecmp(trim($candidate), $value)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function toIsoDate(string $value): string
+    {
+        foreach (['Y-m-d', 'd.m.Y', 'j.n.Y', 'm/d/Y'] as $format) {
+            $date = \DateTime::createFromFormat('!'.$format, $value);
+
+            if ($date instanceof \DateTime) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -146,8 +271,12 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $answers = [];
 
         foreach ($questions as $question) {
-            $name = 'q_'.$question->id;
             $storage = trim((string) $question->storageField);
+
+            // Display fields are read-only output – never validated, never stored.
+            if ($question->isDisplay()) {
+                continue;
+            }
 
             // "Aktuelle Zeit": always set to the current date on submission,
             // regardless of (and ignoring) any posted value – no validation.
@@ -162,21 +291,25 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 continue;
             }
 
+            // Contao's widget layer validates (mandatory, option whitelist)
+            // with the localised ERR.* messages.
+            $widget = $this->widgetFactory->create($question);
+
+            if (null === $widget) {
+                continue;
+            }
+
+            $widget->validate();
+
             if ($question->isMultiple()) {
                 $values = array_values(array_filter(
-                    array_map('strval', $request->request->all($name)),
+                    array_map('strval', (array) $widget->value),
                     static fn (string $v): bool => '' !== $v,
                 ));
                 $submitted[(int) $question->id] = $values;
 
-                foreach ($values as $value) {
-                    if (!\in_array($value, $question->getAllowedValues(), true)) {
-                        return $this->invalidChoice($question);
-                    }
-                }
-
-                if ($question->isMandatory() && [] === $values) {
-                    return $this->missingValue($question);
+                if ($widget->hasErrors()) {
+                    return (string) $widget->getErrorAsString();
                 }
 
                 if ('' !== $storage) {
@@ -186,15 +319,11 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 continue;
             }
 
-            $value = trim((string) $request->request->get($name, ''));
+            $value = trim((string) (\is_array($widget->value) ? '' : $widget->value));
             $submitted[(int) $question->id] = $value;
 
-            if ($question->hasOptions() && '' !== $value && !\in_array($value, $question->getAllowedValues(), true)) {
-                return $this->invalidChoice($question);
-            }
-
-            if ($question->isMandatory() && '' === $value) {
-                return $this->missingValue($question);
+            if ($widget->hasErrors()) {
+                return (string) $widget->getErrorAsString();
             }
 
             if ('date' === $question->type && '' !== $value) {
@@ -255,16 +384,6 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         // PNG magic bytes.
         return false !== $binary && str_starts_with($binary, "\x89PNG\r\n\x1a\n");
-    }
-
-    private function invalidChoice(QuestionModel $question): string
-    {
-        return sprintf('Ungültige Auswahl bei „%s".', (string) $question->label);
-    }
-
-    private function missingValue(QuestionModel $question): string
-    {
-        return sprintf('Bitte füllen Sie das Feld „%s" aus.', (string) $question->label);
     }
 
     /**

@@ -36,12 +36,11 @@ class WorkflowOptionsListener
     }
 
     /**
-     * Shared by the workflow's header-based fields (email column, display fields).
+     * Shared by the workflow's header-based fields.
      *
      * @return array<string, string>
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.emailField.options')]
-    #[AsCallback(table: 'tl_workflow', target: 'fields.inputFields.options')]
     #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureLocation.options')]
     public function getHeaderOptions(DataContainer $dc): array
     {

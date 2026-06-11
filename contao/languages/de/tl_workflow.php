@@ -16,7 +16,6 @@ $GLOBALS['TL_LANG']['tl_workflow']['sourceFile']    = ['Quelldatei', 'CSV- oder 
 $GLOBALS['TL_LANG']['tl_workflow']['sourceSheet']   = ['Tabellenblatt', 'Welches Blatt der Mappe ausgelesen wird (leer = aktives Blatt). Hinweis: Eine Änderung wird sofort gespeichert.'];
 $GLOBALS['TL_LANG']['tl_workflow']['headerRow']     = ['Kopfzeile', 'Zeilennummer mit den Spaltenüberschriften (Standard 1). Hinweis: Eine Änderung wird sofort gespeichert.'];
 $GLOBALS['TL_LANG']['tl_workflow']['emailField']    = ['E-Mail-Spalte', 'Spalte mit der E-Mail-Adresse (Empfänger der Einladung).'];
-$GLOBALS['TL_LANG']['tl_workflow']['inputFields']   = ['Anzeige-Felder (Input)', 'Spalten, die im Formular vorausgefüllt und schreibgeschützt angezeigt werden.'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPage']      = ['Formularseite', 'Seite, auf der das Workflow-Formular-Modul liegt (Ziel der Links).'];
 $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Unterschrift verlangen', 'Wenn aktiv, muss im Formular unterschrieben werden (Unterschrift wird ins PDF eingebettet).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF-Inhalt', 'Einfacher Brief: Brieftexte werden über die PDF-Regeln gepflegt (je nach Antwort). Spezielle Vorlage: eine Datei, die alles selbst regelt – dann gibt es keine PDF-Regeln. Hinweis: Eine Änderung wird sofort gespeichert.'];

@@ -158,7 +158,12 @@ class DemoWorkflowSeeder
     private function config(): array
     {
         $person = "Name: ##data_vorname## ##data_nachname##\n"
-            ."Abteilung: ##data_abteilung## · Funktion: ##data_funktion##\n\n";
+            ."Abteilung: ##data_abteilung##\n\n";
+
+        // The decision wording lives as option statements on the radio question,
+        // so form and PDF use the identical text; the rules only pick the frame
+        // around the ##stmt_*## tokens.
+        $footer = "\n\nDies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.";
 
         return [
             'format'   => WorkflowConfigImporter::FORMAT,
@@ -170,7 +175,6 @@ class DemoWorkflowSeeder
                 'sourceSheet'          => '',
                 'headerRow'            => 1,
                 'emailField'           => 'E-Mail',
-                'inputFields'          => ['Vorname', 'Nachname', 'Abteilung', 'Funktion'],
                 'requireSignature'     => true,
                 'pdfBodyType'          => 'letter',
                 'pdfBodyTemplate'      => '',
@@ -181,14 +185,46 @@ class DemoWorkflowSeeder
             ],
             'questions' => [
                 [
+                    'label'        => 'Vorname',
+                    'type'         => 'display',
+                    'storageField' => 'Vorname',
+                ],
+                [
+                    'label'        => 'Nachname',
+                    'type'         => 'display',
+                    'storageField' => 'Nachname',
+                ],
+                [
+                    'label'        => 'Abteilung',
+                    'type'         => 'display',
+                    'storageField' => 'Abteilung',
+                ],
+                [
+                    'label'        => 'Ihre Funktion (bitte prüfen und ggf. korrigieren)',
+                    'type'         => 'text',
+                    'storageField' => 'Funktion',
+                    'mandatory'    => true,
+                    'prefill'      => true,
+                    'pdfStatement' => 'Funktion: ##value##',
+                    'options'      => [],
+                ],
+                [
                     'label'        => 'Ihre Entscheidung',
                     'type'         => 'radio',
                     'storageField' => 'Entscheidung',
                     'mandatory'    => true,
                     'hideInForm'   => false,
                     'options'      => [
-                        ['value' => 'ja', 'label' => 'Einverstanden'],
-                        ['value' => 'nein', 'label' => 'Nicht einverstanden'],
+                        [
+                            'value'     => 'ja',
+                            'label'     => 'Einverstanden',
+                            'statement' => 'Hiermit erkläre ich mein Einverständnis gegenüber dem ##var_verein## für das Jahr ##var_jahr##.',
+                        ],
+                        [
+                            'value'     => 'nein',
+                            'label'     => 'Nicht einverstanden',
+                            'statement' => 'Für das Jahr ##var_jahr## erteile ich gegenüber dem ##var_verein## kein Einverständnis.',
+                        ],
                     ],
                 ],
                 [
@@ -206,16 +242,17 @@ class DemoWorkflowSeeder
                     'isDefault'  => false,
                     'conditions' => [['field' => 'Entscheidung', 'operator' => 'eq', 'value' => 'ja']],
                     'pdfBody'    => $person
-                        ."hiermit erkläre ich mein Einverständnis gegenüber dem ##var_verein## für das Jahr ##var_jahr##.\n\n"
-                        .'Dies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.',
+                        ."##stmt_funktion##\n\n##stmt_entscheidung##\n\n"
+                        .'Vielen Dank für Ihre Unterstützung!'
+                        .$footer,
                 ],
                 [
-                    'title'      => 'Kein Einverständnis (Standardtext)',
+                    'title'      => 'Standardtext',
                     'isDefault'  => true,
                     'conditions' => [],
                     'pdfBody'    => $person
-                        ."für das Jahr ##var_jahr## erteile ich gegenüber dem ##var_verein## kein Einverständnis.\n\n"
-                        .'Dies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.',
+                        ."##stmt_funktion##\n\n##stmt_entscheidung##"
+                        .$footer,
                 ],
             ],
             'master' => [

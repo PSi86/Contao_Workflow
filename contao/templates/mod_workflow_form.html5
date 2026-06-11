@@ -28,21 +28,26 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
       <input type="email" value="<?= $esc($this->email) ?>" readonly>
     </div>
 
-    <?php foreach ($this->inputFields as $name): ?>
-      <div class="tw-row">
-        <label><?= $esc($name) ?></label>
-        <input type="text" value="<?= $esc($this->data[$name] ?? '') ?>" readonly>
-      </div>
-    <?php endforeach; ?>
-
     <?php foreach ($this->questions as $q): ?>
+      <?php if ('display' === $q['type']): ?>
+        <div class="tw-row">
+          <label><?= $esc($q['label']) ?></label>
+          <input type="text" value="<?= $esc($q['initial']) ?>" readonly>
+        </div>
+        <?php continue; ?>
+      <?php endif; ?>
       <?php
         $fieldName = 'q_'.$q['id'];
-        $answer = $this->answers[$q['id']] ?? ('checkbox' === $q['type'] ? [] : '');
+        $answer = $this->answers[$q['id']] ?? $q['initial'];
         $req = $q['mandatory'] ? ' required' : '';
         $star = $q['mandatory'] ? ' <span class="tw-required">*</span>' : '';
+        // Statement hint ("So erscheint dies im Dokument") only when a document
+        // text was explicitly configured; ##value## is substituted live by JS.
+        $hint = $q['hasStatement'];
+        $tplAttr = $hint && '' !== $q['statementTemplate'] ? ' data-statement-template="'.$esc($q['statementTemplate']).'"' : '';
+        $stmtAttr = static fn (array $opt): string => $hint ? ' data-statement="'.$esc($opt['statement']).'"' : '';
       ?>
-      <fieldset class="tw-question tw-question--<?= $esc($q['type']) ?>">
+      <fieldset class="tw-question tw-question--<?= $esc($q['type']) ?>"<?= $hint ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
         <legend><?= $esc($q['label']).$star ?></legend>
 
         <?php if ('currentTime' === $q['type']): ?>
@@ -58,20 +63,27 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
           <select name="<?= $esc($fieldName) ?>"<?= $req ?>>
             <option value="">–</option>
             <?php foreach ($q['options'] as $opt): ?>
-              <option value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' selected' : '' ?>><?= $esc($opt['label']) ?></option>
+              <option value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' selected' : '' ?><?= $stmtAttr($opt) ?>><?= $esc($opt['label']) ?></option>
             <?php endforeach; ?>
           </select>
 
         <?php elseif ('radio' === $q['type']): ?>
           <?php foreach ($q['options'] as $opt): ?>
-            <label class="tw-option"><input type="radio" name="<?= $esc($fieldName) ?>" value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' checked' : '' ?><?= $req ?>> <?= $esc($opt['label']) ?></label>
+            <label class="tw-option"><input type="radio" name="<?= $esc($fieldName) ?>" value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' checked' : '' ?><?= $req ?><?= $stmtAttr($opt) ?>> <?= $esc($opt['label']) ?></label>
           <?php endforeach; ?>
 
         <?php elseif ('checkbox' === $q['type']): ?>
           <?php $selected = \is_array($answer) ? $answer : []; ?>
           <?php foreach ($q['options'] as $opt): ?>
-            <label class="tw-option"><input type="checkbox" name="<?= $esc($fieldName) ?>[]" value="<?= $esc($opt['value']) ?>"<?= \in_array($opt['value'], $selected, true) ? ' checked' : '' ?>> <?= $esc($opt['label']) ?></label>
+            <label class="tw-option"><input type="checkbox" name="<?= $esc($fieldName) ?>[]" value="<?= $esc($opt['value']) ?>"<?= \in_array($opt['value'], $selected, true) ? ' checked' : '' ?><?= $stmtAttr($opt) ?>> <?= $esc($opt['label']) ?></label>
           <?php endforeach; ?>
+        <?php endif; ?>
+
+        <?php if ($hint): ?>
+          <p class="tw-statement" data-statement-hint<?= 'currentTime' === $q['type'] || '' !== $q['statement'] ? '' : ' hidden' ?>>
+            <span class="tw-statement-intro">So erscheint dies im Dokument:</span>
+            <span class="tw-statement-text" data-statement-text><?= $esc($q['statement']) ?></span>
+          </p>
         <?php endif; ?>
       </fieldset>
     <?php endforeach; ?>

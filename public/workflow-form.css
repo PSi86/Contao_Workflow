@@ -15,6 +15,9 @@
 .mod_workflow_form .tw-question .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
 .mod_workflow_form .tw-question .tw-option input { margin-right: .4rem; }
 .mod_workflow_form .tw-required { color: #c00; }
+.mod_workflow_form .tw-statement { margin: .6rem 0 0; padding: .5rem .75rem; background: #f5f7fa; border-left: 3px solid #1a3a61; border-radius: 0 4px 4px 0; font-size: .9em; }
+.mod_workflow_form .tw-statement-intro { display: block; font-weight: 600; color: #555; margin-bottom: .15rem; }
+.mod_workflow_form .tw-statement-text { white-space: pre-line; font-style: italic; }
 .mod_workflow_form .tw-signature { margin-bottom: 1rem; }
 .mod_workflow_form .tw-signature canvas { display: block; border: 1px dashed #999; border-radius: 4px; touch-action: none; background: #fff; max-width: 100%; }
 .mod_workflow_form .tw-signature button { margin-top: .5rem; }

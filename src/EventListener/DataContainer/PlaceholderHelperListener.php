@@ -8,6 +8,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Input;
 use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
@@ -39,13 +40,23 @@ class PlaceholderHelperListener
     {
         $workflow = $dc->id ? WorkflowModel::findByPk((int) $dc->id) : null;
 
-        $this->applyTo('tl_workflow', ['pdfFileName', 'pdfTitle'], $workflow);
+        // The file name resolves without statement tokens, the title with them.
+        $this->applyTo('tl_workflow', ['pdfFileName'], $workflow, false);
+        $this->applyTo('tl_workflow', ['pdfTitle'], $workflow, true);
     }
 
     #[AsCallback(table: 'tl_workflow_rule', target: 'config.onload')]
     public function enableForRule(DataContainer $dc): void
     {
-        $this->applyTo('tl_workflow_rule', ['pdfBody'], $this->resolveRuleWorkflow($dc));
+        $this->applyTo('tl_workflow_rule', ['pdfBody'], $this->resolveRuleWorkflow($dc), true);
+    }
+
+    #[AsCallback(table: 'tl_workflow_question', target: 'config.onload')]
+    public function enableForQuestion(DataContainer $dc): void
+    {
+        // Statements may use ##value## plus the regular tokens, but no ##stmt_*##
+        // (statements do not nest).
+        $this->applyTo('tl_workflow_question', ['pdfStatement'], $this->resolveQuestionWorkflow($dc), false);
     }
 
     /**
@@ -54,13 +65,13 @@ class PlaceholderHelperListener
      *
      * @param array<int, string> $fields
      */
-    private function applyTo(string $table, array $fields, ?WorkflowModel $workflow): void
+    private function applyTo(string $table, array $fields, ?WorkflowModel $workflow, bool $withStatements): void
     {
         if (!\in_array((string) Input::get('act'), ['edit', 'editAll'], true)) {
             return;
         }
 
-        $json = json_encode($this->buildTokens($workflow), JSON_THROW_ON_ERROR);
+        $json = json_encode($this->buildTokens($workflow, $withStatements), JSON_THROW_ON_ERROR);
 
         foreach ($fields as $field) {
             if (!isset($GLOBALS['TL_DCA'][$table]['fields'][$field])) {
@@ -94,7 +105,7 @@ class PlaceholderHelperListener
      *
      * @return array<int, array{name: string, label: string}>
      */
-    private function buildTokens(?WorkflowModel $workflow): array
+    private function buildTokens(?WorkflowModel $workflow, bool $withStatements = false): array
     {
         $tokens = [];
         $seen = [];
@@ -113,6 +124,8 @@ class PlaceholderHelperListener
                 $add('data_'.$this->placeholders->normalize($name), 'Spalte: '.$name);
             }
 
+            $hasStatements = false;
+
             foreach ($workflow->getQuestions() as $question) {
                 $field = trim((string) $question->storageField);
 
@@ -122,6 +135,15 @@ class PlaceholderHelperListener
 
                 $label = trim((string) $question->label);
                 $add('data_'.$this->placeholders->normalize($field), 'Antwortfeld: '.('' !== $label ? $label : $field));
+
+                if ($withStatements && !$question->isDisplay()) {
+                    $hasStatements = true;
+                    $add('stmt_'.$this->placeholders->normalize($field), 'Textbaustein: '.('' !== $label ? $label : $field));
+                }
+            }
+
+            if ($hasStatements) {
+                $add('stmt_all', 'Alle Textbausteine (in Feld-Reihenfolge)');
             }
 
             foreach ($this->masterVars($workflow) as $key) {
@@ -133,6 +155,29 @@ class PlaceholderHelperListener
         $add('workflow_title', 'Titel des Workflows');
 
         return $tokens;
+    }
+
+    /**
+     * Resolves the parent workflow of the answer field currently being edited or
+     * created (mirrors resolveRuleWorkflow for tl_workflow_question).
+     */
+    private function resolveQuestionWorkflow(DataContainer $dc): ?WorkflowModel
+    {
+        if (isset($dc->activeRecord->pid) && (int) $dc->activeRecord->pid > 0) {
+            $pid = (int) $dc->activeRecord->pid;
+        } elseif ($dc->id && 'create' !== Input::get('act')) {
+            $question = QuestionModel::findByPk((int) $dc->id);
+            $pid = null !== $question ? (int) $question->pid : 0;
+        } else {
+            $pid = (int) Input::get('pid');
+
+            if (1 === (int) Input::get('mode') && $pid > 0) {
+                $sibling = QuestionModel::findByPk($pid);
+                $pid = null !== $sibling ? (int) $sibling->pid : 0;
+            }
+        }
+
+        return $pid > 0 ? WorkflowModel::findByPk($pid) : null;
     }
 
     /**

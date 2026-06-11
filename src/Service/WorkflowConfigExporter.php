@@ -39,7 +39,9 @@ class WorkflowConfigExporter
                 'type'         => (string) $question->type,
                 'storageField' => (string) $question->storageField,
                 'mandatory'    => $question->isMandatory(),
+                'prefill'      => $question->isPrefilled(),
                 'hideInForm'   => '1' === (string) $question->hideInForm,
+                'pdfStatement' => (string) $question->pdfStatement,
                 'options'      => $question->getOptions(),
             ];
         }
@@ -65,7 +67,6 @@ class WorkflowConfigExporter
                 'sourceSheet'          => (string) $workflow->sourceSheet,
                 'headerRow'            => max(1, (int) $workflow->headerRow),
                 'emailField'           => (string) $workflow->emailField,
-                'inputFields'          => $workflow->getInputFields(),
                 'requireSignature'     => $workflow->isSignatureRequired(),
                 'pdfBodyType'          => (string) ($workflow->pdfBodyType ?: 'letter'),
                 'pdfBodyTemplate'      => (string) $workflow->pdfBodyTemplate,

@@ -48,9 +48,9 @@ class AnswerConfigListener
 
     /**
      * onload_callback for tl_workflow_question: the "Aktuelle Zeit" field is
-     * filled automatically on submission, so "Pflichtfeld" is meaningless –
-     * remove it from the edit palette for that type. Type changes
-     * (submitOnChange) re-run this callback.
+     * filled automatically on submission, so "Pflichtfeld" and "Vorbelegen" are
+     * meaningless – remove them from the edit palette for that type. Type
+     * changes (submitOnChange) re-run this callback.
      */
     public function hideMandatoryForCurrentTime(DataContainer $dc): void
     {
@@ -65,7 +65,7 @@ class AnswerConfigListener
         }
 
         $palette = &$GLOBALS['TL_DCA']['tl_workflow_question']['palettes']['default'];
-        $palette = str_replace(',mandatory', '', (string) $palette);
+        $palette = str_replace([',mandatory', ',prefill'], '', (string) $palette);
     }
 
     /**

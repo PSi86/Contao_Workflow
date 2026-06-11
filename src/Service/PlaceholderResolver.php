@@ -55,10 +55,12 @@ class PlaceholderResolver
      * @param array<string, mixed> $data
      * @param array<string, mixed> $vars
      * @param callable(string):string $esc
+     * @param array<string, string> $extraTokens additional canonical tokens
+     *                                           (raw values, e.g. ##stmt_*##)
      *
      * @return array<string, string>
      */
-    public function pdfTokenMap(array $data, array $vars, string $email, string $workflowTitle, callable $esc): array
+    public function pdfTokenMap(array $data, array $vars, string $email, string $workflowTitle, callable $esc, array $extraTokens = []): array
     {
         $map = [];
 
@@ -74,6 +76,10 @@ class PlaceholderResolver
             $map['##'.$key.'##'] = $esc((string) $value);
         }
 
+        foreach ($extraTokens as $name => $value) {
+            $map['##'.$name.'##'] = $esc((string) $value);
+        }
+
         return $map;
     }
 
@@ -84,10 +90,11 @@ class PlaceholderResolver
      * @param array<string, mixed> $data
      * @param array<string, mixed> $vars
      * @param callable(string):string $esc
+     * @param array<string, string> $extraTokens additional canonical tokens (raw values)
      */
-    public function renderPdfText(string $text, array $data, array $vars, string $email, string $workflowTitle, callable $esc): string
+    public function renderPdfText(string $text, array $data, array $vars, string $email, string $workflowTitle, callable $esc, array $extraTokens = []): string
     {
-        return strtr($esc($text), $this->pdfTokenMap($data, $vars, $email, $workflowTitle, $esc));
+        return strtr($esc($text), $this->pdfTokenMap($data, $vars, $email, $workflowTitle, $esc, $extraTokens));
     }
 
     /**

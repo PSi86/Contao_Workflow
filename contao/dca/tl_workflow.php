@@ -73,7 +73,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
     ],
     'palettes' => [
         '__selector__' => ['pdfBodyType', 'requireSignature'],
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
         // The signature-line fields only matter when a signature is required.
@@ -144,12 +144,6 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'inputType' => 'select',
             'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(128) NOT NULL default ''",
-        ],
-        'inputFields' => [
-            'exclude'   => true,
-            'inputType' => 'checkbox',
-            'eval'      => ['multiple' => true, 'tl_class' => 'clr'],
-            'sql'       => 'blob NULL',
         ],
         'requireSignature' => [
             'exclude'   => true,
