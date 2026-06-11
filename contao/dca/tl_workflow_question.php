@@ -36,12 +36,6 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'operations' => [
             'edit'   => ['href' => 'act=edit', 'icon' => 'edit.svg'],
             'copy'   => ['href' => 'act=copy', 'icon' => 'copy.svg'],
-            // Enables Contao's native drag&drop reordering in the child list.
-            'cut'    => [
-                'href'       => 'act=paste&mode=cut',
-                'icon'       => 'cut.svg',
-                'attributes' => 'onclick="Backend.getScrollOffset()"',
-            ],
             'delete' => [
                 'href'       => 'act=delete',
                 'icon'       => 'delete.svg',
@@ -52,13 +46,19 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
     ],
     'palettes' => [
         '__selector__' => ['type'],
-        'default'      => '{question_legend},label,type,storageField,mandatory,prefill,readOnly,pdfStatement',
+        'default'      => '{question_legend},label,type,storageField,mandatory,prefill,readOnly',
     ],
     'subpalettes' => [
+        // Value types carry ONE document text; choice types carry it PER OPTION
+        // (a per-question text would override the option texts).
+        'type_text'        => 'pdfStatement',
+        'type_textarea'    => 'pdfStatement',
+        'type_number'      => 'pdfStatement',
+        'type_date'        => 'pdfStatement',
         'type_select'      => 'options',
         'type_radio'       => 'options',
         'type_checkbox'    => 'options',
-        'type_currentTime' => 'hideInForm',
+        'type_currentTime' => 'hideInForm,pdfStatement',
     ],
     'fields' => [
         'id' => [

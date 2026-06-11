@@ -157,12 +157,10 @@ class DemoWorkflowSeeder
      */
     private function config(): array
     {
-        $person = "Name: ##data_vorname## ##data_nachname##\n"
-            ."Abteilung: ##data_abteilung##\n\n";
-
-        // The decision wording lives as option statements on the radio question,
-        // so form and PDF use the identical text; the rules only pick the frame
-        // around the ##stmt_*## tokens.
+        // The letter body is composed entirely from the form's statements:
+        // ##stmt_all## renders every answer field (so none can be forgotten) –
+        // default statements line by line, fields with a configured document
+        // text separated by a blank line. The rules only pick the frame.
         $footer = "\n\nDies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.";
 
         return [
@@ -245,18 +243,13 @@ class DemoWorkflowSeeder
                     'title'      => 'Einverständnis erteilt',
                     'isDefault'  => false,
                     'conditions' => [['field' => 'Entscheidung', 'operator' => 'eq', 'value' => 'ja']],
-                    'pdfBody'    => $person
-                        ."##stmt_funktion##\n\n##stmt_entscheidung##\n\n"
-                        .'Vielen Dank für Ihre Unterstützung!'
-                        .$footer,
+                    'pdfBody'    => "##stmt_all##\n\nVielen Dank für Ihre Unterstützung!".$footer,
                 ],
                 [
                     'title'      => 'Standardtext',
                     'isDefault'  => true,
                     'conditions' => [],
-                    'pdfBody'    => $person
-                        ."##stmt_funktion##\n\n##stmt_entscheidung##"
-                        .$footer,
+                    'pdfBody'    => '##stmt_all##'.$footer,
                 ],
             ],
             'master' => [

@@ -1,5 +1,17 @@
 /* Back end styling for the Workflow bundle. */
 
+/* Drag&drop reordering of the embedded answer-field list. */
+[data-question-sort] .tw-drag-handle {
+    cursor: grab;
+    width: 24px;
+    text-align: center;
+    color: #999;
+    user-select: none;
+}
+[data-question-sort] .tw-drag-handle:active { cursor: grabbing; }
+[data-question-sort] tr.tw-dragging { opacity: .4; }
+[data-question-sort].tw-sort-saved table { outline: 2px solid #4bb543; outline-offset: -2px; transition: outline-color .3s; }
+
 /* Source-dependent fields of a not-yet-runnable workflow (e.g. a fresh copy). */
 .tw-invalid input,
 .tw-invalid select,

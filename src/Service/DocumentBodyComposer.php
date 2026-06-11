@@ -102,10 +102,14 @@ class DocumentBodyComposer
     /**
      * Statement ("Textbaustein") tokens for an entry's data, raw/plain text:
      * ##stmt_<storage-slug>## per question and ##stmt_all## (all statements in
-     * question order, one per line). The statement of a question is the text
-     * the participant saw in the form – the option statement/label for choice
-     * questions, the ##value## template for value questions – so a rule body
-     * built from these tokens matches the form by construction.
+     * question order). The statement of a question is the text the participant
+     * saw in the form – the option statement/label for choice questions, the
+     * ##value## template for value questions – so a rule body built from these
+     * tokens matches the form by construction.
+     *
+     * ##stmt_all## formatting: default statements ("label: value") follow each
+     * other line by line; a statement with an explicitly configured document
+     * text gets a blank line before it (it is a full sentence, not a list row).
      *
      * Questions hidden in the form (auto-filled "Aktuelle Zeit") are excluded
      * from ##stmt_all##: the participant never saw them.
@@ -118,7 +122,7 @@ class DocumentBodyComposer
     public function statementTokens(WorkflowModel $workflow, array $data, array $extra, string $email): array
     {
         $tokens = [];
-        $all = [];
+        $all = '';
         $title = (string) $workflow->title;
 
         foreach ($workflow->getQuestions() as $question) {
@@ -131,12 +135,18 @@ class DocumentBodyComposer
             $statement = $this->renderStatement($question, (string) ($data[$storage] ?? ''), $data, $extra, $email, $title);
             $tokens['stmt_'.$this->placeholderResolver->normalize($storage)] = $statement;
 
-            if ('' !== $statement && !$question->isHiddenInForm()) {
-                $all[] = $statement;
+            if ('' === $statement || $question->isHiddenInForm()) {
+                continue;
+            }
+
+            if ('' === $all) {
+                $all = $statement;
+            } else {
+                $all .= ($question->hasExplicitStatement() ? "\n\n" : "\n").$statement;
             }
         }
 
-        $tokens['stmt_all'] = implode("\n", $all);
+        $tokens['stmt_all'] = $all;
 
         return $tokens;
     }
@@ -170,18 +180,14 @@ class DocumentBodyComposer
                 );
             }
 
-            // Optional per-question template wrapping the selected option
-            // statement(s) (##value## = the joined statements); empty = the
-            // option statements stand on their own.
-            return [
-                'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
-                'options'  => $options,
-            ];
+            // Choice questions have their document text per option only – a
+            // per-question template would override the option texts.
+            return ['template' => '', 'options' => $options];
         }
 
         // ##value## is no known resolver token, so it survives the fill().
         return [
-            'template' => $this->placeholderResolver->fill($question->getValueStatementTemplate(), $data, $extra, $email, $title),
+            'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
             'options'  => [],
         ];
     }
@@ -189,8 +195,6 @@ class DocumentBodyComposer
     /**
      * The statement of one question for a stored value (empty value = no
      * statement). Checkbox values arrive as the ", "-joined stored string.
-     * A configured per-question template wraps the option statement(s)
-     * (##value## = the joined statements, ", " for multi-select).
      *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
@@ -213,16 +217,10 @@ class DocumentBodyComposer
                 }
             }
 
-            $template = $question->getStatementTemplate();
-
-            if ('' !== $template && [] !== $parts) {
-                return $this->resolveStatementText($template, implode(', ', $parts), $data, $extra, $email, $title);
-            }
-
             return implode("\n", $parts);
         }
 
-        return $this->resolveStatementText($question->getValueStatementTemplate(), $value, $data, $extra, $email, $title);
+        return $this->resolveStatementText($question->getStatementTemplate(), $value, $data, $extra, $email, $title);
     }
 
     /**

@@ -32,8 +32,9 @@ $GLOBALS['TL_LANG']['tl_workflow']['ncInvite']     = ['Invitation notification',
 $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']   = ['Reminder notification', 'Notification Center: reminder for pending responses.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']     = ['Result notification', 'Notification Center: result mail with the attached PDF.'];
 
-$GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Answer fields', 'Fields the recipient fills in the form. "New" adds a field, "Edit" opens it in a dialog. The button below the list opens the sortable list (drag & drop).'];
-$GLOBALS['TL_LANG']['tl_workflow']['questionsButton'] = 'Manage & reorder answer fields';
+$GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Answer fields', 'Fields the recipient fills in the form. "New" adds a field, "Edit" opens it in a dialog. Reorder the fields directly in the list via drag & drop (handle on the left).'];
+$GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] = 'No answer fields yet. Add one with "New".';
+$GLOBALS['TL_LANG']['tl_workflow']['questionsDrag']  = 'Drag to change the order';
 $GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['PDF rules (letter texts)', 'Each rule = conditions + a body text. The first matching rule provides the text; a rule WITHOUT conditions is marked "(default text)" and always applies (place it last, only one allowed).'];
 $GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] = 'No body texts yet. Add one with "New" – a rule without conditions is the "(default text)".';
 $GLOBALS['TL_LANG']['tl_workflow']['entries'] = ['Entries', 'Manage the entries of this workflow.'];

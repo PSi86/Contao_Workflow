@@ -136,45 +136,38 @@ class QuestionModel extends Model
     }
 
     /**
-     * The configured statement template (##value## marks the value spot);
-     * empty when none is maintained.
+     * Statement template of a value-based question; ##value## marks the spot
+     * for the entered value. Default: "<label>: ##value##". Choice questions
+     * carry their document texts per option instead.
      */
     public function getStatementTemplate(): string
     {
-        return trim((string) $this->pdfStatement);
-    }
-
-    /**
-     * Statement template of a value-based question, with the default
-     * "<label>: ##value##" when none is configured. Option-based questions use
-     * the bare template instead (their default is the option statement/label).
-     */
-    public function getValueStatementTemplate(): string
-    {
-        $template = $this->getStatementTemplate();
+        $template = trim((string) $this->pdfStatement);
 
         return '' !== $template ? $template : trim((string) $this->label).': ##value##';
     }
 
     /**
-     * Whether a document statement was explicitly configured (per-question
-     * template or at least one option statement). Only then does the form show
-     * the "this is how it appears in the document" hint – without explicit
-     * statements the visible label/option text counts verbatim anyway.
+     * Whether a document statement was explicitly configured – per option for
+     * choice questions (their pdfStatement is hidden and must not count),
+     * pdfStatement otherwise. Only then does the form show the "this is how it
+     * appears in the document" hint, and ##stmt_all## adds a blank line before
+     * the statement – without explicit statements the visible label/option
+     * text counts verbatim anyway.
      */
     public function hasExplicitStatement(): bool
     {
-        if ('' !== trim((string) $this->pdfStatement)) {
-            return true;
-        }
-
-        foreach ($this->getOptions() as $option) {
-            if ('' !== $option['statement']) {
-                return true;
+        if ($this->hasOptions()) {
+            foreach ($this->getOptions() as $option) {
+                if ('' !== $option['statement']) {
+                    return true;
+                }
             }
+
+            return false;
         }
 
-        return false;
+        return '' !== trim((string) $this->pdfStatement);
     }
 
     /**

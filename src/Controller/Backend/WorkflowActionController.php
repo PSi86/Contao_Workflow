@@ -10,6 +10,7 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\Message;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
@@ -22,6 +23,7 @@ use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -339,6 +341,37 @@ class WorkflowActionController
         $response->deleteFileAfterSend(true);
 
         return $response;
+    }
+
+    /**
+     * Persists the new answer-field order coming from the drag&drop in the
+     * embedded questions list of the workflow edit mask (see
+     * AnswerConfigListener::renderQuestionsList). Expects POST ids[] in the new
+     * order; only rows belonging to the workflow are renumbered.
+     */
+    #[Route('/question-sort/{id}', name: 'workflow_question_sort', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function questionSort(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        $sorting = 0;
+        $updated = 0;
+
+        foreach (array_map('intval', $request->request->all('ids')) as $questionId) {
+            $question = QuestionModel::findByPk($questionId);
+
+            if (null !== $question && (int) $question->pid === (int) $workflow->id) {
+                $question->sorting = $sorting += 64;
+                $question->tstamp = time();
+                $question->save();
+                ++$updated;
+            }
+        }
+
+        return new JsonResponse(['updated' => $updated]);
     }
 
     private function getWorkflow(int $id): WorkflowModel

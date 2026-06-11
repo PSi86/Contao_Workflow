@@ -47,6 +47,77 @@ class AnswerConfigListener
     }
 
     /**
+     * Renders the embedded answer-field list (dcaWizard list_callback) with a
+     * drag handle per row: the order is changed directly in this list (HTML5
+     * drag&drop, see public/workflow-question-sort.js) and persisted via the
+     * workflow_question_sort route – no extra dialog needed.
+     *
+     * @param array<int, array<string, mixed>> $records
+     */
+    public function renderQuestionsList(array $records, string $id, object $widget): string
+    {
+        if ([] === $records) {
+            return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] ?? '')).'</p>';
+        }
+
+        $container = System::getContainer();
+        $sortUrl = $container->get('router')->generate('workflow_question_sort', ['id' => (int) $widget->currentRecord]);
+        $requestToken = $container->get('contao.csrf.token_manager')->getDefaultTokenValue();
+
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+        $GLOBALS['TL_JAVASCRIPT']['wf_qsort'] = 'bundles/contaoworkflow/workflow-question-sort.js|static';
+
+        $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
+        $hLabel = $lang['label'][0] ?? 'Beschriftung';
+        $hType = $lang['type'][0] ?? 'Typ';
+        $hStorage = $lang['storageField'][0] ?? 'Speicherfeld';
+        $hMandatory = $lang['mandatory'][0] ?? 'Pflichtfeld';
+        $typeLabels = $lang['typeOptions'] ?? [];
+
+        $body = '';
+
+        foreach ($records as $row) {
+            $type = (string) ($row['type'] ?? '');
+            $typeLabel = (string) ($typeLabels[$type] ?? $type);
+
+            $flags = [];
+
+            if ('1' === (string) ($row['readOnly'] ?? '')) {
+                $flags[] = $lang['readOnly'][0] ?? 'Schreibgeschützt';
+            }
+
+            if ('1' === (string) ($row['prefill'] ?? '')) {
+                $flags[] = 'vorbelegt';
+            }
+
+            $typeText = StringUtil::specialchars($typeLabel)
+                .([] !== $flags ? ' <span style="color:#999">('.StringUtil::specialchars(implode(', ', $flags)).')</span>' : '');
+
+            $operations = $widget->generateRowOperation('edit', $row).$widget->generateRowOperation('delete', $row);
+
+            $body .= '<tr class="hover-row" data-question-id="'.(int) $row['id'].'">'
+                .'<td class="tl_file_list tw-drag-handle" draggable="true" title="'
+                .StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['questionsDrag'] ?? 'Ziehen, um die Reihenfolge zu ändern')).'">&#x2630;</td>'
+                .'<td class="tl_file_list"><strong>'.StringUtil::specialchars((string) ($row['label'] ?? '')).'</strong></td>'
+                .'<td class="tl_file_list">'.$typeText.'</td>'
+                .'<td class="tl_file_list">'.StringUtil::specialchars((string) ($row['storageField'] ?? '')).'</td>'
+                .'<td class="tl_file_list">'.('1' === (string) ($row['mandatory'] ?? '') ? '&#x2713;' : '&ndash;').'</td>'
+                .'<td class="tl_file_list tl_right_nowrap">'.$operations.'</td>'
+                .'</tr>';
+        }
+
+        return '<div data-question-sort data-sort-url="'.StringUtil::specialchars($sortUrl).'" data-rt="'.StringUtil::specialchars($requestToken).'">'
+            .'<table class="tl_listing showColumns"><thead><tr>'
+            .'<th class="tl_folder_tlist"></th>'
+            .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hLabel).'</th>'
+            .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hType).'</th>'
+            .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hStorage).'</th>'
+            .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hMandatory).'</th>'
+            .'<th class="tl_folder_tlist"></th>'
+            .'</tr></thead><tbody>'.$body.'</tbody></table></div>';
+    }
+
+    /**
      * onload_callback for tl_workflow_question: the "Aktuelle Zeit" field is
      * filled automatically on submission, so "Pflichtfeld", "Vorbelegen" and
      * "Schreibgeschützt" are meaningless – remove them from the edit palette

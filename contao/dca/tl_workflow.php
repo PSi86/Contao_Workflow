@@ -161,9 +161,11 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['fieldType' => 'radio', 'tl_class' => 'clr', 'mandatory' => true],
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
-        // Answer fields (tl_workflow_question), embedded in the edit mask. The
-        // main button opens the native mode-4 child list in a popup, where the
-        // fields can be reordered with Contao's drag&drop (cut operation).
+        // Answer fields (tl_workflow_question), embedded in the edit mask.
+        // hideButton: only the inline list (with its own new/edit/delete that
+        // open clean record popups). Custom list_callback renders the rows with
+        // a drag handle – the order is changed directly in this list and
+        // persisted via the workflow_question_sort route.
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
@@ -171,12 +173,11 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'foreignField' => 'pid',
             'eval'      => [
                 'tl_class'          => 'clr',
-                'editButtonLabel'   => $GLOBALS['TL_LANG']['tl_workflow']['questionsButton'] ?? 'Antwortfelder verwalten & sortieren',
-                'fields'            => ['label', 'type', 'storageField', 'mandatory'],
+                'hideButton'        => true,
                 'orderField'        => 'sorting',
-                'showOperations'    => true,
-                'operations'        => ['edit', 'delete', 'new'],
+                'operations'        => ['edit', 'delete'],
                 'global_operations' => ['new'],
+                'list_callback'     => [AnswerConfigListener::class, 'renderQuestionsList'],
             ],
         ],
         // PDF rules (tl_workflow_rule), embedded in the edit mask (letter mode only).

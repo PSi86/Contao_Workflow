@@ -8,9 +8,9 @@
  *   - input/option[data-statement]               choice questions: resolved option statement
  *   - [data-statement-hint] > [data-statement-text]  the hint output
  *
- * For choice questions ##value## in the template stands for the selected
- * option statement(s) (joined with ", "), mirroring the server-side
- * DocumentBodyComposer. Read-only/auto-filled fields keep their
+ * Choice questions carry their document text per option (no per-question
+ * template), value questions use the ##value## template – mirroring the
+ * server-side DocumentBodyComposer. Read-only/auto-filled fields keep their
  * server-rendered hint (no data-tw-question attribute).
  */
 (function () {
