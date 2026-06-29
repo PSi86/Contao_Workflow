@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-$GLOBALS['TL_LANG']['MOD']['trainer'] = 'Trainer-Workflow';
-$GLOBALS['TL_LANG']['MOD']['trainer_overview'] = ['Übersicht', 'Status-Übersicht und Aktionen der Trainer-Workflows.'];
-$GLOBALS['TL_LANG']['MOD']['trainer_workflow'] = ['Trainer-Workflows', 'Workflows und importierte Einträge verwalten.'];
-$GLOBALS['TL_LANG']['MOD']['trainer_master'] = ['Briefkopf-Vorlagen', 'Briefkopf/Master (Vorlage, Logo, PDF-Variablen) verwalten.'];
+$GLOBALS['TL_LANG']['MOD']['workflow'] = 'Workflow';
+$GLOBALS['TL_LANG']['MOD']['workflow_overview'] = ['Übersicht', 'Status-Übersicht und Aktionen der Workflows.'];
+$GLOBALS['TL_LANG']['MOD']['workflow_manage'] = ['Workflows', 'Workflows und importierte Einträge verwalten.'];
+$GLOBALS['TL_LANG']['MOD']['workflow_master'] = ['Briefpapier', 'Briefpapier (Kopf/Fuß, Logo, PDF-Variablen) verwalten.'];
 
-$GLOBALS['TL_LANG']['FMD']['trainer_form'] = ['Trainer-Formular', 'Vorausgefülltes Formular, das per individuellem Token-Link erreichbar ist.'];
+$GLOBALS['TL_LANG']['FMD']['workflow_form'] = ['Workflow-Formular', 'Vorausgefülltes Formular, das per individuellem Token-Link erreichbar ist.'];

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
- * Imports the configured sheet of a workflow's source file into tl_trainer_entry.
+ * Imports the configured sheet of a workflow's source file into tl_workflow_entry.
  *
  * The import is idempotent: rows are matched to existing entries by e-mail and
  * UPDATED in place (never duplicated). Already answered entries keep their

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Command;
+namespace Psimandl\WorkflowBundle\Command;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
-use Psimandl\TrainerWorkflowBundle\Service\SpreadsheetExporter;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -16,7 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'trainer:export',
+    name: 'workflow:export',
     description: 'Exports a workflow (source columns refilled with current data) to XLSX/CSV.',
 )]
 class ExportCommand extends Command
@@ -31,7 +31,7 @@ class ExportCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('workflow', InputArgument::REQUIRED, 'The tl_trainer_workflow ID.')
+            ->addArgument('workflow', InputArgument::REQUIRED, 'The tl_workflow ID.')
             ->addOption('format', null, InputOption::VALUE_REQUIRED, 'xlsx or csv', 'xlsx')
             ->addOption('out', null, InputOption::VALUE_REQUIRED, 'Output file path.')
         ;

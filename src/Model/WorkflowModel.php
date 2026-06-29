@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Model;
+namespace Psimandl\WorkflowBundle\Model;
 
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 
 /**
- * Reads and writes tl_trainer_workflow (a process definition).
+ * Reads and writes tl_workflow (a process definition).
  *
  * @property int    $id
  * @property int    $tstamp
@@ -24,10 +24,10 @@ use Contao\StringUtil;
  * @property int    $formPage        Page id hosting the form module.
  * @property string $pdfBodyType     "letter" (backend text) or "template" (body template file).
  * @property string $pdfTitle        Letter heading (letter mode), supports ##tokens##.
- * @property string $pdfBody         Letter body for accept (letter mode), supports ##tokens##.
- * @property string $pdfBodyReject   Optional letter body for reject (letter mode).
+ * @property string $pdfSignatureDate Data column whose value is printed as the signature date.
+ * @property string $pdfSignatureLocation Data column whose value is printed as the signature place.
  * @property string $pdfBodyTemplate Body template name (template mode), e.g. pdf_body_verzicht.
- * @property int    $master        tl_trainer_master id (letterhead: template + logo + variables).
+ * @property int    $master        tl_workflow_master id (letterhead: template + logo + variables).
  * @property string $sourceHash    Checksum of the last imported source file.
  * @property int    $ncInvite      Notification id for the invitation mail.
  * @property int    $ncReminder    Notification id for the reminder mail.
@@ -36,7 +36,7 @@ use Contao\StringUtil;
  */
 class WorkflowModel extends Model
 {
-    protected static $strTable = 'tl_trainer_workflow';
+    protected static $strTable = 'tl_workflow';
 
     /**
      * Returns the ordered list of step labels for this workflow.

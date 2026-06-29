@@ -1,0 +1,102 @@
+<?php
+/**
+ * Generic PDF master / letterhead: a running page header (sender line + logo +
+ * accent rule) and a configurable four-column running footer, plus a signature
+ * block and the injected workflow body ($this->bodyHtml).
+ *
+ * Unlike pdf_master, NOTHING is hard-coded – all header/footer TEXT comes from the
+ * Briefpapier's PDF variables, so the same template serves any organisation.
+ *
+ * PDF variables (set per Briefpapier under „PDF-Variablen"):
+ *   HeaderLine         the small sender line above the rule
+ *   Footer1..Footer4   the four footer columns; use "|" to separate lines
+ *   Jahr, Verein, Ort  available to the body texts (##var_jahr## …)
+ *
+ * Layout/colours stay in this template; only the content is variable.
+ *
+ * @var \Contao\FrontendTemplate $this
+ */
+$esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+
+// PDF-variable values are entered in the back end, where Contao entity-encodes
+// special characters (e.g. "(" -> "&#40;"). Decode first, then escape for safe
+// HTML output: this avoids double-encoding while still neutralising any injected
+// markup (final htmlspecialchars). Works for raw (seed) values too.
+$escVar = static fn ($v): string => htmlspecialchars(
+    html_entity_decode((string) $v, ENT_QUOTES, 'UTF-8'),
+    ENT_QUOTES,
+    'UTF-8',
+);
+$x = fn (string $k): string => (string) ($this->extra[$k] ?? '');
+
+// Footer values are multi-line: split on real line breaks (or a legacy "|"),
+// trim, decode+escape each line and join with <br>.
+$lines = static function (string $value) use ($escVar): string {
+    $parts = array_filter(
+        array_map('trim', preg_split('/[\r\n|]+/', $value) ?: []),
+        static fn ($p): bool => '' !== $p,
+    );
+
+    return implode('<br>', array_map($escVar, $parts));
+};
+
+$ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
+?>
+<style>
+    body { font-family: sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; }
+    h1 { font-size: 15pt; margin: 0 0 2px; }
+    .body, .letter-body { margin: 18px 0; }
+    .amount { font-weight: bold; }
+
+    .pdf-head { width: 100%; border-collapse: collapse; }
+    .pdf-head td { vertical-align: bottom; padding: 0; }
+    .pdf-head .addr { color: #1059A7; font-size: 8pt; }
+    .pdf-head .logo { text-align: right; }
+    .pdf-head .logo img { width: 64px; }
+    .pdf-rule { border-bottom: 1.5pt solid #1059A7; line-height: 0; font-size: 0; margin-top: 4px; }
+
+    .sig { width: 100%; margin-top: 50px; border-collapse: collapse; }
+    .sig td { width: 50%; padding-right: 24px; }
+    .sig .sigimg { height: 70px; }
+    .sig .line { border-top: 1px solid #333; padding-top: 4px; color: #444; font-size: 9pt; }
+
+    .pdf-foot { width: 100%; border-collapse: collapse; color: #1059A7; font-size: 7.5pt; line-height: 1.35; }
+    .pdf-foot td { width: 25%; vertical-align: top; padding: 4px 8px 0 0; border-top: 1pt solid #1059A7; }
+</style>
+
+<htmlpageheader name="wfHeader">
+    <table class="pdf-head">
+        <tr>
+            <td class="addr"><?= $escVar($x('HeaderLine')) ?></td>
+            <td class="logo"><?php if ($this->logoSrc): ?><img src="<?= $esc($this->logoSrc) ?>" width="58" style="width:58px;" alt="Logo"><?php endif; ?></td>
+        </tr>
+    </table>
+    <div class="pdf-rule">&nbsp;</div>
+</htmlpageheader>
+
+<htmlpagefooter name="wfFooter">
+    <table class="pdf-foot">
+        <tr>
+            <td><?= $lines($x('Footer1')) ?: '&nbsp;' ?></td>
+            <td><?= $lines($x('Footer2')) ?: '&nbsp;' ?></td>
+            <td><?= $lines($x('Footer3')) ?: '&nbsp;' ?></td>
+            <td><?= $lines($x('Footer4')) ?: '&nbsp;' ?></td>
+        </tr>
+    </table>
+</htmlpagefooter>
+
+<sethtmlpageheader name="wfHeader" value="on" show-this-page="1" />
+<sethtmlpagefooter name="wfFooter" value="on" />
+
+<?= $this->bodyHtml ?>
+
+<table class="sig">
+    <tr>
+        <td style="height:70px;vertical-align:bottom;"><?= '' !== $ortDatum ? $esc($ortDatum) : '&nbsp;' ?></td>
+        <td style="height:70px;vertical-align:bottom;"><?php if ($this->signatureSrc): ?><img class="sigimg" src="<?= $esc($this->signatureSrc) ?>" alt="Unterschrift"><?php else: ?>&nbsp;<?php endif; ?></td>
+    </tr>
+    <tr>
+        <td><div class="line">Ort, Datum</div></td>
+        <td><div class="line">Unterschrift<?= $this->signerName ? ' '.$esc($this->signerName) : '' ?></div></td>
+    </tr>
+</table>

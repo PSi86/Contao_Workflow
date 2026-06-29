@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\RuleModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\RuleModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Selects the letter body for an entry by evaluating a workflow's rules against

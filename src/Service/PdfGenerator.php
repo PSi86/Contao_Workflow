@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use Contao\FrontendTemplate;
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\MasterModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Renders the PDF via a global master template (logo, signature, footer) that
@@ -27,6 +27,7 @@ class PdfGenerator
         private readonly ContaoFramework $framework,
         private readonly PdfStorage $pdfStorage,
         private readonly RuleEvaluator $ruleEvaluator,
+        private readonly PlaceholderResolver $placeholderResolver,
         private readonly string $projectDir,
     ) {
     }
@@ -42,12 +43,57 @@ class PdfGenerator
         $html = $this->renderHtml($entry, $workflow);
         $pdf = $this->renderPdf($html);
 
-        $relativePath = $this->pdfStorage->store((int) $workflow->id, (string) $entry->token, $pdf);
+        $relativePath = $this->pdfStorage->store(
+            (int) $workflow->id,
+            $this->resolveFileName($entry, $workflow),
+            (string) $entry->token,
+            $pdf,
+            (string) $entry->pdfPath,
+        );
 
         $entry->pdfPath = $relativePath;
         $entry->save();
 
         return $relativePath;
+    }
+
+    /**
+     * Builds the configured PDF file name (without extension) from the workflow's
+     * pattern and the entry data; empty string falls back to the entry token.
+     */
+    private function resolveFileName(EntryModel $entry, WorkflowModel $workflow): string
+    {
+        $pattern = trim((string) $workflow->pdfFileName);
+
+        if ('' === $pattern) {
+            return '';
+        }
+
+        $master = $this->resolveMaster($workflow);
+        $vars = null !== $master ? $master->getPdfData() : [];
+
+        $filled = $this->placeholderResolver->fill(
+            $pattern,
+            $entry->getData(),
+            $vars,
+            (string) $entry->email,
+            (string) $workflow->title,
+        );
+
+        return $this->sanitizeFileName($filled);
+    }
+
+    private function sanitizeFileName(string $name): string
+    {
+        $name = strtr($name, [
+            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
+            'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue', 'ß' => 'ss',
+        ]);
+        $name = preg_replace('/\s+/', '_', $name) ?? '';
+        $name = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $name) ?? '';
+        $name = trim($name, '_.-');
+
+        return mb_substr($name, 0, 120);
     }
 
     private function renderHtml(EntryModel $entry, WorkflowModel $workflow): string
@@ -56,9 +102,8 @@ class PdfGenerator
 
         $data = $entry->getData();
         $extra = null !== $masterModel ? $masterModel->getPdfData() : [];
-        $datum = $entry->respondedAt ? date('d.m.Y', (int) $entry->respondedAt) : '';
 
-        $bodyHtml = $this->renderBody($entry, $workflow, $data, $extra, $datum);
+        $bodyHtml = $this->renderBody($entry, $workflow, $data, $extra);
 
         $templateName = null !== $masterModel ? $masterModel->getMasterTemplate() : self::MASTER_TEMPLATE;
 
@@ -69,12 +114,43 @@ class PdfGenerator
             'logoSrc'      => null !== $masterModel ? $this->resolveLogo($masterModel->pdfLogo) : '',
             'signatureSrc' => $this->writeSignatureImage($entry),
             'signerName'   => trim(($data['Vorname'] ?? '').' '.($data['Name'] ?? '')),
-            'ort'          => (string) ($extra['Ort'] ?? ''),
-            'datum'        => $datum,
+            'ort'          => $this->resolveSignatureLocation($workflow, $data),
+            'datum'        => $this->resolveSignatureDate($workflow, $data),
             'footer'       => (string) ($extra['Footer'] ?? ''),
+            // Full letterhead variables, so a master template can build its header
+            // and footer entirely from the configured PDF variables (e.g. the
+            // generic pdf_master_generic). Legacy templates simply ignore this.
+            'extra'        => $extra,
         ]);
 
         return $master->parse();
+    }
+
+    /**
+     * The signature-block date comes from a configured workflow data field
+     * (typically an "Aktuelle Zeit" answer field), never from an implicit current
+     * date – so the printed date always equals the stored/exported value.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function resolveSignatureDate(WorkflowModel $workflow, array $data): string
+    {
+        $field = trim((string) $workflow->pdfSignatureDate);
+
+        return '' !== $field ? (string) ($data[$field] ?? '') : '';
+    }
+
+    /**
+     * Place printed in the signature line, taken from a configured data column
+     * (e.g. the participant's town); empty when none is configured.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function resolveSignatureLocation(WorkflowModel $workflow, array $data): string
+    {
+        $field = trim((string) $workflow->pdfSignatureLocation);
+
+        return '' !== $field ? (string) ($data[$field] ?? '') : '';
     }
 
     private function resolveMaster(WorkflowModel $workflow): ?MasterModel
@@ -99,7 +175,7 @@ class PdfGenerator
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
      */
-    private function renderBody(EntryModel $entry, WorkflowModel $workflow, array $data, array $extra, string $datum): string
+    private function renderBody(EntryModel $entry, WorkflowModel $workflow, array $data, array $extra): string
     {
         if ('template' === (string) $workflow->pdfBodyType && '' !== (string) $workflow->pdfBodyTemplate) {
             /** @var FrontendTemplate $bodyTpl */
@@ -113,38 +189,19 @@ class PdfGenerator
         }
 
         // Letter mode: shared heading from the workflow, body text from the rule.
+        // Placeholders resolve through the shared PlaceholderResolver, so the same
+        // ##data_*##/##var_*## tokens work here, in the mails and in the export.
         $rule = $this->ruleEvaluator->resolveRule($workflow, $entry);
         $body = null !== $rule ? $rule->getPdfBody() : '';
 
-        $map = $this->buildTokenMap($data, $extra, $entry, $datum);
+        $esc = fn (string $value): string => $this->esc($value);
+        $email = (string) $entry->email;
+        $title = (string) $workflow->title;
 
-        $renderedTitle = strtr($this->esc((string) $workflow->pdfTitle), $map);
-        $renderedBody = nl2br(strtr($this->esc($body), $map));
+        $renderedTitle = $this->placeholderResolver->renderPdfText((string) $workflow->pdfTitle, $data, $extra, $email, $title, $esc);
+        $renderedBody = nl2br($this->placeholderResolver->renderPdfText($body, $data, $extra, $email, $title, $esc));
 
         return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '').'<div class="letter-body">'.$renderedBody.'</div>';
-    }
-
-    /**
-     * @param array<string, mixed>  $data
-     * @param array<string, string> $extra
-     *
-     * @return array<string, string> "##token##" => escaped value
-     */
-    private function buildTokenMap(array $data, array $extra, EntryModel $entry, string $datum): array
-    {
-        $map = [];
-
-        foreach ($data as $key => $value) {
-            $map['##'.$key.'##'] = $this->esc((string) $value);
-        }
-        foreach ($extra as $key => $value) {
-            $map['##'.$key.'##'] = $this->esc((string) $value);
-        }
-
-        $map['##datum##'] = $this->esc($datum);
-        $map['##email##'] = $this->esc((string) $entry->email);
-
-        return $map;
     }
 
     private function esc(string $value): string
@@ -160,10 +217,23 @@ class PdfGenerator
             mkdir($tempDir, 0777, true);
         }
 
+        // Margins leave room for the master template's running page header
+        // (logo + address + blue rule) and the 4-column footer.
         $mpdf = new Mpdf([
-            'tempDir' => $tempDir,
-            'mode'    => 'utf-8',
-            'format'  => 'A4',
+            'tempDir'       => $tempDir,
+            'mode'          => 'utf-8',
+            'format'        => 'A4',
+            'margin_top'    => 34,
+            'margin_bottom' => 30,
+            'margin_left'   => 20,
+            'margin_right'  => 20,
+            'margin_header' => 8,
+            'margin_footer' => 8,
+            // Block remote (http/https) and file:// resources so a stray <img>/<link>
+            // in a body (e.g. an unescaped custom template) cannot trigger an SSRF or
+            // read local files. Our logo/signature use plain local paths (no scheme),
+            // which bypass this check and keep working.
+            'whitelistStreamWrappers' => [],
         ]);
 
         $mpdf->WriteHTML($html);
@@ -210,7 +280,9 @@ class PdfGenerator
 
         $binary = base64_decode(strtr(trim($signature), [' ' => '+', "\n" => '', "\r" => '']), true);
 
-        if (false === $binary || '' === $binary) {
+        // Only embed a genuine PNG (defence in depth; the front-end controller
+        // already validates the submitted signature on the way in).
+        if (false === $binary || !str_starts_with($binary, "\x89PNG\r\n\x1a\n")) {
             return '';
         }
 

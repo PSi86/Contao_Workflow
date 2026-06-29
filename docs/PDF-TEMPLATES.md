@@ -1,11 +1,10 @@
-# PDF-Vorlagen: Syntax, Variablen & `.docm`-Import
+# PDF-Vorlagen: Syntax & Variablen
 
-Wie man **Master-** (Briefkopf) und **Body-Vorlagen** für die PDF-Ausgabe erstellt –
-**manuell** (Syntax + Variablen + externe Links) und **reproduzierbar aus einem
-Word-`.docm`** über einen lokalen Konverter.
+Wie man **Master-** (Briefpapier) und **Body-Vorlagen** für die PDF-Ausgabe **manuell**
+erstellt: Vorlagen-Syntax, verfügbare Variablen und mPDF-Regeln.
 
-Architektur (Details: [../../ANLEITUNG.md](../../ANLEITUNG.md) Abschnitt 2b/8):
-ein **Master** liefert Briefkopf/Logo/Unterschrift/Footer + PDF-Variablen, ein
+Architektur (Details: [ANLEITUNG.md](ANLEITUNG.md) Abschnitt 2b/8):
+ein **Master** liefert Briefpapier (Kopf/Fuß, Logo, Unterschrift, Footer) + PDF-Variablen, ein
 **Body** liefert den Brieftext. PDF = Master umschließt Body.
 
 ---
@@ -43,9 +42,29 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->logoSrc` | absoluter Dateipfad des Logos (oder `''`) |
 | `$this->signatureSrc` | absoluter Dateipfad der Unterschrift (oder `''`) |
 | `$this->signerName` | Name für die Unterschriftszeile |
-| `$this->ort` | Ort (aus PDF-Variable `Ort`) |
-| `$this->datum` | Antwortdatum `TT.MM.JJJJ` |
-| `$this->footer` | Fußzeile (aus PDF-Variable `Footer`) |
+| `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
+| `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
+| `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (Beispiel-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
+| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Jahr']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
+
+> Das mitgelieferte **`pdf_master`** ist ein neutraler Beispiel-Briefkopf (Musterverein): blaue Kopfzeile + Logo + Linie und
+> eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
+> `<sethtmlpageheader>/<sethtmlpagefooter>`). Kopf-/Fußzeilentext ist hier **fest** im Template.
+> Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende Seitenränder; diese setzt
+> `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die Unterschriftszeile ist
+> gespiegelt (Wert über der Linie, Label darunter).
+
+> **Generischer Master `pdf_master_generic`** (organisationsneutral): identisches Layout, aber
+> **aller** Kopf-/Fußzeilentext kommt aus den PDF-Variablen des Briefpapiers, nichts ist fest
+> verdrahtet:
+> - `HeaderLine` – Absenderzeile über der Linie
+> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig** (eine Zeile je Eingabezeile;
+>   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
+> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##var_jahr##` …)
+>
+> Beispiel-Briefpapier dafür: ein Briefpapier mit Layout-Vorlage `pdf_master_generic`; die
+> Werte werden beim Auswählen des Templates aus
+> `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']` vorgeschlagen.
 
 ### Body-Vorlage (`pdf_body_*`)
 | Variable | Inhalt |
@@ -60,9 +79,12 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 
 ### Einfacher Brief (Letter-Modus, ganz ohne Datei)
 Bei „Einfacher Brief" steht im Workflow nur die gemeinsame **Überschrift**; die **Brieftexte**
-werden als **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter im Text: `##Spaltenname##`
-(jede Quellspalte inkl. Antwortfelder), `##Jahr##` / `##Verein##` … (Master-Variablen),
-`##datum##`, `##email##`.
+werden als **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
+E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
+kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
+`##data_davon_spende##`), **`##var_<slug>##`** für Master-Variablen (`##var_jahr##`,
+`##var_verein##`), dazu `##email##`. (Im PDF gilt zusätzlich der Rohspaltenname `##Spalte##`
+als Alias; in Mails nur die kanonische Form.)
 
 > So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Antwortfelds.
 > Die Regel-Engine prüft die Regeln der Reihe nach gegen die gespeicherten Werte; die erste
@@ -98,8 +120,8 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 1. Datei `pdf_body_xyz.html5` anlegen (Helfer-Kopf wie oben, dann der Inhalt – **kein**
    Logo/Unterschrift, das liefert der Master). Vorlage zum Abschauen:
    [`../contao/templates/pdf_body_verzicht.html5`](../contao/templates/pdf_body_verzicht.html5).
-2. Nach `contao-app/templates/` (lokal) bzw. produktiv per FTP in `templates/` legen.
-   Name **muss mit `pdf_body_`** beginnen → erscheint automatisch in der Auswahl.
+2. In den **`templates/`**-Ordner des Projekts legen (produktiv per FTP). Name **muss
+   mit `pdf_body_`** beginnen → erscheint automatisch in der Auswahl.
 
 **Master-Vorlage (selten nötig):**
 1. Datei `pdf_master_xyz.html5` anlegen (nutzt `bodyHtml`, `logoSrc`, `signatureSrc`,
@@ -107,56 +129,18 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
    [`../contao/templates/pdf_master.html5`](../contao/templates/pdf_master.html5).
 2. Nach `templates/` legen (Name beginnt mit `pdf_master`).
 3. Bietet das Layout feste Variablen, in `contao/config/config.php` unter
-   `$GLOBALS['TL_TRAINER_PDF_VARS']` einen Eintrag
+   `$GLOBALS['TL_WORKFLOW_PDF_VARS']` einen Eintrag
    `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
-   Briefkopf automatisch vorgeschlagen.
+   Briefpapier automatisch vorgeschlagen.
+
+> **Eine Mailmerge-Vorlage (`.docm`) als Ausgangspunkt?** Ein lokaler Konverter kann aus
+> einer Word-`.docm` ein Body-Gerüst erzeugen – das ist ein **Entwickler-Werkzeug** der
+> lokalen Entwicklungsumgebung und nicht Teil des Bundles.
 
 ---
 
-## 5. `.docm` → Body-Vorlage (lokaler, reproduzierbarer Workflow)
-
-Eine `.docx/.docm`-Mailmerge-Vorlage lässt sich **nicht** direkt zu PDF rendern
-(bräuchte LibreOffice/Word, steht auf dem Server nicht zur Verfügung). Stattdessen
-erzeugt ein **lokaler Konverter** ein **Body-Template-Gerüst** + extrahiert die Bilder.
-Das Gerüst ist ein **Startpunkt** (Text + Felder + Bilder), kein pixelgenaues Ergebnis.
-
-**Ausführen (in DDEV, im Projekt-Root):**
-```powershell
-ddev exec php scripts/docm-to-template.php <pfad-zur.docm> pdf_body_xyz
-```
-(z. B. eine `.docm` zuvor nach `contao-app/files/…` legen und diesen Pfad angeben.)
-
-**Ergebnis:**
-- `scripts/generated/pdf_body_xyz.html5` – das Gerüst (Überschrift → `<h1>`, Absätze →
-  `<p>`, jedes `MERGEFIELD` → `<?= $esc($d('Spalte')) ?>`, Unterstriche im Feldnamen
-  werden zu Leerzeichen).
-- `scripts/generated/pdf_body_xyz-media/` – die eingebetteten Bilder (Logo …).
-- eine Liste der erkannten Felder.
-
-**Nacharbeiten (Pflicht):**
-1. Briefkopf-/Unterschrift-/„Ort, Datum"-Zeilen entfernen (liefert der Master).
-2. Datumsspalten mit `$fmtDate(...)` umschließen, z. B.
-   `<?= $esc($fmtDate($d('Geburtsdatum'))) ?>`.
-3. Feste Werte (Verein, Jahr) durch `$x('Verein')` / `$x('Jahr')` ersetzen und als
-   PDF-Variablen am **Master** pflegen.
-4. Prüfen, dass jeder `$d('…')`-Spaltenname **exakt** einer Quelldatei-Spalte entspricht.
-5. Datei nach `templates/` kopieren (Name `pdf_body_*`), Logo in die Dateiverwaltung
-   laden und im **Briefkopf (Master)** als PDF-Logo setzen.
-6. Im Workflow: **PDF-Inhalt = Spezielle Vorlage** → diese Body-Vorlage wählen.
-
-**Beispiel-Output** (aus der TSV-Verzicht-`.docm`):
-```html
-<h1>Verzichtserklärung für Trainer / Übungsleiter / Betreuer …</h1>
-<p>Name <?= $esc($d('Vorname')) ?> <?= $esc($d('Name')) ?> geb. am <?= $esc($d('Geburtsdatum')) ?></p>
-<p>Adresse: <?= $esc($d('Straße')) ?>, <?= $esc($d('PLZ')) ?> <?= $esc($d('Wohnort')) ?></p>
-…
-```
-Die fertig überarbeitete Fassung davon ist `pdf_body_verzicht.html5`.
-
----
-
-## 6. Namens- & Registry-Konventionen
+## 5. Namens- & Registry-Konventionen
 - Body-Vorlagen: Dateiname `pdf_body_*.html5`.
 - Master-Vorlagen: Dateiname `pdf_master*.html5`.
-- PDF-Variablen je Master-Layout: `$GLOBALS['TL_TRAINER_PDF_VARS']` in
+- PDF-Variablen je Master-Layout: `$GLOBALS['TL_WORKFLOW_PDF_VARS']` in
   `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`).

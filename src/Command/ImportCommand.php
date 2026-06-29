@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Command;
+namespace Psimandl\WorkflowBundle\Command;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
-use Psimandl\TrainerWorkflowBundle\Service\SpreadsheetImporter;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -16,8 +16,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'trainer:import',
-    description: 'Imports the configured source file of a trainer workflow into tl_trainer_entry.',
+    name: 'workflow:import',
+    description: 'Imports the configured source file of a workflow into tl_workflow_entry.',
 )]
 class ImportCommand extends Command
 {
@@ -31,7 +31,7 @@ class ImportCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('workflow', InputArgument::REQUIRED, 'The tl_trainer_workflow ID to import.')
+            ->addArgument('workflow', InputArgument::REQUIRED, 'The tl_workflow ID to import.')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Import even if the source file is unchanged.')
         ;
     }

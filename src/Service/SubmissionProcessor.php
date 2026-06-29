@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Processes a submitted form: persists the answers, advances the status to

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Stores generated PDFs outside of the public web root.
  *
- * Files live under %kernel.project_dir%/var/trainer_pdfs/<workflowId>/<token>.pdf
+ * Files live under %kernel.project_dir%/var/workflow_pdfs/<workflowId>/<token>.pdf
  * and are never directly reachable; they are streamed through authenticated
  * backend routes only.
  */
@@ -24,7 +24,7 @@ class PdfStorage
 
     public function getBaseDir(): string
     {
-        return $this->projectDir.'/var/trainer_pdfs';
+        return $this->projectDir.'/var/workflow_pdfs';
     }
 
     public function getWorkflowDir(int $workflowId): string
@@ -33,17 +33,52 @@ class PdfStorage
     }
 
     /**
-     * Stores the PDF bytes and returns the path relative to the project dir.
+     * Stores the PDF bytes under a configurable base name (sanitized; the entry
+     * token is the fallback) and returns the project-relative path. On collision
+     * with another entry's file a short token is appended; re-generating the same
+     * entry overwrites its own existing file (existingRelativePath).
      */
-    public function store(int $workflowId, string $token, string $pdfContents): string
+    public function store(int $workflowId, string $baseName, string $token, string $pdfContents, string $existingRelativePath = ''): string
     {
         $dir = $this->getWorkflowDir($workflowId);
         $this->filesystem->mkdir($dir);
 
-        $absolute = $dir.'/'.$token.'.pdf';
-        $this->filesystem->dumpFile($absolute, $pdfContents);
+        // Re-generation: overwrite the entry's own file (must live in this dir).
+        if ('' !== $existingRelativePath) {
+            $absExisting = $this->getAbsolutePath($existingRelativePath);
 
-        return 'var/trainer_pdfs/'.$workflowId.'/'.$token.'.pdf';
+            if (str_starts_with($absExisting, $dir.'/')) {
+                $this->filesystem->dumpFile($absExisting, $pdfContents);
+
+                return $existingRelativePath;
+            }
+        }
+
+        $name = $this->uniqueName($dir, '' !== $baseName ? $baseName : $token, $token);
+        $this->filesystem->dumpFile($dir.'/'.$name.'.pdf', $pdfContents);
+
+        return 'var/workflow_pdfs/'.$workflowId.'/'.$name.'.pdf';
+    }
+
+    /**
+     * Returns a file base name (without extension) that does not yet exist in the
+     * directory, appending an increasingly long token suffix on collision.
+     */
+    private function uniqueName(string $dir, string $base, string $token): string
+    {
+        if (!$this->filesystem->exists($dir.'/'.$base.'.pdf')) {
+            return $base;
+        }
+
+        for ($len = 4; $len <= \strlen($token); $len += 2) {
+            $candidate = $base.'_'.substr($token, 0, $len);
+
+            if (!$this->filesystem->exists($dir.'/'.$candidate.'.pdf')) {
+                return $candidate;
+            }
+        }
+
+        return $base.'_'.$token;
     }
 
     public function getAbsolutePath(string $relativePath): string

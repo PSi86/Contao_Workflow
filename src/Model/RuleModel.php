@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Model;
+namespace Psimandl\WorkflowBundle\Model;
 
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 
 /**
- * Reads and writes tl_trainer_rule (a conditional PDF body selection rule).
+ * Reads and writes tl_workflow_rule (a conditional PDF body selection rule).
  *
  * Rules apply in letter mode only. They are evaluated in sorting order; the first
  * rule whose conditions all match provides the letter body. A rule flagged as
  * "isDefault" always matches and acts as the "Standardtext"/else case (place last).
  *
  * @property int    $id
- * @property int    $pid        Workflow id (tl_trainer_workflow.id).
+ * @property int    $pid        Workflow id (tl_workflow.id).
  * @property int    $sorting    Priority (lower = checked first).
  * @property int    $tstamp
  * @property string $title      Optional rule label.
@@ -26,7 +26,7 @@ use Contao\StringUtil;
  */
 class RuleModel extends Model
 {
-    protected static $strTable = 'tl_trainer_rule';
+    protected static $strTable = 'tl_workflow_rule';
 
     /**
      * @return Collection<RuleModel>|array<RuleModel>|null

@@ -2,17 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\EventListener\DataContainer;
+namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\DataContainer;
 use Contao\Input;
 use Contao\StringUtil;
-use Psimandl\TrainerWorkflowBundle\Model\RuleModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Contao\System;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
+use Psimandl\WorkflowBundle\Model\RuleModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
  * Presentational, option and validation callbacks for the answer-field
- * (tl_trainer_question) and PDF-rule (tl_trainer_rule) child tables.
+ * (tl_workflow_question) and PDF-rule (tl_workflow_rule) child tables.
  *
  * Must stay free of constructor dependencies: the MultiColumnWizard and the
  * dcaWizard callbacks resolve this class via System::importStatic(), which
@@ -20,6 +23,9 @@ use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
  */
 class AnswerConfigListener
 {
+    /** @var array<int, array<int, string>> per-request cache of source headers by workflow id */
+    private static array $headerCache = [];
+
     /**
      * Renders one answer-field row in the workflow's child view.
      *
@@ -29,7 +35,7 @@ class AnswerConfigListener
     {
         $label = StringUtil::specialchars((string) ($row['label'] ?? ''));
         $type = (string) ($row['type'] ?? '');
-        $typeLabel = $GLOBALS['TL_LANG']['tl_trainer_question']['typeOptions'][$type] ?? $type;
+        $typeLabel = $GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'][$type] ?? $type;
         $storage = StringUtil::specialchars((string) ($row['storageField'] ?? ''));
 
         return sprintf(
@@ -38,6 +44,28 @@ class AnswerConfigListener
             StringUtil::specialchars((string) $typeLabel),
             $storage,
         );
+    }
+
+    /**
+     * onload_callback for tl_workflow_question: the "Aktuelle Zeit" field is
+     * filled automatically on submission, so "Pflichtfeld" is meaningless –
+     * remove it from the edit palette for that type. Type changes
+     * (submitOnChange) re-run this callback.
+     */
+    public function hideMandatoryForCurrentTime(DataContainer $dc): void
+    {
+        if (!$dc->id) {
+            return;
+        }
+
+        $question = QuestionModel::findByPk((int) $dc->id);
+
+        if (null === $question || 'currentTime' !== (string) $question->type) {
+            return;
+        }
+
+        $palette = &$GLOBALS['TL_DCA']['tl_workflow_question']['palettes']['default'];
+        $palette = str_replace(',mandatory', '', (string) $palette);
     }
 
     /**
@@ -50,11 +78,11 @@ class AnswerConfigListener
     public function renderRulesList(array $records, string $id, object $widget): string
     {
         if ([] === $records) {
-            return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_trainer_workflow']['rulesEmpty'] ?? '')).'</p>';
+            return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] ?? '')).'</p>';
         }
 
-        $hLabel = $GLOBALS['TL_LANG']['tl_trainer_rule']['title'][0] ?? 'Bezeichnung';
-        $hCond = $GLOBALS['TL_LANG']['tl_trainer_rule']['conditions'][0] ?? 'Bedingung';
+        $hLabel = $GLOBALS['TL_LANG']['tl_workflow_rule']['title'][0] ?? 'Bezeichnung';
+        $hCond = $GLOBALS['TL_LANG']['tl_workflow_rule']['conditions'][0] ?? 'Bedingung';
 
         $body = '';
         $defaultCount = 0;
@@ -63,14 +91,14 @@ class AnswerConfigListener
             $title = trim((string) ($row['title'] ?? ''));
 
             if ('' === $title) {
-                $title = ($GLOBALS['TL_LANG']['tl_trainer_rule']['untitled'] ?? 'Rule').' '.(int) ($row['id'] ?? 0);
+                $title = ($GLOBALS['TL_LANG']['tl_workflow_rule']['untitled'] ?? 'Rule').' '.(int) ($row['id'] ?? 0);
             }
 
             $isDefault = '1' === (string) ($row['isDefault'] ?? '');
 
             if ($isDefault) {
                 ++$defaultCount;
-                $conditionText = '<em>('.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_trainer_rule']['alwaysLabel'] ?? 'Standardtext')).')</em>';
+                $conditionText = '<em>('.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['alwaysLabel'] ?? 'Standardtext')).')</em>';
             } else {
                 $conditionText = $this->formatConditions($row['conditions'] ?? null) ?: '–';
             }
@@ -88,9 +116,9 @@ class AnswerConfigListener
         $warning = '';
 
         if ($defaultCount > 1) {
-            $warning = '<p class="tl_error">'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_trainer_rule']['defaultRuleError'] ?? '')).'</p>';
+            $warning = '<p class="tl_error">'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['defaultRuleError'] ?? '')).'</p>';
         } elseif (0 === $defaultCount) {
-            $warning = '<p class="tl_info">'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_trainer_rule']['defaultMissing'] ?? '')).'</p>';
+            $warning = '<p class="tl_info">'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing'] ?? '')).'</p>';
         }
 
         return $warning.'<table class="tl_listing showColumns"><thead><tr>'
@@ -113,7 +141,7 @@ class AnswerConfigListener
             return '';
         }
 
-        $operators = $GLOBALS['TL_LANG']['tl_trainer_rule']['operatorOptions'] ?? [];
+        $operators = $GLOBALS['TL_LANG']['tl_workflow_rule']['operatorOptions'] ?? [];
         $parts = [];
 
         foreach ($conditions as $condition) {
@@ -122,13 +150,13 @@ class AnswerConfigListener
             $parts[] = trim($condition['field'].' '.$operatorLabel.$value);
         }
 
-        $and = ' '.($GLOBALS['TL_LANG']['tl_trainer_rule']['condAnd'] ?? 'und').' ';
+        $and = ' '.($GLOBALS['TL_LANG']['tl_workflow_rule']['condAnd'] ?? 'und').' ';
 
         return StringUtil::specialchars(implode($and, $parts));
     }
 
     /**
-     * onload_callback for tl_trainer_rule: when the rule is the "Standardtext"
+     * onload_callback for tl_workflow_rule: when the rule is the "Standardtext"
      * (isDefault), remove the conditions field from the edit palette so it is
      * hidden and not validated. Toggling the checkbox (submitOnChange) reloads
      * the form, re-running this callback.
@@ -145,7 +173,7 @@ class AnswerConfigListener
             return;
         }
 
-        $palette = &$GLOBALS['TL_DCA']['tl_trainer_rule']['palettes']['default'];
+        $palette = &$GLOBALS['TL_DCA']['tl_workflow_rule']['palettes']['default'];
         $palette = str_replace(',conditions', '', (string) $palette);
     }
 
@@ -173,8 +201,10 @@ class AnswerConfigListener
     }
 
     /**
-     * Options for a rule condition's "field" column: the storage fields
-     * configured on the rule's parent workflow.
+     * Options for a rule condition's "field" column: the workflow's answer-field
+     * storage columns that actually exist in the source file. A stored value that
+     * is not (or no longer) valid – e.g. on a copy without a source file – is kept
+     * and shown as "Unbekannte Option: …", mirroring the answer-field dropdown.
      *
      * @return array<string, string>
      */
@@ -186,9 +216,75 @@ class AnswerConfigListener
             return [];
         }
 
-        $fields = $workflow->getStorageFields();
+        $headers = $this->sourceHeaders($workflow);
+        $options = [];
 
-        return [] === $fields ? [] : array_combine($fields, $fields);
+        foreach ($workflow->getStorageFields() as $field) {
+            if (\in_array($field, $headers, true)) {
+                $options[$field] = $field;
+            }
+        }
+
+        $label = (string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['unknownOption'] ?? 'Unbekannte Option: %s');
+
+        foreach ($this->currentRuleFields() as $field) {
+            if ('' !== $field && !isset($options[$field])) {
+                $options[$field] = sprintf($label, $field);
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * Source column names of a workflow (cached per request); empty when no
+     * readable source file is configured.
+     *
+     * @return array<int, string>
+     */
+    private function sourceHeaders(WorkflowModel $workflow): array
+    {
+        $id = (int) $workflow->id;
+
+        if (!isset(self::$headerCache[$id])) {
+            $inspector = System::getContainer()->get(SpreadsheetInspector::class);
+            self::$headerCache[$id] = array_keys($inspector->getHeaderOptions($workflow));
+        }
+
+        return self::$headerCache[$id];
+    }
+
+    /**
+     * Field values of the rule currently being edited (raw, incl. incomplete
+     * rows), so an unknown stored value stays visible/selectable.
+     *
+     * @return array<int, string>
+     */
+    private function currentRuleFields(): array
+    {
+        $ruleId = (int) Input::get('id');
+
+        if ($ruleId < 1 || 'create' === Input::get('act')) {
+            return [];
+        }
+
+        $rule = RuleModel::findByPk($ruleId);
+
+        if (null === $rule) {
+            return [];
+        }
+
+        $fields = [];
+
+        foreach (StringUtil::deserialize($rule->conditions, true) as $row) {
+            $field = trim((string) ($row['field'] ?? ''));
+
+            if ('' !== $field) {
+                $fields[] = $field;
+            }
+        }
+
+        return $fields;
     }
 
     /**

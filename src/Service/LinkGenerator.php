@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\PageModel;
 use Contao\StringUtil;
-use Psimandl\TrainerWorkflowBundle\Model\EntryModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\EntryModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Builds the absolute, individual form link for an entry. The link points at
@@ -22,17 +22,25 @@ class LinkGenerator
 
     public function getFormLink(WorkflowModel $workflow, EntryModel $entry): string
     {
-        $this->framework->initialize();
-
-        $pageAdapter = $this->framework->getAdapter(PageModel::class);
-        $page = $pageAdapter->findWithDetails($this->resolvePageId($workflow));
+        $page = $this->resolveFormPage($workflow);
 
         if (null === $page) {
             throw new \RuntimeException('Für den Workflow ist keine gültige Formularseite konfiguriert.');
         }
 
-        // Token is appended as auto_item (e.g. /trainer/<token>).
+        // Token is appended as auto_item (e.g. /workflow/<token>).
         return $page->getAbsoluteUrl('/'.$entry->token);
+    }
+
+    /**
+     * Resolves the workflow's configured form page (or null if none/invalid). Used
+     * both to build links and to tell – before sending – whether sending is possible.
+     */
+    public function resolveFormPage(WorkflowModel $workflow): ?PageModel
+    {
+        $this->framework->initialize();
+
+        return $this->framework->getAdapter(PageModel::class)->findWithDetails($this->resolvePageId($workflow));
     }
 
     private function resolvePageId(WorkflowModel $workflow): int

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\Service;
+namespace Psimandl\WorkflowBundle\Service;
 
 use Doctrine\DBAL\Connection;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Generic status overview for a workflow.
@@ -33,7 +33,7 @@ class WorkflowStatus
     public function countByStatus(int $workflowId): array
     {
         $rows = $this->connection->fetchAllKeyValue(
-            'SELECT status, COUNT(*) AS cnt FROM tl_trainer_entry WHERE pid = ? GROUP BY status',
+            'SELECT status, COUNT(*) AS cnt FROM tl_workflow_entry WHERE pid = ? GROUP BY status',
             [$workflowId],
         );
 
@@ -48,7 +48,7 @@ class WorkflowStatus
     public function countTotal(int $workflowId): int
     {
         return (int) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM tl_trainer_entry WHERE pid = ?',
+            'SELECT COUNT(*) FROM tl_workflow_entry WHERE pid = ?',
             [$workflowId],
         );
     }
@@ -59,7 +59,7 @@ class WorkflowStatus
     public function countCompleted(WorkflowModel $workflow): int
     {
         return (int) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM tl_trainer_entry WHERE pid = ? AND status >= ?',
+            'SELECT COUNT(*) FROM tl_workflow_entry WHERE pid = ? AND status >= ?',
             [(int) $workflow->id, $workflow->getFinalStatus()],
         );
     }
@@ -99,5 +99,28 @@ class WorkflowStatus
         $steps = $workflow->getSteps();
 
         return $steps[$status] ?? (string) $status;
+    }
+
+    /**
+     * Entries whose last mail send failed (any status), so the back end can flag them.
+     *
+     * @return array<int, array{email: string, error: string, at: int}>
+     */
+    public function getSendErrors(int $workflowId): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT email, sendError, sendErrorAt FROM tl_workflow_entry "
+            ."WHERE pid = ? AND sendError IS NOT NULL AND sendError != '' ORDER BY sendErrorAt DESC",
+            [$workflowId],
+        );
+
+        return array_map(
+            static fn (array $row): array => [
+                'email' => (string) $row['email'],
+                'error' => (string) $row['sendError'],
+                'at'    => (int) $row['sendErrorAt'],
+            ],
+            $rows,
+        );
     }
 }

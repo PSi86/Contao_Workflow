@@ -1,9 +1,9 @@
 {
-    "name": "psimandl/contao-trainer-workflow",
+    "name": "psimandl/contao-workflow",
     "type": "contao-bundle",
-    "description": "Contao 5.3 bundle for a token-based trainer query workflow: CSV/XLSX import, individual prefilled forms with signature, PDF generation and admin overview.",
+    "description": "Contao 5.3 bundle for a token-based query workflow: CSV/XLSX import, individual prefilled forms with signature, PDF generation and admin overview.",
     "license": "proprietary",
-    "version": "1.0.0",
+    "version": "2.3.11",
     "authors": [
         {
             "name": "Peter Simandl",
@@ -31,7 +31,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Psimandl\\TrainerWorkflowBundle\\": "src/"
+            "Psimandl\\WorkflowBundle\\": "src/"
         }
     },
     "config": {
@@ -42,6 +42,9 @@
         }
     },
     "extra": {
-        "contao-manager-plugin": "Psimandl\\TrainerWorkflowBundle\\ContaoManager\\Plugin"
+        "contao-manager-plugin": "Psimandl\\WorkflowBundle\\ContaoManager\\Plugin"
+    },
+    "archive": {
+        "exclude": ["/vendor", "/composer.lock", "/.gitignore", "/.phpunit.result.cache", "/dist"]
     }
 }

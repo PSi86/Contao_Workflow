@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Psimandl\TrainerWorkflowBundle\EventListener\DataContainer;
+namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\Controller;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Input;
 use Contao\StringUtil;
-use Psimandl\TrainerWorkflowBundle\Model\MasterModel;
-use Psimandl\TrainerWorkflowBundle\Model\QuestionModel;
-use Psimandl\TrainerWorkflowBundle\Model\WorkflowModel;
-use Psimandl\TrainerWorkflowBundle\Service\SpreadsheetInspector;
+use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
+use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
- * Populates the back end field pickers of tl_trainer_workflow directly from the
+ * Populates the back end field pickers of tl_workflow directly from the
  * uploaded source spreadsheet (sheet names and column headers).
  */
 class WorkflowOptionsListener
@@ -27,7 +27,7 @@ class WorkflowOptionsListener
     /**
      * @return array<int, string>
      */
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.sourceSheet.options')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.sourceSheet.options')]
     public function getSheetOptions(DataContainer $dc): array
     {
         $workflow = $this->getWorkflow($dc);
@@ -40,8 +40,9 @@ class WorkflowOptionsListener
      *
      * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.emailField.options')]
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.inputFields.options')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.emailField.options')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.inputFields.options')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureLocation.options')]
     public function getHeaderOptions(DataContainer $dc): array
     {
         $workflow = $this->getWorkflow($dc);
@@ -51,11 +52,11 @@ class WorkflowOptionsListener
 
     /**
      * Source columns offered as the storage field of an answer field
-     * (tl_trainer_question), resolved from the question's parent workflow.
+     * (tl_workflow_question), resolved from the question's parent workflow.
      *
      * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_question', target: 'fields.storageField.options')]
+    #[AsCallback(table: 'tl_workflow_question', target: 'fields.storageField.options')]
     public function getQuestionStorageOptions(DataContainer $dc): array
     {
         $workflow = WorkflowModel::findByPk($this->resolveQuestionWorkflowId($dc));
@@ -64,11 +65,11 @@ class WorkflowOptionsListener
     }
 
     /**
-     * Body templates ("pdf_body_*") a PDF rule (tl_trainer_rule) can select.
+     * Body templates ("pdf_body_*") a PDF rule (tl_workflow_rule) can select.
      *
      * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_rule', target: 'fields.bodyTemplate.options')]
+    #[AsCallback(table: 'tl_workflow_rule', target: 'fields.bodyTemplate.options')]
     public function getRuleBodyTemplateOptions(): array
     {
         return Controller::getTemplateGroup('pdf_body_');
@@ -77,7 +78,7 @@ class WorkflowOptionsListener
     /**
      * Pre-fills the steps when empty (new workflow), so the field is not blank.
      */
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.steps.load')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.steps.load')]
     public function defaultSteps(mixed $value): mixed
     {
         return [] === StringUtil::deserialize($value, true)
@@ -91,23 +92,55 @@ class WorkflowOptionsListener
      *
      * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.pdfBodyTemplate.options')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.pdfBodyTemplate.options')]
     public function getBodyTemplateOptions(): array
     {
         return Controller::getTemplateGroup('pdf_body_');
     }
 
     /**
-     * Pre-selects the first available master ("Briefkopf") on a new workflow.
+     * Source columns of the workflow's date / "Aktuelle Zeit" answer fields, used
+     * as the printed signature date in the PDF (storage column => label).
+     *
+     * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_workflow', target: 'fields.master.load')]
+    #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureDate.options')]
+    public function getSignatureDateOptions(DataContainer $dc): array
+    {
+        $workflow = $this->getWorkflow($dc);
+
+        if (null === $workflow) {
+            return [];
+        }
+
+        $fields = [];
+
+        foreach ($workflow->getQuestions() as $question) {
+            if (!\in_array((string) $question->type, ['date', 'currentTime'], true)) {
+                continue;
+            }
+
+            $field = trim((string) $question->storageField);
+
+            if ('' !== $field) {
+                $fields[$field] = $field.' ('.(string) $question->label.')';
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Pre-selects the first available master ("Briefpapier") on a new workflow.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'fields.master.load')]
     public function preselectMaster(mixed $value): mixed
     {
         if ((int) $value > 0) {
             return $value;
         }
 
-        $master = MasterModel::findBy([], [], ['order' => 'id', 'limit' => 1]);
+        $master = MasterModel::findAll(['order' => 'id', 'limit' => 1]);
 
         return null !== $master ? (int) $master->id : $value;
     }
@@ -117,7 +150,7 @@ class WorkflowOptionsListener
      *
      * @return array<string, string>
      */
-    #[AsCallback(table: 'tl_trainer_master', target: 'fields.masterTemplate.options')]
+    #[AsCallback(table: 'tl_workflow_master', target: 'fields.masterTemplate.options')]
     public function getMasterTemplateOptions(): array
     {
         return Controller::getTemplateGroup('pdf_master');
@@ -125,10 +158,10 @@ class WorkflowOptionsListener
 
     /**
      * Pre-fills a master's "PDF-Variablen" with the variables declared for the
-     * selected master template – see $GLOBALS['TL_TRAINER_PDF_VARS']. Existing
+     * selected master template – see $GLOBALS['TL_WORKFLOW_PDF_VARS']. Existing
      * values are preserved; only missing keys are added.
      */
-    #[AsCallback(table: 'tl_trainer_master', target: 'fields.pdfData.load')]
+    #[AsCallback(table: 'tl_workflow_master', target: 'fields.pdfData.load')]
     public function suggestMasterPdfData(mixed $value, DataContainer $dc): mixed
     {
         if (!$dc->id) {
@@ -141,7 +174,7 @@ class WorkflowOptionsListener
             return $value;
         }
 
-        $registry = $GLOBALS['TL_TRAINER_PDF_VARS'] ?? [];
+        $registry = $GLOBALS['TL_WORKFLOW_PDF_VARS'] ?? [];
         $declared = $registry[$master->getMasterTemplate()] ?? [];
 
         if ([] === $declared) {
