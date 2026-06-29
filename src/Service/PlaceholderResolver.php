@@ -10,18 +10,30 @@ namespace Psimandl\WorkflowBundle\Service;
  *
  * Canonical tokens (identical everywhere, Notification-Center safe):
  *   ##data_<slug>##  every data column (source columns incl. stored answer values)
- *   ##var_<slug>##   every master/letterhead variable (Jahr, Verein, …)
+ *   ##letterhead_<slug>##   every master/letterhead variable (Jahr, Verein, …)
  *   ##email##        recipient address
  *   ##workflow_title##
  *
- * The <slug> is the lower-cased column/variable name with every non
- * [A-Za-z0-9_] character replaced by "_" (e.g. "davon Spende" -> "davon_spende").
- * In PDFs the raw column/variable name (##Davon Spende##) is additionally
- * accepted as a backwards-compatible alias; mails only use the canonical form
- * because the Notification Center token names may not contain spaces.
+ * The <slug> is the column/variable name with the common German characters
+ * transliterated (ä->ae, ß->ss …), every remaining non [A-Za-z0-9_] character
+ * replaced by "_" and the result lower-cased (e.g. "davon Spende" ->
+ * "davon_spende"). This is the only accepted spelling – there are no raw-name
+ * aliases, so a token is always a known prefix (data_/letterhead_/text_) or a
+ * known fixed token, in every context.
  */
 class PlaceholderResolver
 {
+    /**
+     * Common German characters transliterated into ASCII so slugs (and file
+     * names) stay readable (e.g. "Tätigkeit" -> "taetigkeit", "Straße" ->
+     * "strasse").
+     */
+    private const TRANSLITERATION = [
+        'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
+        'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue',
+        'ß' => 'ss',
+    ];
+
     /**
      * Canonical, Notification-Center-safe tokens (name => raw value, no ## marks).
      *
@@ -34,11 +46,18 @@ class PlaceholderResolver
     {
         $tokens = [];
 
+        // First-wins on a slug collision: two columns/variables that normalize to
+        // the same slug would be ambiguous, so only the first claims the token and
+        // any later one is not reachable via ##data_*## / ##letterhead_*## (its value is
+        // still stored and exported under its raw column name). slugCollisions()
+        // surfaces this to the user at import time.
         foreach ($data as $key => $value) {
-            $tokens['data_'.$this->normalize((string) $key)] = (string) $value;
+            $name = 'data_'.$this->normalize((string) $key);
+            $tokens[$name] ??= (string) $value;
         }
         foreach ($vars as $key => $value) {
-            $tokens['var_'.$this->normalize((string) $key)] = (string) $value;
+            $name = 'letterhead_'.$this->normalize((string) $key);
+            $tokens[$name] ??= (string) $value;
         }
 
         $tokens['email'] = $email;
@@ -48,39 +67,41 @@ class PlaceholderResolver
     }
 
     /**
-     * "##token##" => value map for replacing placeholders in a PDF text. Contains
-     * the canonical tokens plus the raw-name aliases. Values are passed through
-     * $esc so they are safe to embed in the (HTML) document.
+     * Finds names that collide on the same slug. Returns slug => the colliding
+     * original names in input order, only for groups with more than one name.
+     * The first name of each group keeps the token (see canonicalTokens()), the
+     * rest are not reachable via their placeholder.
+     *
+     * @param array<int|string, string> $names
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function slugCollisions(array $names): array
+    {
+        $bySlug = [];
+
+        foreach ($names as $name) {
+            $bySlug[$this->normalize((string) $name)][] = (string) $name;
+        }
+
+        return array_filter($bySlug, static fn (array $group): bool => \count($group) > 1);
+    }
+
+    /**
+     * "##token##" => value map for replacing placeholders in a PDF text. Values
+     * are passed through $esc so they are safe to embed in the (HTML) document.
      *
      * @param array<string, mixed> $data
      * @param array<string, mixed> $vars
      * @param callable(string):string $esc
      * @param array<string, string> $extraTokens additional canonical tokens
-     *                                           (raw values, e.g. ##stmt_*##)
+     *                                           (raw values, e.g. ##text_*##)
      *
      * @return array<string, string>
      */
     public function pdfTokenMap(array $data, array $vars, string $email, string $workflowTitle, callable $esc, array $extraTokens = []): array
     {
-        $map = [];
-
-        foreach ($this->canonicalTokens($data, $vars, $email, $workflowTitle) as $name => $value) {
-            $map['##'.$name.'##'] = $esc($value);
-        }
-
-        // Backwards-compatible raw-name aliases (PDF only).
-        foreach ($data as $key => $value) {
-            $map['##'.$key.'##'] = $esc((string) $value);
-        }
-        foreach ($vars as $key => $value) {
-            $map['##'.$key.'##'] = $esc((string) $value);
-        }
-
-        foreach ($extraTokens as $name => $value) {
-            $map['##'.$name.'##'] = $esc((string) $value);
-        }
-
-        return $map;
+        return $this->tokenMap($data, $vars, $email, $workflowTitle, $esc, $extraTokens);
     }
 
     /**
@@ -99,40 +120,52 @@ class PlaceholderResolver
 
     /**
      * Replaces ##tokens## with their raw (unescaped) values – for non-HTML
-     * contexts such as the PDF file name. Supports canonical + raw-name aliases.
+     * contexts such as the PDF file name, the heading and the statement templates.
      *
      * @param array<string, mixed> $data
      * @param array<string, mixed> $vars
      */
     public function fill(string $text, array $data, array $vars, string $email, string $workflowTitle): string
     {
-        $map = [];
+        return strtr($text, $this->tokenMap($data, $vars, $email, $workflowTitle, static fn (string $value): string => $value));
+    }
 
-        foreach ($this->canonicalTokens($data, $vars, $email, $workflowTitle) as $name => $value) {
-            $map['##'.$name.'##'] = $value;
-        }
-        foreach ($data as $key => $value) {
-            $map['##'.$key.'##'] = (string) $value;
-        }
-        foreach ($vars as $key => $value) {
-            $map['##'.$key.'##'] = (string) $value;
-        }
-
-        return strtr($text, $map);
+    public function transliterate(string $value): string
+    {
+        return strtr($value, self::TRANSLITERATION);
     }
 
     public function normalize(string $name): string
     {
-        // Transliterate the common German characters first so the slugs stay
-        // readable (e.g. "Tätigkeit" -> "taetigkeit", "Straße" -> "strasse").
-        $name = strtr($name, [
-            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
-            'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue',
-            'ß' => 'ss',
-        ]);
-
+        $name = $this->transliterate($name);
         $name = preg_replace('/[^A-Za-z0-9_]+/', '_', $name) ?? '';
 
         return strtolower(trim($name, '_'));
+    }
+
+    /**
+     * Shared "##token##" => value map builder. Every value (canonical and extra)
+     * runs through $esc; pass an identity callback for raw output.
+     *
+     * @param array<string, mixed>    $data
+     * @param array<string, mixed>    $vars
+     * @param callable(string):string $esc
+     * @param array<string, string>   $extraTokens
+     *
+     * @return array<string, string>
+     */
+    private function tokenMap(array $data, array $vars, string $email, string $workflowTitle, callable $esc, array $extraTokens = []): array
+    {
+        $map = [];
+
+        foreach ($this->canonicalTokens($data, $vars, $email, $workflowTitle) as $name => $value) {
+            $map['##'.$name.'##'] = $esc($value);
+        }
+
+        foreach ($extraTokens as $name => $value) {
+            $map['##'.$name.'##'] = $esc((string) $value);
+        }
+
+        return $map;
     }
 }

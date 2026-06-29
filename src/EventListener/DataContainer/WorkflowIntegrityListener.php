@@ -13,6 +13,7 @@ use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
+use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
 /**
@@ -32,6 +33,7 @@ class WorkflowIntegrityListener
     public function __construct(
         private readonly WorkflowValidator $validator,
         private readonly PlaceholderResolver $placeholders,
+        private readonly SpreadsheetInspector $inspector,
         private readonly string $projectDir,
     ) {
     }
@@ -95,8 +97,41 @@ class WorkflowIntegrityListener
     }
 
     /**
+     * Warns when several source columns normalize to the same placeholder slug,
+     * so only the first is reachable via its ##data_<slug>## token (the rest are
+     * ignored, their values still imported/exported). Mirrors the warning shown
+     * at import time, but proactively on the edit page so the ambiguity is visible
+     * before the first import. No source file = no headers = nothing to warn about.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
+    public function warnSlugCollisions(DataContainer $dc): void
+    {
+        if (!$dc->id) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null === $workflow) {
+            return;
+        }
+
+        foreach ($this->placeholders->slugCollisions($this->inspector->getHeaders($workflow)) as $slug => $names) {
+            Message::addInfo(sprintf(
+                'Hinweis: Die Spalten „%s" der Quelldatei ergeben denselben Platzhalter „##data_%s##". '
+                .'Nur „%s" ist darüber erreichbar, die übrigen werden ignoriert (ihre Werte bleiben '
+                .'gespeichert und exportierbar, nur nicht per Platzhalter adressierbar). Bitte die '
+                .'betroffenen Spalten in der Quelldatei eindeutiger benennen.',
+                StringUtil::specialchars(implode('", „', $names)),
+                $slug,
+                StringUtil::specialchars($names[0]),
+            ));
+        }
+    }
+
+    /**
      * Non-blocking warnings for the statement ("Textbaustein") layer:
-     * - ##stmt_*## tokens in the PDF heading or a rule body that match no
+     * - ##text_*## tokens in the PDF heading or a rule body that match no
      *   answer field (typo or removed field would render as literal text),
      * - prefill values in the data that match no option of a choice question
      *   (the form would silently start empty for those entries).
@@ -136,13 +171,13 @@ class WorkflowIntegrityListener
      */
     private function unknownStatementTokens(WorkflowModel $workflow, array $questions): array
     {
-        $valid = ['stmt_all'];
+        $valid = ['text_all'];
 
         foreach ($questions as $question) {
             $field = trim((string) $question->storageField);
 
             if ('' !== $field) {
-                $valid[] = 'stmt_'.$this->placeholders->normalize($field);
+                $valid[] = 'text_'.$this->placeholders->normalize($field);
             }
         }
 
@@ -152,7 +187,7 @@ class WorkflowIntegrityListener
             $texts[] = (string) $rule->getPdfBody();
         }
 
-        preg_match_all('/##(stmt_[a-z0-9_]+)##/i', implode("\n", $texts), $matches);
+        preg_match_all('/##(text_[a-z0-9_]+)##/i', implode("\n", $texts), $matches);
 
         return array_values(array_diff(array_unique(array_map('strtolower', $matches[1])), $valid));
     }

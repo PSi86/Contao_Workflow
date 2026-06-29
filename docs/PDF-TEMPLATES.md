@@ -60,7 +60,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 > - `HeaderLine` – Absenderzeile über der Linie
 > - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig** (eine Zeile je Eingabezeile;
 >   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
-> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##var_jahr##` …)
+> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##letterhead_jahr##` …)
 >
 > Beispiel-Briefpapier dafür: ein Briefpapier mit Layout-Vorlage `pdf_master_generic`; die
 > Werte werden beim Auswählen des Templates aus
@@ -71,7 +71,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 |---|---|
 | `$this->data` | **alle** importierten Spalten **inkl. der gespeicherten Antwortwerte** (assoz.), Zugriff per `$d('Spaltenname')` |
 | `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Jahr')`, `$x('Verein')` … |
-| `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Antwortfelder: `stmt_<speicherfeld-slug>` je Feld + `stmt_all` (alle, in Formular-Reihenfolge), Klartext |
+| `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Antwortfelder: `text_<speicherfeld-slug>` je Feld + `text_all` (alle, in Formular-Reihenfolge), Klartext |
 | `$this->heading` | die Workflow-**Überschrift** (Platzhalter bereits aufgelöst; im Formular identisch sichtbar) |
 | `$this->intro` | der optionale **Einleitungstext** (aufgelöst; im Formular identisch sichtbar) |
 
@@ -88,18 +88,17 @@ Bei „Einfacher Brief" kommen **Überschrift** und **Einleitungstext** aus dem 
 **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
 E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
 kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
-`##data_davon_spende##`), **`##var_<slug>##`** für Master-Variablen (`##var_jahr##`,
-`##var_verein##`), **`##stmt_<speicherfeld>##`** / **`##stmt_all##`** für die
+`##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_jahr##`,
+`##letterhead_verein##`), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
 **Dokument-Texte der Antwortfelder** (die Texte, die der Teilnehmer im Formular sieht – in
-`##stmt_all##` stehen Felder ohne eigenen Dokument-Text zeilenweise als „Beschriftung: Wert",
-Felder mit eigenem Dokument-Text beginnen als eigener Absatz), dazu `##email##`. (Im PDF gilt
-zusätzlich der Rohspaltenname `##Spalte##` als Alias; in Mails nur die kanonische Form. In
-Überschrift/Einleitung/Dateiname sind `##stmt_*##` nicht verfügbar.)
+`##text_all##` stehen Felder ohne eigenen Dokument-Text zeilenweise als „Beschriftung: Wert",
+Felder mit eigenem Dokument-Text beginnen als eigener Absatz), dazu `##email##`. (In
+Überschrift/Einleitung/Dateiname sind `##text_*##` nicht verfügbar.)
 
 > So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Antwortfelds.
 > Die Regel-Engine prüft die Regeln der Reihe nach gegen die gespeicherten Werte; die erste
 > passende liefert den Brieftext, eine Regel **ohne Bedingung** gilt immer (Sonst-Fall).
-> Empfohlenes Muster: der Brieftext besteht aus `##stmt_all##` (alle Antworten, wörtlich wie im
+> Empfohlenes Muster: der Brieftext besteht aus `##text_all##` (alle Antworten, wörtlich wie im
 > Formular) plus Rahmen-Sätzen je Regel – so kann kein Antwortfeld im PDF vergessen werden.
 
 ---

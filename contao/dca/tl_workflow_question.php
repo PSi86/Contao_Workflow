@@ -153,7 +153,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             ],
             'sql' => 'blob NULL',
         ],
-        // Statement template of a value-based question; ##value## marks the
+        // Statement template of a value-based question; ##answer## marks the
         // entered value, other ##tokens## resolve as usual. Empty = "<label>: <value>".
         'pdfStatement' => [
             'exclude'   => true,

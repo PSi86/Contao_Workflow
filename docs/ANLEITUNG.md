@@ -79,7 +79,7 @@ Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `
    - Verfügbare Tokens: `##email##`, `##link##`, `##workflow_title##`,
      `##attachment##`, `##data_<Spalte>##` (jede importierte Spalte – inkl. der
      gespeicherten Antwortwerte, z. B. `##data_verzicht##`) sowie
-     `##stmt_<Speicherfeld>##` / `##stmt_all##` (die **Dokument-Texte** der
+     `##text_<Speicherfeld>##` / `##text_all##` (die **Dokument-Texte** der
      Antwortfelder, z. B. um in der Ergebnis-Mail die Auswahl wörtlich zu zitieren).
 
 ---
@@ -134,7 +134,7 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 5. **E-Mail-Spalte** wählen (z. B. `eMail`).
 6. **Inhalt (Formular & PDF):** die **Überschrift** und der optionale
    **Einleitungstext** erscheinen **identisch im Formular und im PDF** (oben, vor den
-   Feldern bzw. dem Brieftext). Platzhalter wie `##data_vorname##` oder `##var_verein##`
+   Feldern bzw. dem Brieftext). Platzhalter wie `##data_vorname##` oder `##letterhead_verein##`
    sind erlaubt. So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
 7. **Unterschrift verlangen:** ankreuzen, wenn der Trainer im Formular unterschreiben
    muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option zusätzlich **Datum**
@@ -157,14 +157,14 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         **PDF-Regeln** (Abschnitt 3 b‑2) — so können sie je nach Antwort variieren.
         Platzhalter (überall identisch – PDF, E-Mail, Export): `##data_<slug>##` für jede
         Quellspalte inkl. Antwortfelder (z. B. `##data_vorname##`, `##data_verzicht##`),
-        `##var_<slug>##` für Briefkopf-Variablen (z. B. `##var_jahr##`, `##var_verein##`),
-        `##stmt_<speicherfeld>##` / `##stmt_all##` für die **Dokument-Texte der
+        `##letterhead_<slug>##` für Briefkopf-Variablen (z. B. `##letterhead_jahr##`, `##letterhead_verein##`),
+        `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte der
         Antwortfelder** (Abschnitt 3 b‑3), dazu `##email##`.
       - **Spezielle Vorlage** (detailliertes Layout): **Body-Vorlage** aus der **Auswahlliste**
         wählen (alle `pdf_body_*`-Vorlagen erscheinen automatisch). Die Vorlage **enthält ihre
         eigene Logik** → **PDF-Regeln entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
     - Header (Logo), Unterschrift und Footer kommen aus der gewählten **Briefkopf-Vorlage**;
-      die Briefkopf-Variablen (`##var_jahr##`, `##var_verein##`, …) stammen ebenfalls von dort.
+      die Briefkopf-Variablen (`##letterhead_jahr##`, `##letterhead_verein##`, …) stammen ebenfalls von dort.
 11. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
 12. **Speichern.**
 
@@ -173,7 +173,7 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 Im Abschnitt **Antwortfelder** mit **„Neu"** ein Feld anlegen, mit **„Bearbeiten"** im Dialog
 öffnen. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
 links in jeder Zeile ziehen – die neue Reihenfolge wird sofort gespeichert und gilt für
-Formular **und** `##stmt_all##` im PDF). Pro Feld:
+Formular **und** `##text_all##` im PDF). Pro Feld:
 - **Beschriftung** (die Frage im Formular),
 - **Typ:** Freitext (ein-/mehrzeilig), **Zahl**, Datum, Dropdown, Radio-Buttons,
   Checkboxen (Mehrfachauswahl) oder **Aktuelle Zeit**,
@@ -193,8 +193,8 @@ Formular **und** `##stmt_all##` im PDF). Pro Feld:
   (und im Formular als Hinweis „So erscheint dies im Dokument" live angezeigt wird) –
   siehe Abschnitt 3 b‑3:
   - **Wert-Typen** (Freitext, Zahl, Datum, Aktuelle Zeit) haben **ein** Feld
-    „Dokument-Text"; `##value##` steht für den eingegebenen Wert
-    (z. B. `Ich spende ##value## € an den ##var_verein##.`).
+    „Dokument-Text"; `##answer##` steht für den eingegebenen Wert
+    (z. B. `Ich spende ##answer## € an den ##letterhead_verein##.`).
     Leer = „Beschriftung: Wert".
   - **Auswahl-Typen** (Dropdown, Radio, Checkboxen) pflegen den Dokument-Text
     **je Option** (dritte Spalte der Optionen-Tabelle). Leer = der sichtbare
@@ -226,8 +226,8 @@ Bei **PDF-Inhalt = Einfacher Brief** stehen **alle Brieftexte** als Regeln in **
   alle UND-verknüpft; Operatoren u. a. =, ≠, <, ≤, >, ≥, enthält, ist leer).
 - **Brieftext** mit `##Platzhaltern##` (Überschrift/Einleitung/Logo/Unterschrift/Footer
   kommen aus Workflow bzw. Briefkopf). Empfohlen: den Brief aus den **Dokument-Texten der
-  Antwortfelder** zusammensetzen – `##stmt_<speicherfeld>##` für ein einzelnes Feld,
-  `##stmt_all##` für **alle** Felder (Abschnitt 3 b‑3).
+  Antwortfelder** zusammensetzen – `##text_<speicherfeld>##` für ein einzelnes Feld,
+  `##text_all##` für **alle** Felder (Abschnitt 3 b‑3).
 
 Die Liste zeigt je Regel **Bezeichnung und Bedingung** (bzw. „(Standardtext)"). Geprüft wird
 **von oben nach unten**; die **erste passende** Regel liefert den Text.
@@ -239,14 +239,14 @@ und auswählt, steht wörtlich im PDF** – das Dokument enthält keine Überras
 
 **Die Dokument-Texte (Textbausteine)** sind die gemeinsame Textquelle für Formular und PDF:
 - Jedes Antwortfeld hat einen Dokument-Text (Abschnitt 3 b‑1): bei Auswahlfeldern je Option
-  (leer = der sichtbare Options-Text gilt), bei Wert-Feldern ein Satz mit `##value##`
+  (leer = der sichtbare Options-Text gilt), bei Wert-Feldern ein Satz mit `##answer##`
   (leer = „Beschriftung: Wert").
 - Im **Formular** wird der Dokument-Text unter dem Feld live angezeigt
   („So erscheint dies im Dokument: …"), sobald ein eigener Text gepflegt ist.
 - Im **PDF-Text** (und in Mails) stehen sie als Platzhalter bereit:
-  - `##stmt_<speicherfeld>##` – der Dokument-Text **eines** Felds
-    (z. B. `##stmt_entscheidung##`),
-  - `##stmt_all##` – die Dokument-Texte **aller** Felder in Formular-Reihenfolge.
+  - `##text_<speicherfeld>##` – der Dokument-Text **eines** Felds
+    (z. B. `##text_entscheidung##`),
+  - `##text_all##` – die Dokument-Texte **aller** Felder in Formular-Reihenfolge.
     So kann **kein konfiguriertes Antwortfeld im PDF vergessen werden**. Formatierung:
     Felder ohne eigenen Dokument-Text („Beschriftung: Wert") stehen zeilenweise
     untereinander; vor jedem Feld **mit** eigenem Dokument-Text beginnt ein
@@ -259,22 +259,22 @@ Dankes-Satz nur bei Zustimmung). Verbindungsglied ist das **Speicherfeld**:
 2. Deren **Wert** (z. B. `ja`) wird in das **Speicherfeld** geschrieben (z. B. `Entscheidung`).
 3. Beim PDF-Bauen prüft die **Regel-Engine** die Regeln der Reihe nach gegen die gespeicherten
    Werte. Die **erste passende Regel** liefert den Brieftext (die als **Standardtext** markierte
-   Regel trifft immer). Die `##stmt_*##`-Platzhalter darin werden mit den Dokument-Texten
+   Regel trifft immer). Die `##text_*##`-Platzhalter darin werden mit den Dokument-Texten
    der tatsächlich gegebenen Antworten gefüllt.
 
 **Beispiel-Einrichtung (komplett im Backend, ohne Vorlagen-Datei – so ist die Demo gebaut):**
 - **Antwortfeld** „Ihre Entscheidung" (Radio, Speicherfeld **`Entscheidung`**) mit zwei
   Optionen, deren **Dokument-Texte** vollständige Sätze sind:
   - „Einverstanden"→`ja`, Dokument-Text *„Hiermit erkläre ich mein Einverständnis gegenüber
-    dem ##var_verein## für das Jahr ##var_jahr##."*
-  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##var_jahr## erteile ich …
+    dem ##letterhead_verein## für das Jahr ##letterhead_jahr##."*
+  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##letterhead_jahr## erteile ich …
     kein Einverständnis."*
 - **PDF-Regeln:**
   1. „Einverständnis erteilt" — Bedingung **`Entscheidung` ist gleich `ja`** →
-     Brieftext `##stmt_all##` + „Vielen Dank für Ihre Unterstützung!"
-  2. „Standardtext" — **Standardtext** aktiviert (gilt immer) → Brieftext `##stmt_all##`.
+     Brieftext `##text_all##` + „Vielen Dank für Ihre Unterstützung!"
+  2. „Standardtext" — **Standardtext** aktiviert (gilt immer) → Brieftext `##text_all##`.
 
-→ Der gewählte Satz landet **wörtlich** im PDF (über `##stmt_all##`), die Regel steuert nur
+→ Der gewählte Satz landet **wörtlich** im PDF (über `##text_all##`), die Regel steuert nur
 den Rahmen. **Kein `.html5`-Code nötig.**
 
 **Alternative für komplexe Formulare – Verzweigung in einer Vorlage:** Wenn die Logik zu komplex
@@ -407,8 +407,8 @@ Jedes PDF besteht aus zwei Teilen:
 Im Workflow „PDF-Inhalt = Einfacher Brief" wählen. **Überschrift** und **Einleitungstext**
 stehen im Abschnitt *Inhalt (Formular & PDF)* und erscheinen identisch im Formular und im
 PDF. Die **Brieftexte** werden als **PDF-Regeln** gepflegt – idealerweise aus den
-**Dokument-Texten der Antwortfelder** zusammengesetzt (`##stmt_all##` /
-`##stmt_<speicherfeld>##`, siehe 3 b‑2 / 3 b‑3), ergänzt um `##data_*##`/`##var_*##`.
+**Dokument-Texten der Antwortfelder** zusammengesetzt (`##text_all##` /
+`##text_<speicherfeld>##`, siehe 3 b‑2 / 3 b‑3), ergänzt um `##data_*##`/`##letterhead_*##`.
 Ideal, wenn schnell ein neuer Brief gebraucht wird – **kein Entwickler, kein
 Deployment** nötig.
 
@@ -418,7 +418,7 @@ Für pixelgenaue/komplexe Layouts eine eigene **Body-Vorlage** als Datei anlegen
    die liefert der Master). Verfügbare Variablen im Template: `$this->data`
    (alle Spalten **inkl. der gespeicherten Antwortwerte**), `$this->extra`
    (PDF-Variablen), `$this->statements` (die gerenderten **Dokument-Texte** je
-   Speicherfeld-Slug + `stmt_all`) sowie `$this->heading`/`$this->intro`
+   Speicherfeld-Slug + `text_all`) sowie `$this->heading`/`$this->intro`
    (Überschrift/Einleitungstext, bereits aufgelöst). Die gesamte Verzweigung passiert
    **im Template** auf Basis der Antwortwerte
    (z. B. `$accept = 'ja' === ($this->data['Verzicht'] ?? '')`) — bei

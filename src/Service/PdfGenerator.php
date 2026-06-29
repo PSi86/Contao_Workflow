@@ -38,10 +38,7 @@ class PdfGenerator
      */
     public function generateAndStore(EntryModel $entry, WorkflowModel $workflow): string
     {
-        $this->framework->initialize();
-
-        $html = $this->renderHtml($entry, $workflow);
-        $pdf = $this->renderPdf($html);
+        $pdf = $this->render($entry, $workflow);
 
         $relativePath = $this->pdfStorage->store(
             (int) $workflow->id,
@@ -55,6 +52,18 @@ class PdfGenerator
         $entry->save();
 
         return $relativePath;
+    }
+
+    /**
+     * Renders the PDF for an entry and returns the raw bytes WITHOUT storing it
+     * or touching the entry – used for the back-end preview (the entry may be a
+     * synthetic, non-persisted sample).
+     */
+    public function render(EntryModel $entry, WorkflowModel $workflow): string
+    {
+        $this->framework->initialize();
+
+        return $this->renderPdf($this->renderHtml($entry, $workflow));
     }
 
     /**
@@ -85,10 +94,7 @@ class PdfGenerator
 
     private function sanitizeFileName(string $name): string
     {
-        $name = strtr($name, [
-            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
-            'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue', 'ß' => 'ss',
-        ]);
+        $name = $this->placeholderResolver->transliterate($name);
         $name = preg_replace('/\s+/', '_', $name) ?? '';
         $name = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $name) ?? '';
         $name = trim($name, '_.-');

@@ -16,7 +16,7 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
  * Adds a small placeholder helper (autocomplete) to the workflow's placeholder
- * fields: typing surfaces the available ##data_*## / ##var_*## / ##email## /
+ * fields: typing surfaces the available ##data_*## / ##letterhead_*## / ##email## /
  * ##workflow_title## tokens and filters them as you type. The token list is built
  * per record from the workflow's source columns, answer fields and letterhead
  * variables; the slugs are produced with PlaceholderResolver so every suggestion
@@ -40,7 +40,7 @@ class PlaceholderHelperListener
     {
         $workflow = $dc->id ? WorkflowModel::findByPk((int) $dc->id) : null;
 
-        // No ##stmt_*## tokens here: heading and intro are also shown in the
+        // No ##text_*## tokens here: heading and intro are also shown in the
         // form (before answering), the file name resolves raw values only.
         $this->applyTo('tl_workflow', ['pdfFileName', 'pdfTitle', 'introText'], $workflow, false);
     }
@@ -54,7 +54,7 @@ class PlaceholderHelperListener
     #[AsCallback(table: 'tl_workflow_question', target: 'config.onload')]
     public function enableForQuestion(DataContainer $dc): void
     {
-        // Statements may use ##value## plus the regular tokens, but no ##stmt_*##
+        // Statements may use ##answer## plus the regular tokens, but no ##text_*##
         // (statements do not nest).
         $this->applyTo('tl_workflow_question', ['pdfStatement'], $this->resolveQuestionWorkflow($dc), false);
     }
@@ -138,16 +138,16 @@ class PlaceholderHelperListener
 
                 if ($withStatements) {
                     $hasStatements = true;
-                    $add('stmt_'.$this->placeholders->normalize($field), 'Textbaustein: '.('' !== $label ? $label : $field));
+                    $add('text_'.$this->placeholders->normalize($field), 'Textbaustein: '.('' !== $label ? $label : $field));
                 }
             }
 
             if ($hasStatements) {
-                $add('stmt_all', 'Alle Textbausteine (in Feld-Reihenfolge)');
+                $add('text_all', 'Alle Textbausteine (in Feld-Reihenfolge)');
             }
 
             foreach ($this->masterVars($workflow) as $key) {
-                $add('var_'.$this->placeholders->normalize($key), 'Briefpapier: '.$key);
+                $add('letterhead_'.$this->placeholders->normalize($key), 'Briefpapier: '.$key);
             }
         }
 
@@ -181,7 +181,7 @@ class PlaceholderHelperListener
     }
 
     /**
-     * Variable keys (##var_*##) of the workflow's assigned master: the master's own
+     * Variable keys (##letterhead_*##) of the workflow's assigned master: the master's own
      * key/value pairs, completed with the keys declared for its template.
      *
      * @return array<int, string>

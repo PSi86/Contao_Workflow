@@ -17,6 +17,7 @@ use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
+use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,6 +33,7 @@ class WorkflowFormController extends AbstractFrontendModuleController
         private readonly ContaoFramework $framework,
         private readonly SubmissionProcessor $submissionProcessor,
         private readonly DocumentBodyComposer $bodyComposer,
+        private readonly WorkflowFormView $formView,
         private readonly QuestionWidgetFactory $widgetFactory,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $csrfTokenName,
@@ -89,7 +91,7 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $questions = $workflow->getQuestions();
 
         $template->set('email', $entry->email);
-        $template->set('questions', $this->buildQuestionViews($questions, $workflow, $entry));
+        $template->set('questions', $this->formView->buildQuestionViews($questions, $workflow, $entry));
         $template->set('requireSignature', $workflow->isSignatureRequired());
         $template->set('formId', 'workflow_form_'.$entry->id);
         $template->set('state', 'form');
@@ -109,156 +111,6 @@ class WorkflowFormController extends AbstractFrontendModuleController
         }
 
         return $template->getResponse();
-    }
-
-    /**
-     * @param array<int, QuestionModel> $questions
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildQuestionViews(array $questions, WorkflowModel $workflow, EntryModel $entry): array
-    {
-        $views = [];
-        $data = $entry->getData();
-        $extra = $workflow->getMasterVars();
-        $email = (string) $entry->email;
-
-        foreach ($questions as $question) {
-            // "Aktuelle Zeit" fields flagged hidden never appear in the form –
-            // they are filled automatically on submission.
-            if ($question->isHiddenInForm()) {
-                continue;
-            }
-
-            $storage = trim((string) $question->storageField);
-
-            // The statement parts let the form show exactly the text the
-            // document will contain (live-updated in the browser).
-            $parts = $this->bodyComposer->statementParts($question, $workflow, $data, $extra, $email);
-
-            $options = [];
-
-            foreach ($question->getOptions() as $option) {
-                $option['statement'] = $parts['options'][$option['value']] ?? $option['label'];
-                $options[] = $option;
-            }
-
-            $autoValue = $question->isCurrentTime() ? date('d.m.Y') : '';
-            $readOnly = $question->isReadOnly() && !$question->isCurrentTime();
-            $storedValue = '' !== $storage ? trim((string) ($data[$storage] ?? '')) : '';
-
-            // Static statement for fields the user cannot change (the JS hint
-            // only tracks editable inputs).
-            $staticValue = '' !== $autoValue ? $autoValue : ($readOnly ? $storedValue : '');
-
-            $views[] = [
-                'id'                => (int) $question->id,
-                'label'             => (string) $question->label,
-                'type'              => (string) $question->type,
-                'mandatory'         => !$readOnly && $question->isMandatory(),
-                'multiple'          => $question->isMultiple(),
-                'readOnly'          => $readOnly,
-                'options'           => $options,
-                'autoValue'         => $autoValue,
-                'initial'           => $this->resolveInitialValue($question, $data),
-                // Hint only when a statement was explicitly configured – without
-                // one the visible label/option text counts verbatim anyway.
-                'hasStatement'      => $question->hasExplicitStatement(),
-                'statementTemplate' => $parts['template'],
-                'statement'         => '' !== $staticValue
-                    ? $this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title)
-                    : '',
-            ];
-        }
-
-        return $views;
-    }
-
-    /**
-     * Prefill value of a question from the entry data (Excel source value or a
-     * previously stored answer). Choice values must match a configured option
-     * (exactly, then trimmed/case-insensitively); on no match the prefill is
-     * discarded – never silently invent a selection.
-     *
-     * @param array<string, mixed> $data
-     *
-     * @return string|array<int, string>
-     */
-    private function resolveInitialValue(QuestionModel $question, array $data): string|array
-    {
-        $empty = $question->isMultiple() ? [] : '';
-
-        // Read-only fields always show the stored value; otherwise the prefill
-        // flag decides.
-        if (!$question->isPrefilled() && !$question->isReadOnly()) {
-            return $empty;
-        }
-
-        $storage = trim((string) $question->storageField);
-        $value = '' !== $storage ? trim((string) ($data[$storage] ?? '')) : '';
-
-        if ('' === $value) {
-            return $empty;
-        }
-
-        if ($question->isMultiple()) {
-            $values = [];
-
-            foreach (preg_split('/\s*,\s*/', $value) ?: [] as $single) {
-                $match = $this->matchOption($question, $single);
-
-                if (null !== $match && !\in_array($match, $values, true)) {
-                    $values[] = $match;
-                }
-            }
-
-            return $values;
-        }
-
-        if ($question->hasOptions()) {
-            return $this->matchOption($question, $value) ?? '';
-        }
-
-        // The HTML date input needs ISO format; unparseable values are discarded.
-        if ('date' === (string) $question->type) {
-            return $this->toIsoDate($value);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Canonical option value for a prefill candidate, or null when it matches
-     * no configured option.
-     */
-    private function matchOption(QuestionModel $question, string $value): ?string
-    {
-        $allowed = $question->getAllowedValues();
-
-        if (\in_array($value, $allowed, true)) {
-            return $value;
-        }
-
-        foreach ($allowed as $candidate) {
-            if (0 === strcasecmp(trim($candidate), $value)) {
-                return $candidate;
-            }
-        }
-
-        return null;
-    }
-
-    private function toIsoDate(string $value): string
-    {
-        foreach (['Y-m-d', 'd.m.Y', 'j.n.Y', 'm/d/Y'] as $format) {
-            $date = \DateTime::createFromFormat('!'.$format, $value);
-
-            if ($date instanceof \DateTime) {
-                return $date->format('Y-m-d');
-            }
-        }
-
-        return '';
     }
 
     /**

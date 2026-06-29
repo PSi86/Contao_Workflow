@@ -60,6 +60,7 @@ class ImportCommand extends Command
 
         if ($result['skipped']) {
             $io->warning('Source file unchanged – import skipped (use --force to override).');
+            $this->warnCollisions($io, $result['collisions']);
 
             return Command::SUCCESS;
         }
@@ -72,6 +73,38 @@ class ImportCommand extends Command
             $result['total'],
         ));
 
+        $this->warnCollisions($io, $result['collisions']);
+
         return Command::SUCCESS;
+    }
+
+    /**
+     * Warns about source columns that normalize to the same placeholder slug:
+     * only the first keeps the token, the rest are not addressable via ##data_*##.
+     *
+     * @param array<string, array<int, string>> $collisions slug => colliding names
+     */
+    private function warnCollisions(SymfonyStyle $io, array $collisions): void
+    {
+        if ([] === $collisions) {
+            return;
+        }
+
+        $lines = [];
+
+        foreach ($collisions as $slug => $names) {
+            $lines[] = sprintf(
+                '##data_%s##: keeps "%s", ignores "%s"',
+                $slug,
+                $names[0],
+                implode('", "', \array_slice($names, 1)),
+            );
+        }
+
+        $io->warning(
+            "Ambiguous source columns (same placeholder slug). The first keeps the token, "
+            ."the rest are ignored – rename them in the source file to disambiguate:\n"
+            .implode("\n", $lines),
+        );
     }
 }

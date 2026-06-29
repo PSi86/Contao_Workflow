@@ -26,13 +26,13 @@ use Terminal42\NotificationCenterBundle\Receipt\ReceiptCollection;
  *   ##workflow_title##  the workflow title
  *   ##data_<column>##   any imported source column (sanitized name), including the
  *                       stored answer values (e.g. ##data_verzicht##)
- *   ##var_<variable>##  any master/letterhead variable (e.g. ##var_verein##)
- *   ##stmt_<column>##   the document statement ("Textbaustein") of the answer
- *                       field storing into that column; ##stmt_all## for all
+ *   ##letterhead_<variable>##  any master/letterhead variable (e.g. ##letterhead_verein##)
+ *   ##text_<column>##   the document statement ("Textbaustein") of the answer
+ *                       field storing into that column; ##text_all## for all
  *   ##attachment##      the generated PDF (result mail); stored as a bulky item
  *                       and referenced under "Attachments via tokens"
  *
- * The ##data_*## / ##var_*## / ##stmt_*## tokens are produced by the shared
+ * The ##data_*## / ##letterhead_*## / ##text_*## tokens are produced by the shared
  * PlaceholderResolver / DocumentBodyComposer so they are identical to the ones
  * used in the PDF.
  */
@@ -179,7 +179,7 @@ class NotificationDispatcher
         );
 
         // Same statement tokens as in the PDF, so a result mail can quote the
-        // participant's choices verbatim (##stmt_all## / ##stmt_<column>##).
+        // participant's choices verbatim (##text_all## / ##text_<column>##).
         $tokens = [...$tokens, ...$this->bodyComposer->statementTokens($workflow, $data, $vars, $email)];
 
         $tokens['link'] = $link;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
 
 $GLOBALS['TL_DCA']['tl_workflow'] = [
     'config' => [
@@ -77,7 +78,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // content (heading + intro, shown in the FORM and the PDF) → the form
         // (page, signature, answer fields) → the PDF (stationery, file name,
         // body) → notifications.
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,questions,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
         // The signature-line fields only matter when a signature is required.
@@ -238,7 +239,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
         // Shared heading: shown at the top of the FORM and as the PDF heading.
-        // No ##stmt_*## tokens here – the form renders it before answering, so
+        // No ##text_*## tokens here – the form renders it before answering, so
         // only tokens that resolve identically in both places are supported.
         'pdfTitle' => [
             'exclude'   => true,
@@ -253,6 +254,20 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'inputType' => 'textarea',
             'eval'      => ['decodeEntities' => true, 'style' => 'height:80px', 'tl_class' => 'clr'],
             'sql'       => 'text NULL',
+        ],
+        // Read-only "open form preview" button (no DB column). Rendered in the form
+        // section; opens the standalone form preview (submit disabled) in a new tab.
+        'formPreview' => [
+            'exclude'              => true,
+            'input_field_callback' => [PreviewButtonListener::class, 'renderFormButton'],
+            'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Read-only "open PDF preview" button (no DB column). Rendered in the
+        // PDF-Inhalt section; streams the rendered PDF with sample data in a new tab.
+        'pdfPreview' => [
+            'exclude'              => true,
+            'input_field_callback' => [PreviewButtonListener::class, 'renderPdfButton'],
+            'eval'                 => ['tl_class' => 'clr'],
         ],
         'pdfBodyTemplate' => [
             'exclude'   => true,

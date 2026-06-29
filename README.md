@@ -56,8 +56,8 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - `##data_<slug>##` für jede importierte Spalte (inkl. der gespeicherten
      Antwortwerte). `<slug>` = kleingeschrieben, Umlaute transliteriert (ä→ae, ß→ss …);
      z. B. `##data_verzicht##`, „davon Spende“ → `##data_davon_spende##`.
-   - `##var_<slug>##` für jede Briefpapier-Variable (z. B. `##var_jahr##`, `##var_verein##`).
-   - `##stmt_<speicherfeld>##` / `##stmt_all##` für die **Dokument-Texte (Textbausteine)**
+   - `##letterhead_<slug>##` für jede Briefpapier-Variable (z. B. `##letterhead_jahr##`, `##letterhead_verein##`).
+   - `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte (Textbausteine)**
      der Antwortfelder (z. B. um die Auswahl in der Ergebnis-Mail wörtlich zu zitieren).
      Dieselben Tokens gelten **identisch** im PDF.
    - Ergebnis-Mail: Anhang über **„Anhänge über Tokens“** mit `##attachment##`
@@ -78,7 +78,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      pro Feld Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen, **Aktuelle Zeit**),
      Speicherfeld (Quellspalte, Pflicht), *Pflichtfeld*, *Mit Wert aus den Daten vorbelegen*
      (editierbar vorausgefüllt) und *Schreibgeschützt* (reines Anzeige-Feld, jeder Typ).
-     Dazu der **Dokument-Text (Textbaustein)**: bei Wert-Typen ein Satz mit `##value##`,
+     Dazu der **Dokument-Text (Textbaustein)**: bei Wert-Typen ein Satz mit `##answer##`,
      bei Optionstypen je Option (Wert + Options-Text + Dokument-Text; leer = Options-Text
      gilt wörtlich). Das Formular zeigt den Dokument-Text live unter dem Feld
      („So erscheint dies im Dokument") – **Formular und PDF nutzen dieselben Texte**.
@@ -92,7 +92,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - **PDF-Regeln** (nur bei *Einfacher Brief*): die **Brieftexte** als Liste. Jede Regel =
      Bedingungen `Feld / Operator / Wert` (UND) + Brieftext; erste passende gewinnt, eine Regel
      **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende). Empfohlen: den Brief aus den
-     Dokument-Texten zusammensetzen – `##stmt_<speicherfeld>##` für ein Feld, `##stmt_all##`
+     Dokument-Texten zusammensetzen – `##text_<speicherfeld>##` für ein Feld, `##text_all##`
      für **alle** Antwortfelder (so kann keines im PDF vergessen werden; Felder mit eigenem
      Dokument-Text beginnen darin als eigener Absatz). Verbindung Antwort↔Text = das **Speicherfeld**.
    - **Benachrichtigungen:** die drei Notifications zuordnen.

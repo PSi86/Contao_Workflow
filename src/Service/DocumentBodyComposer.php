@@ -57,7 +57,7 @@ class DocumentBodyComposer
 
         // Letter mode: shared heading + intro from the workflow (also shown in
         // the form), body text from the rule. Placeholders resolve through the
-        // shared PlaceholderResolver, so the same ##data_*##/##var_*## tokens
+        // shared PlaceholderResolver, so the same ##data_*##/##letterhead_*## tokens
         // work here, in the mails and in the export.
         $rule = $this->ruleEvaluator->resolveRule($workflow, $entry);
         $body = null !== $rule ? $rule->getPdfBody() : '';
@@ -76,7 +76,7 @@ class DocumentBodyComposer
 
     /**
      * The shared heading (workflow "Überschrift"), tokens resolved, plain text.
-     * Used identically by the form and the PDF – no ##stmt_*## tokens, the form
+     * Used identically by the form and the PDF – no ##text_*## tokens, the form
      * shows it before the questions are answered.
      *
      * @param array<string, mixed>  $data
@@ -101,18 +101,18 @@ class DocumentBodyComposer
 
     /**
      * Statement ("Textbaustein") tokens for an entry's data, raw/plain text:
-     * ##stmt_<storage-slug>## per question and ##stmt_all## (all statements in
+     * ##text_<storage-slug>## per question and ##text_all## (all statements in
      * question order). The statement of a question is the text the participant
      * saw in the form – the option statement/label for choice questions, the
-     * ##value## template for value questions – so a rule body built from these
+     * ##answer## template for value questions – so a rule body built from these
      * tokens matches the form by construction.
      *
-     * ##stmt_all## formatting: default statements ("label: value") follow each
+     * ##text_all## formatting: default statements ("label: value") follow each
      * other line by line; a statement with an explicitly configured document
      * text gets a blank line before it (it is a full sentence, not a list row).
      *
      * Questions hidden in the form (auto-filled "Aktuelle Zeit") are excluded
-     * from ##stmt_all##: the participant never saw them.
+     * from ##text_all##: the participant never saw them.
      *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
@@ -133,7 +133,7 @@ class DocumentBodyComposer
             }
 
             $statement = $this->renderStatement($question, (string) ($data[$storage] ?? ''), $data, $extra, $email, $title);
-            $tokens['stmt_'.$this->placeholderResolver->normalize($storage)] = $statement;
+            $tokens['text_'.$this->placeholderResolver->normalize($storage)] = $statement;
 
             if ('' === $statement || $question->isHiddenInForm()) {
                 continue;
@@ -146,7 +146,7 @@ class DocumentBodyComposer
             }
         }
 
-        $tokens['stmt_all'] = $all;
+        $tokens['text_all'] = $all;
 
         return $tokens;
     }
@@ -154,7 +154,7 @@ class DocumentBodyComposer
     /**
      * Statement building blocks for the front-end form, so the form can show
      * (and live-update) exactly the text the document will contain: all
-     * ##data_*##/##var_*## tokens are already resolved, only ##value## is left
+     * ##data_*##/##letterhead_*## tokens are already resolved, only ##answer## is left
      * for the browser to substitute.
      *
      * @param array<string, mixed>  $data
@@ -185,7 +185,7 @@ class DocumentBodyComposer
             return ['template' => '', 'options' => $options];
         }
 
-        // ##value## is no known resolver token, so it survives the fill().
+        // ##answer## is no known resolver token, so it survives the fill().
         return [
             'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
             'options'  => [],
@@ -224,7 +224,7 @@ class DocumentBodyComposer
     }
 
     /**
-     * Resolves the regular ##tokens## first, then substitutes ##value## – the
+     * Resolves the regular ##tokens## first, then substitutes ##answer## – the
      * same order as in the form (browser substitutes the live value last), so
      * a value containing "##" is never re-interpreted as a token.
      *
@@ -235,7 +235,7 @@ class DocumentBodyComposer
     {
         $filled = $this->placeholderResolver->fill($template, $data, $extra, $email, $title);
 
-        return trim(str_replace('##value##', $value, $filled));
+        return trim(str_replace('##answer##', $value, $filled));
     }
 
     private function esc(string $value): string

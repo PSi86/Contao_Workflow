@@ -12,7 +12,7 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['prefill']      = ['Mit Wert aus den
 $GLOBALS['TL_LANG']['tl_workflow_question']['readOnly']     = ['Schreibgeschützt', 'Das Feld zeigt den gespeicherten Wert aus den Daten an, kann aber nicht geändert werden (wird beim Absenden weder geprüft noch gespeichert). Pflichtfeld und Vorbelegung sind dann ohne Wirkung.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['hideInForm']   = ['Feld im Formular ausblenden', 'Das Feld wird im Formular nicht angezeigt und beim Absenden automatisch mit dem aktuellen Datum gefüllt.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['options']      = ['Optionen', 'Auswahlmöglichkeiten. „Wert“ wird gespeichert, „Options-Text“ wird angezeigt, „Dokument-Text“ erscheint im PDF (leer = Options-Text gilt wörtlich).'];
-$GLOBALS['TL_LANG']['tl_workflow_question']['pdfStatement'] = ['Dokument-Text (Textbaustein)', 'Satz, der für dieses Feld im Dokument erscheint; ##value## steht für den eingegebenen Wert, andere ##Platzhalter## funktionieren wie gewohnt. Leer = „Beschriftung: Wert“. Einbindung im PDF-Text über ##stmt_<speicherfeld>## bzw. ##stmt_all##. Auswahlfelder pflegen den Dokument-Text je Option.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['pdfStatement'] = ['Dokument-Text (Textbaustein)', 'Satz, der für dieses Feld im Dokument erscheint; ##answer## steht für den eingegebenen Wert, andere ##Platzhalter## funktionieren wie gewohnt. Leer = „Beschriftung: Wert“. Einbindung im PDF-Text über ##text_<speicherfeld>## bzw. ##text_all##. Auswahlfelder pflegen den Dokument-Text je Option.'];
 
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_value']     = 'Wert (gespeichert)';
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_label']     = 'Options-Text';

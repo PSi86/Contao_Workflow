@@ -21,7 +21,7 @@ use Contao\StringUtil;
  * @property string $mandatory    Whether an answer is required ("1"/"").
  * @property string $hideInForm   "Aktuelle Zeit" only: hide the field in the form ("1"/"").
  * @property string $options      Serialized list of [value, label, statement] option rows.
- * @property string $pdfStatement Statement template (##value## = entered value / option statement).
+ * @property string $pdfStatement Statement template (##answer## = entered value / option statement).
  * @property string $prefill      Prefill the field with the stored data value ("1"/"").
  * @property string $readOnly     Show the stored data value read-only ("1"/"").
  */
@@ -136,22 +136,22 @@ class QuestionModel extends Model
     }
 
     /**
-     * Statement template of a value-based question; ##value## marks the spot
-     * for the entered value. Default: "<label>: ##value##". Choice questions
+     * Statement template of a value-based question; ##answer## marks the spot
+     * for the entered value. Default: "<label>: ##answer##". Choice questions
      * carry their document texts per option instead.
      */
     public function getStatementTemplate(): string
     {
         $template = trim((string) $this->pdfStatement);
 
-        return '' !== $template ? $template : trim((string) $this->label).': ##value##';
+        return '' !== $template ? $template : trim((string) $this->label).': ##answer##';
     }
 
     /**
      * Whether a document statement was explicitly configured – per option for
      * choice questions (their pdfStatement is hidden and must not count),
      * pdfStatement otherwise. Only then does the form show the "this is how it
-     * appears in the document" hint, and ##stmt_all## adds a blank line before
+     * appears in the document" hint, and ##text_all## adds a blank line before
      * the statement – without explicit statements the visible label/option
      * text counts verbatim anyway.
      */

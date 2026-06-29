@@ -4,6 +4,46 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 [Keep a Changelog](https://keepachangelog.com/de/1.1.0/); Versionierung nach
 [SemVer](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Hinzugefügt
+- **PDF- und Formular-Vorschau in der Workflow-Bearbeiten-Maske.** Im Abschnitt
+  *PDF-Inhalt* öffnet ein Button das generierte **PDF mit Beispieldaten** in einem neuen
+  Tab; im Formular-Abschnitt zeigt ein Button eine **Vorschau des Formulars** (Absenden
+  deaktiviert). Die Beispieldaten stammen vom jüngsten echten Eintrag, sonst synthetisch aus
+  den Quellspalten – alle Antwortfelder werden mit repräsentativen Werten gefüllt, damit
+  Dokument und Formular vollständig erscheinen. Beide Vorschauen sind schreibgeschützt
+  (kein Speichern, kein Versand). Die Formular-Ansicht nutzt denselben Renderer wie das
+  echte Frontend-Formular (neuer `WorkflowFormView`), ist also feldgenau identisch.
+
+### Geändert
+- **Platzhalter-Grammatik vereinheitlicht.** Ein `##…##` ist jetzt immer entweder ein
+  Präfix-Token (`##data_<slug>##`, `##letterhead_<slug>##`, `##text_<slug>##` / `##text_all##`),
+  ein festes Token (`##workflow_title##`; Notification-Center unverändert: `##email##`,
+  `##link##`, `##attachment##`) oder der feldlokale Slot **`##answer##`** im Dokument-Text
+  einer Frage.
+- **Anwenderfreundlichere Namespaces.** Die Platzhalter-Präfixe wurden an die UI-Begriffe
+  angeglichen: `##var_*##` → **`##letterhead_*##`** (Briefpapier-Variablen) und
+  `##stmt_*##` / `##stmt_all##` → **`##text_*##`** / **`##text_all##`** (Dokument-Texte /
+  Textbausteine). Der feldlokale Slot `##value##` heißt **`##answer##`**. Bestehende
+  Konfigurationen (Brieftexte, Überschrift/Einleitung, Frage- und Options-Texte sowie die
+  zugehörigen Notification-Center-Mailtexte) werden per Migration automatisch umbenannt.
+- Doppelte Map-Erzeugung und die deutsche Transliteration in `PlaceholderResolver`
+  zusammengeführt; `PdfGenerator` nutzt dieselbe Transliteration.
+- **Eindeutige Platzhalter-Slugs.** Ergeben mehrere Quellspalten denselben Slug (z. B.
+  „Stundenlohn" und „Stundenlohn:" → `##data_stundenlohn##`), ist nur noch die **erste**
+  Spalte über ihren Platzhalter erreichbar; die übrigen werden ignoriert (ihre Werte werden
+  weiterhin importiert und exportiert, nur nicht per Platzhalter adressierbar). Eine Warnung mit
+  den betroffenen Spalten erscheint **beim Import** (Backend-Meldung bzw. CLI) und proaktiv
+  **auf der Workflow-Bearbeiten-Seite** – zum Auflösen die Spalten in der Quelldatei eindeutiger
+  benennen.
+
+### Entfernt
+- **Rohspaltennamen-Aliase** im PDF (z. B. `##Davon Spende##`, `##Verein##`, `##Jahr##`) –
+  ersatzlos. Stattdessen die kanonische Form `##data_<slug>##` bzw. `##letterhead_<slug>##`
+  verwenden (vom Platzhalter-Assistenten ohnehin als einzige Form vorgeschlagen). In Mails
+  galten die Aliase nie, ausgelieferte Konfigurationen/Presets/Demo nutzen sie nicht.
+
 ## [2.4.0] – 2026-06-12
 
 ### Hinzugefügt

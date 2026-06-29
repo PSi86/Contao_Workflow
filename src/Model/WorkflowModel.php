@@ -67,7 +67,7 @@ class WorkflowModel extends Model
     }
 
     /**
-     * Letterhead variables of the configured master (##var_*## tokens);
+     * Letterhead variables of the configured master (##letterhead_*## tokens);
      * empty when no master is set.
      *
      * @return array<string, string>

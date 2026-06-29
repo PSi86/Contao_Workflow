@@ -19,6 +19,10 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
 
 <?php else: ?>
 
+  <?php if (!empty($this->preview)): ?>
+    <p class="tw-message tw-info">Vorschau mit Beispieldaten – dieses Formular dient nur der Ansicht und kann nicht abgesendet werden.</p>
+  <?php endif; ?>
+
   <?php if ($this->intro): ?>
     <p class="tw-intro"><?= nl2br($esc($this->intro)) ?></p>
   <?php endif; ?>
@@ -33,7 +37,7 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
     // Radio/checkbox groups keep their (semantically correct) fieldset; the
     // CSS resets it so it looks identical to the div-based fields.
   ?>
-  <form method="post" class="tw-form" novalidate>
+  <form method="post" class="tw-form" novalidate<?= !empty($this->preview) ? ' onsubmit="return false"' : '' ?>>
     <input type="hidden" name="FORM_SUBMIT" value="<?= $esc($this->formId) ?>">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->requestToken) ?>">
 
@@ -54,7 +58,7 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
         $roInput = $ro ? ' readonly' : '';
         $roChoice = $ro ? ' disabled' : '';
         // Statement hint ("So erscheint dies im Dokument") only when a document
-        // text was explicitly configured; ##value## is substituted live by JS
+        // text was explicitly configured; ##answer## is substituted live by JS
         // (static fields keep their server-rendered statement).
         $hint = $q['hasStatement'];
         $isStatic = $ro || 'currentTime' === $q['type'];
@@ -120,7 +124,7 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
     <?php endif; ?>
 
     <div class="tw-field tw-field--submit">
-      <button type="submit" class="tw-submit">Absenden</button>
+      <button type="submit" class="tw-submit"<?= !empty($this->preview) ? ' disabled' : '' ?>>Absenden</button>
     </div>
   </form>
 

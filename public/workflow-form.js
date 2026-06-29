@@ -4,12 +4,12 @@
  * Each editable question with an explicitly configured document text
  * ("Textbaustein") carries data attributes rendered by mod_workflow_form.html5:
  *   - .tw-field[data-tw-question]                the question container
- *   - [data-statement-template]                  per-question template with ##value##
+ *   - [data-statement-template]                  per-question template with ##answer##
  *   - input/option[data-statement]               choice questions: resolved option statement
  *   - [data-statement-hint] > [data-statement-text]  the hint output
  *
  * Choice questions carry their document text per option (no per-question
- * template), value questions use the ##value## template – mirroring the
+ * template), value questions use the ##answer## template – mirroring the
  * server-side DocumentBodyComposer. Read-only/auto-filled fields keep their
  * server-rendered hint (no data-tw-question attribute).
  */
@@ -63,7 +63,7 @@
 
             if (parts.length) {
                 result = template !== null
-                    ? template.split('##value##').join(parts.join(', '))
+                    ? template.split('##answer##').join(parts.join(', '))
                     : parts.join('\n');
             }
         } else if (template !== null) {
@@ -74,7 +74,7 @@
                 if (input && input.type === 'date') {
                     value = formatDate(value);
                 }
-                result = template.split('##value##').join(value);
+                result = template.split('##answer##').join(value);
             }
         }
 

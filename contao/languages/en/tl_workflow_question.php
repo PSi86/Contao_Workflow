@@ -12,7 +12,7 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['prefill']      = ['Prefill with the
 $GLOBALS['TL_LANG']['tl_workflow_question']['readOnly']     = ['Read-only', 'The field shows the stored data value but cannot be changed (neither validated nor stored on submission). Mandatory and prefill have no effect then.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['hideInForm']   = ['Hide field in the form', 'The field is not shown in the form and is filled automatically with the current date on submission.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['options']      = ['Options', 'Available choices. "Value" is stored, "Option text" is displayed, "Document text" appears in the PDF (empty = option text counts verbatim).'];
-$GLOBALS['TL_LANG']['tl_workflow_question']['pdfStatement'] = ['Document text (statement)', 'Sentence that appears in the document for this field; ##value## stands for the entered value, other ##tokens## resolve as usual. Empty = "label: value". Reference it in the PDF text via ##stmt_<storage-column>## or ##stmt_all##. Choice fields maintain the document text per option.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['pdfStatement'] = ['Document text (statement)', 'Sentence that appears in the document for this field; ##answer## stands for the entered value, other ##tokens## resolve as usual. Empty = "label: value". Reference it in the PDF text via ##text_<storage-column>## or ##text_all##. Choice fields maintain the document text per option.'];
 
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_value']     = 'Value (stored)';
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_label']     = 'Option text';
