@@ -17,6 +17,9 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     wird. Fällt das Skript aus, sind alle Felder sichtbar (gutartiger Rückfall, kein
     Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
   - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
+  - **Layout-Vorlage des Briefpapiers** (`masterTemplate`): kein `submitOnChange`
+    mehr. Die zur Vorlage passenden PDF-Variablen werden weiterhin vorgeschlagen,
+    nun beim Speichern/erneuten Öffnen statt durch ein sofortiges Auto-Speichern.
   - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
     wird erst beim Speichern des Workflows übernommen; die Reihenfolge bleibt über
     das Hinzufügen/Bearbeiten einzelner Felder hinweg erhalten (verstecktes Feld

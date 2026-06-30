@@ -65,10 +65,11 @@ $GLOBALS['TL_DCA']['tl_workflow_master'] = [
         'masterTemplate' => [
             'exclude'   => true,
             'inputType' => 'select',
-            // submitOnChange: selecting a template immediately suggests its PDF
-            // variables (fields.pdfData.load). Side effect: the selection is saved
-            // at once – the field's help text points this out.
-            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
+            // No submitOnChange (that would persist the record at once). The
+            // template's PDF variables are suggested by fields.pdfData.load on the
+            // next load of the record – i.e. after it is saved – so nothing is
+            // written before the user clicks "save".
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(64) NOT NULL default ''",
         ],
         'pdfLogo' => [

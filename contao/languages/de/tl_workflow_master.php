@@ -6,7 +6,7 @@ $GLOBALS['TL_LANG']['tl_workflow_master']['title_legend']  = 'Titel';
 $GLOBALS['TL_LANG']['tl_workflow_master']['master_legend'] = 'Briefpapier (Layout, Logo, Variablen)';
 
 $GLOBALS['TL_LANG']['tl_workflow_master']['title']          = ['Titel', 'Name des Briefpapiers (zur Auswahl im Workflow).'];
-$GLOBALS['TL_LANG']['tl_workflow_master']['masterTemplate'] = ['Layout-Vorlage (Template)', 'Master-Template mit Kopf/Fuß/Unterschrift-Layout, z. B. pdf_master. Bei der Auswahl werden die passenden PDF-Variablen vorgeschlagen – die Auswahl wird dabei sofort gespeichert.'];
+$GLOBALS['TL_LANG']['tl_workflow_master']['masterTemplate'] = ['Layout-Vorlage (Template)', 'Master-Template mit Kopf/Fuß/Unterschrift-Layout, z. B. pdf_master. Nach dem Speichern werden die zur Vorlage passenden PDF-Variablen als leere Zeilen vorgeschlagen (vorhandene bleiben erhalten).'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['pdfLogo']        = ['PDF-Logo', 'Bilddatei (Logo fürs Briefpapier), die im PDF oben eingebunden wird.'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['pdfData']        = ['PDF-Variablen', 'Feste Werte für das PDF, z. B. Jahr → 2026, Verein → Musterverein e.V., Ort, Footer.'];
 $GLOBALS['TL_LANG']['tl_workflow_master']['pdfData_key']    = 'Variable';
