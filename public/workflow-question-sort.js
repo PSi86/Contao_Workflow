@@ -121,7 +121,11 @@
         sync(row.closest('[data-question-sort]'));
     });
 
-    // Re-apply the pending order whenever the dcaWizard re-renders its list.
+    // Re-apply the pending order whenever the dcaWizard RE-RENDERS its list (modal
+    // close → reloadDcaWizard replaces the widget HTML, so the wrapper element is a
+    // NEW node). We must NOT react to our own row moves during a drag (same wrapper
+    // element) – otherwise the stored order would be re-applied mid-drag and snap the
+    // row back, blocking any further reordering until a refresh/save.
     function observe() {
         var b = box();
         if (!b) { return; }
@@ -130,14 +134,16 @@
         if (!container || container.wfQSObserved) { return; }
         container.wfQSObserved = true;
 
+        var lastBox = b;
+
         var obs = new MutationObserver(function () {
             var nb = container.querySelector('[data-question-sort]');
-            if (!nb) { return; }
 
-            // Pause observing while we move rows, so our own changes don't re-fire.
-            obs.disconnect();
+            // Same wrapper element → just a row move from dragging → ignore.
+            if (!nb || nb === lastBox) { return; }
+
+            lastBox = nb;
             reapply(nb);
-            obs.observe(container, { childList: true, subtree: true });
         });
 
         obs.observe(container, { childList: true, subtree: true });
