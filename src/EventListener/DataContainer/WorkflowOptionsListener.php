@@ -156,46 +156,32 @@ class WorkflowOptionsListener
     }
 
     /**
-     * Pre-fills a master's "PDF-Variablen" with the variables declared for the
-     * selected master template – see $GLOBALS['TL_WORKFLOW_PDF_VARS']. Existing
-     * values are preserved; only missing keys are added.
+     * Normalises a master's "PDF-Variablen" on save (PdfVarsWidget posts the same
+     * key/value list as the old MCW): drops rows with an empty key and decodes
+     * HTML entities in keys/values, so special characters and ##tokens## are stored
+     * literally (the old MCW columns used decodeEntities for this).
+     *
+     * @param mixed $value
      */
-    #[AsCallback(table: 'tl_workflow_master', target: 'fields.pdfData.load')]
-    public function suggestMasterPdfData(mixed $value, DataContainer $dc): mixed
+    #[AsCallback(table: 'tl_workflow_master', target: 'fields.pdfData.save')]
+    public function cleanPdfData(mixed $value): mixed
     {
-        if (!$dc->id) {
-            return $value;
-        }
+        $clean = [];
 
-        $master = MasterModel::findByPk((int) $dc->id);
+        foreach (StringUtil::deserialize($value, true) as $pair) {
+            $key = trim((string) ($pair['key'] ?? ''));
 
-        if (null === $master) {
-            return $value;
-        }
-
-        $registry = $GLOBALS['TL_WORKFLOW_PDF_VARS'] ?? [];
-        $declared = $registry[$master->getMasterTemplate()] ?? [];
-
-        if ([] === $declared) {
-            return $value;
-        }
-
-        $existing = StringUtil::deserialize($value, true);
-
-        $present = [];
-        foreach ($existing as $pair) {
-            if (isset($pair['key'])) {
-                $present[(string) $pair['key']] = true;
+            if ('' === $key) {
+                continue;
             }
+
+            $clean[] = [
+                'key'   => html_entity_decode($key, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'value' => html_entity_decode((string) ($pair['value'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            ];
         }
 
-        foreach ($declared as $key => $default) {
-            if (!isset($present[$key])) {
-                $existing[] = ['key' => $key, 'value' => (string) $default];
-            }
-        }
-
-        return serialize($existing);
+        return serialize($clean);
     }
 
     private function getWorkflow(DataContainer $dc): ?WorkflowModel

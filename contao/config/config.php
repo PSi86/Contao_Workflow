@@ -8,6 +8,12 @@ use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Widget\PdfVarsWidget;
+
+/*
+ * Back end form widgets.
+ */
+$GLOBALS['BE_FFL']['wfPdfVars'] = PdfVarsWidget::class;
 
 /*
  * Back end modules.

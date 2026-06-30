@@ -15,6 +15,41 @@
    drag&drop above) – never shown to the user. */
 .wf-question-order { display: none; }
 
+/* Template-driven "PDF-Variablen" editor (PdfVarsWidget). */
+.wf-pdfvars-group { margin-bottom: 1em; }
+.wf-pdfvars-h {
+    margin: .6em 0 .3em;
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--info, #666);
+}
+.wf-pdfvars-row {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+    margin-bottom: .4em;
+}
+.wf-pdfvars-label {
+    flex: 0 0 11em;
+    text-align: right;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.wf-pdfvars-v { flex: 1 1 auto; }
+.wf-pdfvars-row--custom .wf-pdfvars-k { flex: 0 0 11em; }
+.wf-pdfvars-del {
+    flex: 0 0 auto;
+    border: 0;
+    background: none;
+    color: #c0392b;
+    font-size: 1.2em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 .3em;
+}
+.wf-pdfvars-del:hover { color: #922b21; }
+
 /* Source-dependent fields of a not-yet-runnable workflow (e.g. a fresh copy). */
 .tw-invalid input,
 .tw-invalid select,

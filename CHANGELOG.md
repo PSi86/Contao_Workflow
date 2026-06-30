@@ -18,8 +18,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
   - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
   - **Layout-Vorlage des Briefpapiers** (`masterTemplate`): kein `submitOnChange`
-    mehr. Die zur Vorlage passenden PDF-Variablen werden weiterhin vorgeschlagen,
-    nun beim Speichern/erneuten Öffnen statt durch ein sofortiges Auto-Speichern.
+    mehr.
+  - **PDF-Variablen** (`pdfData`): neuer, vorlagen-geführter Editor (eigenes
+    Backend-Widget statt MultiColumnWizard). Die zur gewählten Layout-Vorlage
+    deklarierten Variablen erscheinen **sofort** als beschriftete Wertfelder und
+    werden beim Wechsel der Vorlage **clientseitig** neu aufgebaut – ohne dass
+    zwischendurch gespeichert werden muss. Zusätzliche eigene Variablen lassen sich
+    in einem eigenen Bereich ergänzen. Speicherformat (Schlüssel/Wert-Paare) und
+    Versionierung unverändert; PDF-Erzeugung, `##letterhead_*##`-Platzhalter und
+    Import/Export bleiben kompatibel.
   - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
     wird erst beim Speichern des Workflows übernommen; die Reihenfolge bleibt über
     das Hinzufügen/Bearbeiten einzelner Felder hinweg erhalten (verstecktes Feld
