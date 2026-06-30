@@ -19,11 +19,11 @@ use Contao\StringUtil;
  * @property string $sourceSheet   Worksheet name to read (empty = active sheet).
  * @property int    $headerRow     1-based row holding the column headers.
  * @property string $emailField    Header name of the e-mail column.
- * @property string $inputFields   Serialized list of header names shown (read-only) in the form.
  * @property string $requireSignature Whether the form requires a signature ("1"/"").
  * @property int    $formPage        Page id hosting the form module.
  * @property string $pdfBodyType     "letter" (backend text) or "template" (body template file).
- * @property string $pdfTitle        Letter heading (letter mode), supports ##tokens##.
+ * @property string $pdfTitle        Shared heading (form + PDF), supports ##tokens##.
+ * @property string $introText       Optional intro after the heading (form + PDF), supports ##tokens##.
  * @property string $pdfSignatureDate Data column whose value is printed as the signature date.
  * @property string $pdfSignatureLocation Data column whose value is printed as the signature place.
  * @property string $pdfBodyTemplate Body template name (template mode), e.g. pdf_body_verzicht.
@@ -61,22 +61,26 @@ class WorkflowModel extends Model
         return max(0, \count($this->getSteps()) - 1);
     }
 
-    /**
-     * Header names shown (read-only, prefilled) in the form.
-     *
-     * @return array<int, string>
-     */
-    public function getInputFields(): array
-    {
-        return array_values(array_filter(
-            array_map('trim', StringUtil::deserialize($this->inputFields, true)),
-            static fn ($name) => '' !== $name,
-        ));
-    }
-
     public function isSignatureRequired(): bool
     {
         return '1' === (string) $this->requireSignature;
+    }
+
+    /**
+     * Letterhead variables of the configured master (##letterhead_*## tokens);
+     * empty when no master is set.
+     *
+     * @return array<string, string>
+     */
+    public function getMasterVars(): array
+    {
+        if (!$this->master) {
+            return [];
+        }
+
+        $master = MasterModel::findByPk((int) $this->master);
+
+        return null !== $master ? $master->getPdfData() : [];
     }
 
     /**

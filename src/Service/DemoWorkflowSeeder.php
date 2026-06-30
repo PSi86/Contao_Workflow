@@ -157,8 +157,11 @@ class DemoWorkflowSeeder
      */
     private function config(): array
     {
-        $person = "Name: ##data_vorname## ##data_nachname##\n"
-            ."Abteilung: ##data_abteilung## · Funktion: ##data_funktion##\n\n";
+        // The letter body is composed entirely from the form's statements:
+        // ##text_all## renders every answer field (so none can be forgotten) –
+        // default statements line by line, fields with a configured document
+        // text separated by a blank line. The rules only pick the frame.
+        $footer = "\n\nDies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.";
 
         return [
             'format'   => WorkflowConfigImporter::FORMAT,
@@ -170,16 +173,43 @@ class DemoWorkflowSeeder
                 'sourceSheet'          => '',
                 'headerRow'            => 1,
                 'emailField'           => 'E-Mail',
-                'inputFields'          => ['Vorname', 'Nachname', 'Abteilung', 'Funktion'],
                 'requireSignature'     => true,
                 'pdfBodyType'          => 'letter',
                 'pdfBodyTemplate'      => '',
                 'pdfTitle'             => 'Einverständniserklärung (Demo)',
+                'introText'            => 'Bitte prüfen Sie die folgenden Angaben und treffen Sie Ihre Entscheidung für den ##letterhead_verein##.',
                 'pdfSignatureDate'     => 'Unterschriftsdatum',
                 'pdfSignatureLocation' => 'Ort',
                 'pdfFileName'          => 'Einverstaendnis_##data_nachname##_##data_vorname##',
             ],
             'questions' => [
+                [
+                    'label'        => 'Vorname',
+                    'type'         => 'text',
+                    'readOnly'     => true,
+                    'storageField' => 'Vorname',
+                ],
+                [
+                    'label'        => 'Nachname',
+                    'type'         => 'text',
+                    'readOnly'     => true,
+                    'storageField' => 'Nachname',
+                ],
+                [
+                    'label'        => 'Abteilung',
+                    'type'         => 'text',
+                    'readOnly'     => true,
+                    'storageField' => 'Abteilung',
+                ],
+                [
+                    'label'        => 'Ihre Funktion (bitte prüfen und ggf. korrigieren)',
+                    'type'         => 'text',
+                    'storageField' => 'Funktion',
+                    'mandatory'    => true,
+                    'prefill'      => true,
+                    'pdfStatement' => 'Funktion: ##answer##',
+                    'options'      => [],
+                ],
                 [
                     'label'        => 'Ihre Entscheidung',
                     'type'         => 'radio',
@@ -187,8 +217,16 @@ class DemoWorkflowSeeder
                     'mandatory'    => true,
                     'hideInForm'   => false,
                     'options'      => [
-                        ['value' => 'ja', 'label' => 'Einverstanden'],
-                        ['value' => 'nein', 'label' => 'Nicht einverstanden'],
+                        [
+                            'value'     => 'ja',
+                            'label'     => 'Einverstanden',
+                            'statement' => 'Hiermit erkläre ich mein Einverständnis gegenüber dem ##letterhead_verein## für das Jahr ##letterhead_jahr##.',
+                        ],
+                        [
+                            'value'     => 'nein',
+                            'label'     => 'Nicht einverstanden',
+                            'statement' => 'Für das Jahr ##letterhead_jahr## erteile ich gegenüber dem ##letterhead_verein## kein Einverständnis.',
+                        ],
                     ],
                 ],
                 [
@@ -205,17 +243,13 @@ class DemoWorkflowSeeder
                     'title'      => 'Einverständnis erteilt',
                     'isDefault'  => false,
                     'conditions' => [['field' => 'Entscheidung', 'operator' => 'eq', 'value' => 'ja']],
-                    'pdfBody'    => $person
-                        ."hiermit erkläre ich mein Einverständnis gegenüber dem ##var_verein## für das Jahr ##var_jahr##.\n\n"
-                        .'Dies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.',
+                    'pdfBody'    => "##text_all##\n\nVielen Dank für Ihre Unterstützung!".$footer,
                 ],
                 [
-                    'title'      => 'Kein Einverständnis (Standardtext)',
+                    'title'      => 'Standardtext',
                     'isDefault'  => true,
                     'conditions' => [],
-                    'pdfBody'    => $person
-                        ."für das Jahr ##var_jahr## erteile ich gegenüber dem ##var_verein## kein Einverständnis.\n\n"
-                        .'Dies ist ein automatisch erzeugter Demo-Brief mit rein synthetischen Daten.',
+                    'pdfBody'    => '##text_all##'.$footer,
                 ],
             ],
             'master' => [

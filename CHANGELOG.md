@@ -4,6 +4,88 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 [Keep a Changelog](https://keepachangelog.com/de/1.1.0/); Versionierung nach
 [SemVer](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Hinzugefügt
+- **PDF- und Formular-Vorschau in der Workflow-Bearbeiten-Maske.** Im Abschnitt
+  *PDF-Inhalt* öffnet ein Button das generierte **PDF mit Beispieldaten** in einem neuen
+  Tab; im Formular-Abschnitt zeigt ein Button eine **Vorschau des Formulars** (Absenden
+  deaktiviert). Die Beispieldaten stammen vom jüngsten echten Eintrag, sonst synthetisch aus
+  den Quellspalten – alle Antwortfelder werden mit repräsentativen Werten gefüllt, damit
+  Dokument und Formular vollständig erscheinen. Beide Vorschauen sind schreibgeschützt
+  (kein Speichern, kein Versand). Die Formular-Ansicht nutzt denselben Renderer wie das
+  echte Frontend-Formular (neuer `WorkflowFormView`), ist also feldgenau identisch.
+
+### Geändert
+- **Platzhalter-Grammatik vereinheitlicht.** Ein `##…##` ist jetzt immer entweder ein
+  Präfix-Token (`##data_<slug>##`, `##letterhead_<slug>##`, `##text_<slug>##` / `##text_all##`),
+  ein festes Token (`##workflow_title##`; Notification-Center unverändert: `##email##`,
+  `##link##`, `##attachment##`) oder der feldlokale Slot **`##answer##`** im Dokument-Text
+  einer Frage.
+- **Anwenderfreundlichere Namespaces.** Die Platzhalter-Präfixe wurden an die UI-Begriffe
+  angeglichen: `##var_*##` → **`##letterhead_*##`** (Briefpapier-Variablen) und
+  `##stmt_*##` / `##stmt_all##` → **`##text_*##`** / **`##text_all##`** (Dokument-Texte /
+  Textbausteine). Der feldlokale Slot `##value##` heißt **`##answer##`**. Bestehende
+  Konfigurationen (Brieftexte, Überschrift/Einleitung, Frage- und Options-Texte sowie die
+  zugehörigen Notification-Center-Mailtexte) werden per Migration automatisch umbenannt.
+- Doppelte Map-Erzeugung und die deutsche Transliteration in `PlaceholderResolver`
+  zusammengeführt; `PdfGenerator` nutzt dieselbe Transliteration.
+- **Eindeutige Platzhalter-Slugs.** Ergeben mehrere Quellspalten denselben Slug (z. B.
+  „Stundenlohn" und „Stundenlohn:" → `##data_stundenlohn##`), ist nur noch die **erste**
+  Spalte über ihren Platzhalter erreichbar; die übrigen werden ignoriert (ihre Werte werden
+  weiterhin importiert und exportiert, nur nicht per Platzhalter adressierbar). Eine Warnung mit
+  den betroffenen Spalten erscheint **beim Import** (Backend-Meldung bzw. CLI) und proaktiv
+  **auf der Workflow-Bearbeiten-Seite** – zum Auflösen die Spalten in der Quelldatei eindeutiger
+  benennen.
+
+### Entfernt
+- **Rohspaltennamen-Aliase** im PDF (z. B. `##Davon Spende##`, `##Verein##`, `##Jahr##`) –
+  ersatzlos. Stattdessen die kanonische Form `##data_<slug>##` bzw. `##letterhead_<slug>##`
+  verwenden (vom Platzhalter-Assistenten ohnehin als einzige Form vorgeschlagen). In Mails
+  galten die Aliase nie, ausgelieferte Konfigurationen/Presets/Demo nutzen sie nicht.
+
+## [2.4.0] – 2026-06-12
+
+### Hinzugefügt
+- **Formular/PDF-Parität über Dokument-Texte (Textbausteine).** Formular und PDF nutzen
+  dieselben Texte: Auswahl-Optionen tragen einen optionalen **Dokument-Text** (leer = der
+  sichtbare Options-Text gilt wörtlich), Wert-Felder (Freitext, Zahl, Datum, Aktuelle Zeit)
+  ein Satz-Template mit `##value##` (leer = „Beschriftung: Wert"). Das Formular zeigt den
+  Text live unter dem Feld („So erscheint dies im Dokument"). Neue Platzhalter
+  `##stmt_<speicherfeld>##` und `##stmt_all##` (alle Felder in Formular-Reihenfolge; Felder
+  mit eigenem Dokument-Text beginnen als eigener Absatz) – identisch in PDF-Texten,
+  Notification-Center-Mails und Body-Vorlagen (`$this->statements`). Der Dokument-Body wird
+  zentral im neuen `DocumentBodyComposer` gerendert.
+- **Überschrift & Einleitungstext für Formular und PDF.** Die Überschrift (bisher nur PDF)
+  erscheint jetzt auch oben im Formular; dazu ein optionaler **Einleitungstext** nach der
+  Überschrift in beiden. Beide stehen im neuen Workflow-Abschnitt **„Inhalt (Formular & PDF)"**;
+  Body-Vorlagen erhalten sie als `$this->heading`/`$this->intro`.
+- **Antwortfeld-Optionen „Mit Wert aus den Daten vorbelegen" und „Schreibgeschützt".**
+  Vorbelegen füllt das editierbare Feld mit dem gespeicherten Wert (Outputfeld = Inputfeld;
+  unpassende Werte bei Auswahlfeldern bleiben leer, das Backend warnt). Schreibgeschützt
+  zeigt den Wert nur an (jeder Typ; ersetzt die bisherigen Workflow-„Anzeige-Felder" –
+  eine Migration wandelt sie automatisch in schreibgeschützte Antwortfelder um).
+- **Neuer Antwortfeld-Typ „Zahl"** (Zahleneingabe inkl. Dezimalwerte, automatische
+  Komma-Konvertierung).
+- **Antwortfelder per Drag & Drop sortieren** – direkt in der eingebetteten Liste der
+  Bearbeitungsmaske (Griff links, sofort gespeichert).
+- Neuer CLI-Befehl `workflow:demo:restore` (entspricht dem Wiederherstellen-Button).
+
+### Geändert
+- Formular-Validierung läuft über Contaos Form-Widgets (Pflichtfelder, Options-Whitelist,
+  lokalisierte Fehlermeldungen).
+- Einheitliches Formular-Markup: alle Felder als `.tw-field.tw-field--<art>` mit
+  Label/Legende über dem Feld, randlos (die bisherige Fieldset-Box-Optik entfällt).
+- Konfigurationsformat **v3** (Dokument-Texte, Vorbelegen/Schreibgeschützt, Zahl,
+  Einleitungstext); ältere v1/v2-Dateien bleiben importierbar (`inputFields` bzw. der
+  kurzlebige Typ „Anzeige" werden beim Import umgewandelt).
+- Demo-Workflow zeigt die neuen Funktionen end-to-end (schreibgeschützte Felder,
+  vorbelegtes Feld, Options-Dokument-Texte, Brieftexte aus `##stmt_all##`).
+
+### Entfernt
+- Workflow-Einstellung **„Anzeige-Felder (Input)"** (`tl_workflow.inputFields`) – ersetzt
+  durch schreibgeschützte Antwortfelder (automatische Migration).
+
 ## [2.3.11] – 2026-06-06
 
 ### Geändert

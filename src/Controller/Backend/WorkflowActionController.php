@@ -8,20 +8,27 @@ use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\Exception\AccessDeniedException;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
+use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
+use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
+use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigImporter;
+use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowMailer;
+use Psimandl\WorkflowBundle\Service\WorkflowPreviewData;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -48,6 +55,10 @@ class WorkflowActionController
         private readonly DemoWorkflowSeeder $demoSeeder,
         private readonly WorkflowConfigExporter $configExporter,
         private readonly WorkflowConfigImporter $configImporter,
+        private readonly PdfGenerator $pdfGenerator,
+        private readonly WorkflowPreviewData $previewData,
+        private readonly WorkflowFormView $formView,
+        private readonly DocumentBodyComposer $bodyComposer,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
@@ -101,11 +112,144 @@ class WorkflowActionController
                     $result['total'],
                 ));
             }
+
+            $this->reportSlugCollisions($result['collisions']);
         } catch (\Throwable $e) {
             Message::addError('Import fehlgeschlagen: '.$e->getMessage());
         }
 
         return $this->backToDashboard();
+    }
+
+    /**
+     * Warns when several source columns normalize to the same placeholder slug.
+     * Only the first column of each group is reachable via its ##data_<slug>##
+     * token; the rest are ignored (their values are still imported and exported,
+     * just not addressable by placeholder). The user must rename the columns in
+     * the source file to make them unambiguous.
+     *
+     * @param array<string, array<int, string>> $collisions slug => colliding names
+     */
+    private function reportSlugCollisions(array $collisions): void
+    {
+        if ([] === $collisions) {
+            return;
+        }
+
+        $groups = [];
+
+        foreach ($collisions as $slug => $names) {
+            $ignored = \array_slice($names, 1);
+            $groups[] = sprintf(
+                '##data_%s##: verwendet „%s", ignoriert „%s"',
+                $slug,
+                StringUtil::specialchars($names[0]),
+                implode('", „', array_map([StringUtil::class, 'specialchars'], $ignored)),
+            );
+        }
+
+        Message::addInfo(sprintf(
+            'Achtung: Mehrere Spalten der Quelldatei ergeben denselben Platzhalter und sind dadurch nicht '
+            .'eindeutig. Je Gruppe ist nur die erste Spalte über ihren Platzhalter erreichbar, die übrigen '
+            .'werden ignoriert (ihre Werte werden weiterhin importiert und exportiert, nur nicht per '
+            .'Platzhalter adressierbar). Bitte die betroffenen Spalten in der Quelldatei eindeutiger '
+            .'benennen. Betroffen: %s.',
+            implode('; ', $groups),
+        ));
+    }
+
+    /**
+     * Streams an inline PDF preview rendered from a representative sample entry
+     * (the most recent real entry, else synthetic sample data). Read-only: no DB
+     * write, so it is gated by module access only (no CSRF token needed).
+     */
+    #[Route('/preview-pdf/{id}', name: 'workflow_preview_pdf', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function previewPdf(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        try {
+            $pdf = $this->pdfGenerator->render($this->previewData->sampleEntry($workflow), $workflow);
+        } catch (\Throwable $e) {
+            return new Response(
+                'PDF-Vorschau fehlgeschlagen: '.$e->getMessage(),
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                ['Content-Type' => 'text/plain; charset=utf-8'],
+            );
+        }
+
+        return new Response($pdf, Response::HTTP_OK, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="vorschau.pdf"',
+        ]);
+    }
+
+    /**
+     * Renders a standalone HTML preview of the front-end form (with sample data)
+     * for the edit mask. The submit button is disabled and the form cannot be
+     * sent. Read-only, gated by module access only.
+     */
+    #[Route('/preview-form/{id}', name: 'workflow_preview_form', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function previewForm(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        try {
+            $entry = $this->previewData->sampleEntry($workflow);
+            $data = $entry->getData();
+            $extra = $workflow->getMasterVars();
+            $email = (string) $entry->email;
+
+            /** @var FrontendTemplate $template */
+            $template = $this->framework->createInstance(FrontendTemplate::class, ['mod_workflow_form']);
+            $template->setData([
+                'preview'          => true,
+                'state'            => 'form',
+                'requestToken'     => '',
+                'error'            => '',
+                'heading'          => $this->bodyComposer->resolveHeading($workflow, $data, $extra, $email),
+                'intro'            => $this->bodyComposer->resolveIntro($workflow, $data, $extra, $email),
+                'email'            => $email,
+                'questions'        => $this->formView->buildQuestionViews($workflow->getQuestions(), $workflow, $entry),
+                'answers'          => [],
+                'requireSignature' => $workflow->isSignatureRequired(),
+                'formId'           => 'preview',
+            ]);
+
+            $inner = $template->parse();
+        } catch (\Throwable $e) {
+            return new Response(
+                '<p>Formular-Vorschau fehlgeschlagen: '.StringUtil::specialchars($e->getMessage()).'</p>',
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                ['Content-Type' => 'text/html; charset=utf-8'],
+            );
+        }
+
+        return new Response($this->wrapFormPreview($inner), Response::HTTP_OK, ['Content-Type' => 'text/html; charset=utf-8']);
+    }
+
+    /**
+     * Wraps the parsed form markup in a minimal HTML page that loads the workflow
+     * form assets, so the standalone preview looks like the real front-end form.
+     */
+    private function wrapFormPreview(string $inner): string
+    {
+        $asset = '/bundles/contaoworkflow';
+
+        return '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">'
+            .'<meta name="viewport" content="width=device-width, initial-scale=1">'
+            .'<title>Formular-Vorschau</title>'
+            .'<link rel="stylesheet" href="'.$asset.'/workflow-form.css">'
+            .'<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:2rem auto;max-width:760px;padding:0 1rem;color:#222}</style>'
+            .'</head><body>'
+            .$inner
+            .'<script src="'.$asset.'/workflow-signature.js"></script>'
+            .'<script src="'.$asset.'/workflow-form.js"></script>'
+            .'</body></html>';
     }
 
     /**
@@ -339,6 +483,37 @@ class WorkflowActionController
         $response->deleteFileAfterSend(true);
 
         return $response;
+    }
+
+    /**
+     * Persists the new answer-field order coming from the drag&drop in the
+     * embedded questions list of the workflow edit mask (see
+     * AnswerConfigListener::renderQuestionsList). Expects POST ids[] in the new
+     * order; only rows belonging to the workflow are renumbered.
+     */
+    #[Route('/question-sort/{id}', name: 'workflow_question_sort', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function questionSort(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        $sorting = 0;
+        $updated = 0;
+
+        foreach (array_map('intval', $request->request->all('ids')) as $questionId) {
+            $question = QuestionModel::findByPk($questionId);
+
+            if (null !== $question && (int) $question->pid === (int) $workflow->id) {
+                $question->sorting = $sorting += 64;
+                $question->tstamp = time();
+                $question->save();
+                ++$updated;
+            }
+        }
+
+        return new JsonResponse(['updated' => $updated]);
     }
 
     private function getWorkflow(int $id): WorkflowModel

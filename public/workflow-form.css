@@ -1,21 +1,45 @@
 .mod_workflow_form { max-width: 640px; }
+.mod_workflow_form .tw-heading { margin: 0 0 .5rem; }
+/* One blank line between the heading and the intro paragraph. */
+.mod_workflow_form .tw-intro { margin: 1.25rem 0; color: #333; }
+
 .mod_workflow_form .tw-message { padding: .75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
 .mod_workflow_form .tw-error { background: #fdecea; color: #611a15; }
 .mod_workflow_form .tw-info { background: #e8f0fe; color: #1a3a61; }
 .mod_workflow_form .tw-success { background: #e6f4ea; color: #1e4620; }
-.mod_workflow_form .tw-row { margin-bottom: 1rem; display: flex; flex-direction: column; gap: .25rem; }
-.mod_workflow_form .tw-row label { font-weight: 600; }
+
+/*
+ * Uniform field structure: every form element (e-mail, questions, signature,
+ * submit) is a .tw-field with a label/legend above its control(s) – no boxes.
+ * Radio/checkbox groups use a fieldset for semantics; the reset below makes it
+ * render exactly like the div-based fields. Style per kind via the
+ * .tw-field--<type> modifier (text, textarea, number, date, select, radio,
+ * checkbox, currentTime, email, signature, submit) and .tw-field--readonly.
+ */
+.mod_workflow_form .tw-field { margin: 0 0 1.25rem; }
+.mod_workflow_form fieldset.tw-field { border: 0; padding: 0; min-inline-size: auto; }
+.mod_workflow_form .tw-field > label,
+.mod_workflow_form .tw-field > legend { display: block; font-weight: 600; margin: 0 0 .3rem; padding: 0; }
+
 .mod_workflow_form input[type="text"],
 .mod_workflow_form input[type="email"],
 .mod_workflow_form input[type="date"],
+.mod_workflow_form input[type="number"],
 .mod_workflow_form textarea,
 .mod_workflow_form select { padding: .5rem; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
-.mod_workflow_form .tw-question { border: 1px solid #ccc; border-radius: 4px; padding: .75rem 1rem; margin-bottom: 1rem; }
-.mod_workflow_form .tw-question legend { font-weight: 600; padding: 0 .35rem; }
-.mod_workflow_form .tw-question .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
-.mod_workflow_form .tw-question .tw-option input { margin-right: .4rem; }
+
+.mod_workflow_form .tw-field--readonly input,
+.mod_workflow_form .tw-field--readonly textarea,
+.mod_workflow_form .tw-field--readonly select { background: #f3f3f3; color: #555; }
+
+.mod_workflow_form .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
+.mod_workflow_form .tw-option input { margin-right: .4rem; }
 .mod_workflow_form .tw-required { color: #c00; }
-.mod_workflow_form .tw-signature { margin-bottom: 1rem; }
-.mod_workflow_form .tw-signature canvas { display: block; border: 1px dashed #999; border-radius: 4px; touch-action: none; background: #fff; max-width: 100%; }
-.mod_workflow_form .tw-signature button { margin-top: .5rem; }
+
+.mod_workflow_form .tw-statement { margin: .6rem 0 0; padding: .5rem .75rem; background: #f5f7fa; border-left: 3px solid #1a3a61; border-radius: 0 4px 4px 0; font-size: .9em; }
+.mod_workflow_form .tw-statement-intro { display: block; font-weight: 600; color: #555; margin-bottom: .15rem; }
+.mod_workflow_form .tw-statement-text { white-space: pre-line; font-style: italic; }
+
+.mod_workflow_form .tw-field--signature canvas { display: block; border: 1px dashed #999; border-radius: 4px; touch-action: none; background: #fff; max-width: 100%; }
+.mod_workflow_form .tw-field--signature button { margin-top: .5rem; }
 .mod_workflow_form .tw-submit { padding: .6rem 1.4rem; cursor: pointer; }

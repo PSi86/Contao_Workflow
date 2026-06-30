@@ -122,7 +122,7 @@ class WorkflowValidator
      */
     public function orphanedFields(WorkflowModel $workflow): array
     {
-        $headerDependent = ['sourceSheet', 'emailField', 'inputFields', 'questions', 'rules'];
+        $headerDependent = ['sourceSheet', 'emailField', 'questions', 'rules'];
 
         if (!$workflow->sourceFile) {
             return $headerDependent;
@@ -138,13 +138,6 @@ class WorkflowValidator
 
         if ('' !== trim((string) $workflow->emailField) && !\in_array(trim((string) $workflow->emailField), $headers, true)) {
             $orphaned[] = 'emailField';
-        }
-
-        foreach ($workflow->getInputFields() as $field) {
-            if (!\in_array($field, $headers, true)) {
-                $orphaned[] = 'inputFields';
-                break;
-            }
         }
 
         foreach ($workflow->getQuestions() as $question) {

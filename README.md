@@ -56,8 +56,10 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - `##data_<slug>##` für jede importierte Spalte (inkl. der gespeicherten
      Antwortwerte). `<slug>` = kleingeschrieben, Umlaute transliteriert (ä→ae, ß→ss …);
      z. B. `##data_verzicht##`, „davon Spende“ → `##data_davon_spende##`.
-   - `##var_<slug>##` für jede Briefpapier-Variable (z. B. `##var_jahr##`, `##var_verein##`).
-     Dieselben `##data_*##`/`##var_*##`-Tokens gelten **identisch** im PDF.
+   - `##letterhead_<slug>##` für jede Briefpapier-Variable (z. B. `##letterhead_jahr##`, `##letterhead_verein##`).
+   - `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte (Textbausteine)**
+     der Antwortfelder (z. B. um die Auswahl in der Ergebnis-Mail wörtlich zu zitieren).
+     Dieselben Tokens gelten **identisch** im PDF.
    - Ergebnis-Mail: Anhang über **„Anhänge über Tokens“** mit `##attachment##`
      (das erzeugte PDF).
 2. **Seite + Modul**: Frontend-Modul „Workflow-Formular“ anlegen und auf einer
@@ -68,20 +70,31 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
    - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte
-   - **Formular & Antwortfelder:** Anzeige-Felder, *Unterschrift verlangen* (mit Auswahl der
+   - **Inhalt (Formular & PDF):** **Überschrift** und optionaler **Einleitungstext** –
+     erscheinen **identisch** oben im Formular und im PDF (Platzhalter erlaubt).
+   - **Formular & Antwortfelder:** *Unterschrift verlangen* (mit Auswahl der
      Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
-     eingebetteten **Antwortfelder** – pro Feld Typ (Dropdown, Radio, Checkboxen, Freitext, Datum,
-     **Aktuelle Zeit**), Speicherfeld (Quellspalte, Pflicht), bei Optionstypen die Optionen
-     (Wert + Options-Text). **„Aktuelle Zeit"** wird beim Absenden automatisch mit dem Datum gefüllt
+     eingebetteten **Antwortfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
+     pro Feld Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen, **Aktuelle Zeit**),
+     Speicherfeld (Quellspalte, Pflicht), *Pflichtfeld*, *Mit Wert aus den Daten vorbelegen*
+     (editierbar vorausgefüllt) und *Schreibgeschützt* (reines Anzeige-Feld, jeder Typ).
+     Dazu der **Dokument-Text (Textbaustein)**: bei Wert-Typen ein Satz mit `##answer##`,
+     bei Optionstypen je Option (Wert + Options-Text + Dokument-Text; leer = Options-Text
+     gilt wörtlich). Das Formular zeigt den Dokument-Text live unter dem Feld
+     („So erscheint dies im Dokument") – **Formular und PDF nutzen dieselben Texte**.
+     **„Aktuelle Zeit"** wird beim Absenden automatisch mit dem Datum gefüllt
      und kann im Formular ausgeblendet werden. Ja/Nein = Radio mit zwei Optionen (z. B.
      „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
    - **PDF-Inhalt:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern,
-     z. B. `Verzicht_##data_name##_##data_vorname##`) + Typ. **Einfacher Brief** → nur die
-     gemeinsame *Überschrift* hier; die Brieftexte stehen in den **PDF-Regeln**. **Spezielle
+     z. B. `Verzicht_##data_name##_##data_vorname##`) + Typ. **Einfacher Brief** → die
+     Brieftexte stehen in den **PDF-Regeln**. **Spezielle
      Vorlage** → eine Datei `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** PDF-Regeln).
    - **PDF-Regeln** (nur bei *Einfacher Brief*): die **Brieftexte** als Liste. Jede Regel =
      Bedingungen `Feld / Operator / Wert` (UND) + Brieftext; erste passende gewinnt, eine Regel
-     **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende). Verbindung Antwort↔Text = das **Speicherfeld**.
+     **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende). Empfohlen: den Brief aus den
+     Dokument-Texten zusammensetzen – `##text_<speicherfeld>##` für ein Feld, `##text_all##`
+     für **alle** Antwortfelder (so kann keines im PDF vergessen werden; Felder mit eigenem
+     Dokument-Text beginnen darin als eigener Absatz). Verbindung Antwort↔Text = das **Speicherfeld**.
    - **Benachrichtigungen:** die drei Notifications zuordnen.
 
 ## Verifikation (End-to-End)

@@ -4,6 +4,10 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
 ?>
 <div class="mod_workflow_form">
 
+<?php if ('invalid' !== $this->state && $this->heading): ?>
+  <h1 class="tw-heading"><?= $esc($this->heading) ?></h1>
+<?php endif; ?>
+
 <?php if ('invalid' === $this->state): ?>
   <p class="tw-message tw-error">Dieser Link ist ungültig oder nicht mehr verfügbar.</p>
 
@@ -15,78 +19,112 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
 
 <?php else: ?>
 
+  <?php if (!empty($this->preview)): ?>
+    <p class="tw-message tw-info">Vorschau mit Beispieldaten – dieses Formular dient nur der Ansicht und kann nicht abgesendet werden.</p>
+  <?php endif; ?>
+
+  <?php if ($this->intro): ?>
+    <p class="tw-intro"><?= nl2br($esc($this->intro)) ?></p>
+  <?php endif; ?>
+
   <?php if ($this->error): ?>
     <p class="tw-message tw-error"><?= $esc($this->error) ?></p>
   <?php endif; ?>
 
-  <form method="post" class="tw-form" novalidate>
+  <?php
+    // Every form element shares the same wrapper structure so it styles
+    // uniformly: .tw-field.tw-field--<kind> > label/legend + control(s).
+    // Radio/checkbox groups keep their (semantically correct) fieldset; the
+    // CSS resets it so it looks identical to the div-based fields.
+  ?>
+  <form method="post" class="tw-form" novalidate<?= !empty($this->preview) ? ' onsubmit="return false"' : '' ?>>
     <input type="hidden" name="FORM_SUBMIT" value="<?= $esc($this->formId) ?>">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->requestToken) ?>">
 
-    <div class="tw-row">
-      <label>E-Mail</label>
-      <input type="email" value="<?= $esc($this->email) ?>" readonly>
+    <div class="tw-field tw-field--email tw-field--readonly">
+      <label for="ctrl_tw_email">E-Mail</label>
+      <input type="email" id="ctrl_tw_email" value="<?= $esc($this->email) ?>" readonly>
     </div>
-
-    <?php foreach ($this->inputFields as $name): ?>
-      <div class="tw-row">
-        <label><?= $esc($name) ?></label>
-        <input type="text" value="<?= $esc($this->data[$name] ?? '') ?>" readonly>
-      </div>
-    <?php endforeach; ?>
 
     <?php foreach ($this->questions as $q): ?>
       <?php
         $fieldName = 'q_'.$q['id'];
-        $answer = $this->answers[$q['id']] ?? ('checkbox' === $q['type'] ? [] : '');
+        $ctrlId = 'ctrl_'.$fieldName;
+        $ro = $q['readOnly'];
+        $answer = $ro ? $q['initial'] : ($this->answers[$q['id']] ?? $q['initial']);
         $req = $q['mandatory'] ? ' required' : '';
         $star = $q['mandatory'] ? ' <span class="tw-required">*</span>' : '';
+        // Read-only fields show the stored value and never submit it back.
+        $roInput = $ro ? ' readonly' : '';
+        $roChoice = $ro ? ' disabled' : '';
+        // Statement hint ("So erscheint dies im Dokument") only when a document
+        // text was explicitly configured; ##answer## is substituted live by JS
+        // (static fields keep their server-rendered statement).
+        $hint = $q['hasStatement'];
+        $isStatic = $ro || 'currentTime' === $q['type'];
+        $tplAttr = $hint && !$isStatic && '' !== $q['statementTemplate'] ? ' data-statement-template="'.$esc($q['statementTemplate']).'"' : '';
+        $stmtAttr = static fn (array $opt): string => $hint && !$isStatic ? ' data-statement="'.$esc($opt['statement']).'"' : '';
+        $isChoiceGroup = \in_array($q['type'], ['radio', 'checkbox'], true);
+        $tag = $isChoiceGroup ? 'fieldset' : 'div';
+        $labelTag = $isChoiceGroup ? 'legend' : 'label';
+        $forAttr = $isChoiceGroup ? '' : ' for="'.$esc($ctrlId).'"';
+        $classes = 'tw-field tw-field--'.$q['type'].($ro ? ' tw-field--readonly' : '');
       ?>
-      <fieldset class="tw-question tw-question--<?= $esc($q['type']) ?>">
-        <legend><?= $esc($q['label']).$star ?></legend>
+      <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
+        <<?= $labelTag ?><?= $forAttr ?>><?= $esc($q['label']).$star ?></<?= $labelTag ?>>
 
         <?php if ('currentTime' === $q['type']): ?>
-          <input type="text" value="<?= $esc($q['autoValue']) ?>" readonly>
+          <input type="text" id="<?= $esc($ctrlId) ?>" value="<?= $esc($q['autoValue']) ?>" readonly>
 
-        <?php elseif ('text' === $q['type'] || 'date' === $q['type']): ?>
-          <input type="<?= 'date' === $q['type'] ? 'date' : 'text' ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req ?>>
+        <?php elseif ('text' === $q['type'] || 'date' === $q['type'] || 'number' === $q['type']): ?>
+          <?php $inputType = ['text' => 'text', 'date' => 'date', 'number' => 'number'][$q['type']]; ?>
+          <input type="<?= $inputType ?>"<?= 'number' === $q['type'] ? ' step="any"' : '' ?> id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
 
         <?php elseif ('textarea' === $q['type']): ?>
-          <textarea name="<?= $esc($fieldName) ?>" rows="4"<?= $req ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>
+          <textarea id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" rows="4"<?= $req.$roInput ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>
 
         <?php elseif ('select' === $q['type']): ?>
-          <select name="<?= $esc($fieldName) ?>"<?= $req ?>>
+          <select id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>"<?= $req.$roChoice ?>>
             <option value="">–</option>
             <?php foreach ($q['options'] as $opt): ?>
-              <option value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' selected' : '' ?>><?= $esc($opt['label']) ?></option>
+              <option value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' selected' : '' ?><?= $stmtAttr($opt) ?>><?= $esc($opt['label']) ?></option>
             <?php endforeach; ?>
           </select>
 
         <?php elseif ('radio' === $q['type']): ?>
           <?php foreach ($q['options'] as $opt): ?>
-            <label class="tw-option"><input type="radio" name="<?= $esc($fieldName) ?>" value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' checked' : '' ?><?= $req ?>> <?= $esc($opt['label']) ?></label>
+            <label class="tw-option"><input type="radio" name="<?= $esc($fieldName) ?>" value="<?= $esc($opt['value']) ?>"<?= $answer === $opt['value'] ? ' checked' : '' ?><?= $req.$roChoice ?><?= $stmtAttr($opt) ?>> <?= $esc($opt['label']) ?></label>
           <?php endforeach; ?>
 
         <?php elseif ('checkbox' === $q['type']): ?>
           <?php $selected = \is_array($answer) ? $answer : []; ?>
           <?php foreach ($q['options'] as $opt): ?>
-            <label class="tw-option"><input type="checkbox" name="<?= $esc($fieldName) ?>[]" value="<?= $esc($opt['value']) ?>"<?= \in_array($opt['value'], $selected, true) ? ' checked' : '' ?>> <?= $esc($opt['label']) ?></label>
+            <label class="tw-option"><input type="checkbox" name="<?= $esc($fieldName) ?>[]" value="<?= $esc($opt['value']) ?>"<?= \in_array($opt['value'], $selected, true) ? ' checked' : '' ?><?= $roChoice ?><?= $stmtAttr($opt) ?>> <?= $esc($opt['label']) ?></label>
           <?php endforeach; ?>
         <?php endif; ?>
-      </fieldset>
+
+        <?php if ($hint): ?>
+          <?php // Static fields keep their server-rendered statement; for
+                // editable fields the JS reveals/updates the hint live. ?>
+          <p class="tw-statement" data-statement-hint<?= $isStatic && '' !== $q['statement'] ? '' : ' hidden' ?>>
+            <span class="tw-statement-intro">So erscheint dies im Dokument:</span>
+            <span class="tw-statement-text" data-statement-text><?= $esc($q['statement']) ?></span>
+          </p>
+        <?php endif; ?>
+      </<?= $tag ?>>
     <?php endforeach; ?>
 
     <?php if ($this->requireSignature): ?>
-      <div class="tw-signature" data-workflow-signature>
-        <label>Unterschrift</label>
+      <div class="tw-field tw-field--signature" data-workflow-signature>
+        <label>Unterschrift <span class="tw-required">*</span></label>
         <canvas data-signature-canvas width="600" height="200"></canvas>
         <input type="hidden" name="signature" data-signature-input value="">
         <button type="button" data-signature-clear>Unterschrift löschen</button>
       </div>
     <?php endif; ?>
 
-    <div class="tw-row">
-      <button type="submit" class="tw-submit">Absenden</button>
+    <div class="tw-field tw-field--submit">
+      <button type="submit" class="tw-submit"<?= !empty($this->preview) ? ' disabled' : '' ?>>Absenden</button>
     </div>
   </form>
 

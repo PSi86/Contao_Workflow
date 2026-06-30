@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
 
 $GLOBALS['TL_DCA']['tl_workflow'] = [
     'config' => [
@@ -73,14 +74,18 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
     ],
     'palettes' => [
         '__selector__' => ['pdfBodyType', 'requireSignature'],
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{form_legend},inputFields,formPage,requireSignature,questions;{pdf_legend},master,pdfFileName,pdfBodyType;{notification_legend},ncInvite,ncReminder,ncResult',
+        // Functional grouping: workflow basics → source data → shared document
+        // content (heading + intro, shown in the FORM and the PDF) → the form
+        // (page, signature, answer fields) → the PDF (stationery, file name,
+        // body) → notifications.
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,questions,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'subpalettes' => [
         // The signature-line fields only matter when a signature is required.
         'requireSignature'     => 'pdfSignatureDate,pdfSignatureLocation',
-        // Letter mode: shared heading + the rules that carry the body texts.
+        // Letter mode: the rules that carry the body texts.
         // Template mode: just the template file (it handles branching itself).
-        'pdfBodyType_letter'   => 'pdfTitle,rules',
+        'pdfBodyType_letter'   => 'rules',
         'pdfBodyType_template' => 'pdfBodyTemplate',
     ],
     'fields' => [
@@ -145,12 +150,6 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(128) NOT NULL default ''",
         ],
-        'inputFields' => [
-            'exclude'   => true,
-            'inputType' => 'checkbox',
-            'eval'      => ['multiple' => true, 'tl_class' => 'clr'],
-            'sql'       => 'blob NULL',
-        ],
         'requireSignature' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
@@ -164,9 +163,10 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
         // Answer fields (tl_workflow_question), embedded in the edit mask.
-        // hideButton: only the inline list (with its own new/edit/delete that open
-        // clean record popups) – NOT the main button, which would open the foreign
-        // table's mode-4 parent list (recursive "edit workflow" header).
+        // hideButton: only the inline list (with its own new/edit/delete that
+        // open clean record popups). Custom list_callback renders the rows with
+        // a drag handle – the order is changed directly in this list and
+        // persisted via the workflow_question_sort route.
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
@@ -175,11 +175,10 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => [
                 'tl_class'          => 'clr',
                 'hideButton'        => true,
-                'fields'            => ['label', 'type', 'storageField', 'mandatory'],
                 'orderField'        => 'sorting',
-                'showOperations'    => true,
-                'operations'        => ['edit', 'delete', 'new'],
+                'operations'        => ['edit', 'delete'],
                 'global_operations' => ['new'],
+                'list_callback'     => [AnswerConfigListener::class, 'renderQuestionsList'],
             ],
         ],
         // PDF rules (tl_workflow_rule), embedded in the edit mask (letter mode only).
@@ -239,11 +238,36 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
+        // Shared heading: shown at the top of the FORM and as the PDF heading.
+        // No ##text_*## tokens here – the form renders it before answering, so
+        // only tokens that resolve identically in both places are supported.
         'pdfTitle' => [
             'exclude'   => true,
             'inputType' => 'text',
             'eval'      => ['decodeEntities' => true, 'maxlength' => 255, 'tl_class' => 'clr'],
             'sql'       => "varchar(255) NOT NULL default ''",
+        ],
+        // Optional intro paragraph after the heading, in the FORM and the PDF.
+        'introText' => [
+            'exclude'   => true,
+            'search'    => true,
+            'inputType' => 'textarea',
+            'eval'      => ['decodeEntities' => true, 'style' => 'height:80px', 'tl_class' => 'clr'],
+            'sql'       => 'text NULL',
+        ],
+        // Read-only "open form preview" button (no DB column). Rendered in the form
+        // section; opens the standalone form preview (submit disabled) in a new tab.
+        'formPreview' => [
+            'exclude'              => true,
+            'input_field_callback' => [PreviewButtonListener::class, 'renderFormButton'],
+            'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Read-only "open PDF preview" button (no DB column). Rendered in the
+        // PDF-Inhalt section; streams the rendered PDF with sample data in a new tab.
+        'pdfPreview' => [
+            'exclude'              => true,
+            'input_field_callback' => [PreviewButtonListener::class, 'renderPdfButton'],
+            'eval'                 => ['tl_class' => 'clr'],
         ],
         'pdfBodyTemplate' => [
             'exclude'   => true,

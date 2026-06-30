@@ -22,7 +22,12 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
 class WorkflowConfigImporter
 {
     public const FORMAT = 'contao-workflow-config';
-    public const VERSION = 1;
+    // v2: option "statement" texts, per-question pdfStatement/prefill, display
+    // questions instead of the removed workflow inputFields (v1 documents are
+    // still accepted; their inputFields import as read-only questions).
+    // v3: per-question readOnly flag replaces the v2 "display" type (mapped on
+    // import), "number" type, workflow introText.
+    public const VERSION = 3;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -84,7 +89,16 @@ class WorkflowConfigImporter
         }
 
         $workflowId = $this->createWorkflow((array) $config['workflow'], $masterId, $nc, $sourceUuid);
-        $this->createQuestions($workflowId, (array) ($config['questions'] ?? []));
+
+        // v1 compatibility: the former read-only workflow "inputFields" become
+        // read-only text fields, rendered before the other questions.
+        $questions = (array) ($config['questions'] ?? []);
+
+        foreach (array_reverse($this->legacyInputFields((array) $config['workflow'])) as $field) {
+            array_unshift($questions, ['label' => $field, 'type' => 'text', 'readOnly' => true, 'storageField' => $field]);
+        }
+
+        $this->createQuestions($workflowId, $questions);
         $this->createRules($workflowId, (array) ($config['rules'] ?? []));
 
         $workflow = WorkflowModel::findByPk($workflowId);
@@ -262,14 +276,13 @@ class WorkflowConfigImporter
     {
         $steps = array_values(array_filter(array_map('trim', (array) ($wf['steps'] ?? []))));
         $steps = $steps ?: ['Importiert', 'Eingeladen', 'Beantwortet'];
-        $inputFields = array_values(array_filter(array_map('trim', (array) ($wf['inputFields'] ?? []))));
 
         $this->connection->executeStatement(
             'INSERT INTO tl_workflow '
-            .'(tstamp, title, published, steps, sourceFile, sourceSheet, headerRow, emailField, inputFields, '
-            .'requireSignature, formPage, master, pdfBodyType, pdfBodyTemplate, pdfTitle, pdfSignatureDate, '
+            .'(tstamp, title, published, steps, sourceFile, sourceSheet, headerRow, emailField, '
+            .'requireSignature, formPage, master, pdfBodyType, pdfBodyTemplate, pdfTitle, introText, pdfSignatureDate, '
             .'pdfSignatureLocation, pdfFileName, ncInvite, ncReminder, ncResult) '
-            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 (string) $wf['title'],
                 ($wf['published'] ?? true) ? '1' : '',
@@ -278,12 +291,12 @@ class WorkflowConfigImporter
                 (string) ($wf['sourceSheet'] ?? ''),
                 max(1, (int) ($wf['headerRow'] ?? 1)),
                 (string) ($wf['emailField'] ?? ''),
-                serialize($inputFields),
                 ($wf['requireSignature'] ?? false) ? '1' : '',
                 $masterId,
                 (string) ($wf['pdfBodyType'] ?? 'letter'),
                 (string) ($wf['pdfBodyTemplate'] ?? ''),
                 (string) ($wf['pdfTitle'] ?? ''),
+                (string) ($wf['introText'] ?? ''),
                 (string) ($wf['pdfSignatureDate'] ?? ''),
                 (string) ($wf['pdfSignatureLocation'] ?? ''),
                 (string) ($wf['pdfFileName'] ?? ''),
@@ -294,6 +307,21 @@ class WorkflowConfigImporter
         );
 
         return (int) $this->connection->lastInsertId();
+    }
+
+    /**
+     * Legacy (v1) read-only display columns of the workflow document.
+     *
+     * @param array<string, mixed> $wf
+     *
+     * @return array<int, string>
+     */
+    private function legacyInputFields(array $wf): array
+    {
+        return array_values(array_filter(array_map(
+            static fn ($name): string => trim((string) $name),
+            (array) ($wf['inputFields'] ?? []),
+        )));
     }
 
     /**
@@ -315,21 +343,38 @@ class WorkflowConfigImporter
                 $value = trim((string) ($opt['value'] ?? ''));
 
                 if ('' !== $value) {
-                    $options[] = ['value' => $value, 'label' => (string) ($opt['label'] ?? $value)];
+                    $options[] = [
+                        'value'     => $value,
+                        'label'     => (string) ($opt['label'] ?? $value),
+                        'statement' => (string) ($opt['statement'] ?? ''),
+                    ];
                 }
             }
 
+            $type = (string) ($q['type'] ?? 'text');
+            $readOnly = (bool) ($q['readOnly'] ?? false);
+
+            // v2 compatibility: the short-lived "display" type is now a
+            // read-only text field.
+            if ('display' === $type) {
+                $type = 'text';
+                $readOnly = true;
+            }
+
             $this->connection->executeStatement(
-                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, mandatory, hideInForm, options) '
-                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, mandatory, prefill, readOnly, hideInForm, pdfStatement, options) '
+                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $workflowId,
                     $sorting,
                     (string) ($q['label'] ?? ''),
-                    (string) ($q['type'] ?? 'text'),
+                    $type,
                     (string) ($q['storageField'] ?? ''),
                     ($q['mandatory'] ?? false) ? '1' : '',
+                    ($q['prefill'] ?? false) ? '1' : '',
+                    $readOnly ? '1' : '',
                     ($q['hideInForm'] ?? false) ? '1' : '',
+                    (string) ($q['pdfStatement'] ?? ''),
                     $options ? serialize($options) : null,
                 ],
             );

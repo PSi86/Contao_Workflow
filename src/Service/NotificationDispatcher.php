@@ -26,12 +26,15 @@ use Terminal42\NotificationCenterBundle\Receipt\ReceiptCollection;
  *   ##workflow_title##  the workflow title
  *   ##data_<column>##   any imported source column (sanitized name), including the
  *                       stored answer values (e.g. ##data_verzicht##)
- *   ##var_<variable>##  any master/letterhead variable (e.g. ##var_verein##)
+ *   ##letterhead_<variable>##  any master/letterhead variable (e.g. ##letterhead_verein##)
+ *   ##text_<column>##   the document statement ("Textbaustein") of the answer
+ *                       field storing into that column; ##text_all## for all
  *   ##attachment##      the generated PDF (result mail); stored as a bulky item
  *                       and referenced under "Attachments via tokens"
  *
- * The ##data_*## / ##var_*## tokens are produced by the shared PlaceholderResolver
- * so they are identical to the ones used in the PDF.
+ * The ##data_*## / ##letterhead_*## / ##text_*## tokens are produced by the shared
+ * PlaceholderResolver / DocumentBodyComposer so they are identical to the ones
+ * used in the PDF.
  */
 class NotificationDispatcher
 {
@@ -40,6 +43,7 @@ class NotificationDispatcher
         private readonly BulkyItemStorage $bulkyItemStorage,
         private readonly FileItemFactory $fileItemFactory,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly DocumentBodyComposer $bodyComposer,
         private readonly WorkflowMailContext $mailContext,
         private readonly Connection $connection,
     ) {
@@ -163,12 +167,20 @@ class NotificationDispatcher
      */
     private function baseTokens(WorkflowModel $workflow, EntryModel $entry, string $link): array
     {
+        $data = $entry->getData();
+        $vars = $this->masterVars($workflow);
+        $email = (string) $entry->email;
+
         $tokens = $this->placeholderResolver->canonicalTokens(
-            $entry->getData(),
-            $this->masterVars($workflow),
-            (string) $entry->email,
+            $data,
+            $vars,
+            $email,
             (string) $workflow->title,
         );
+
+        // Same statement tokens as in the PDF, so a result mail can quote the
+        // participant's choices verbatim (##text_all## / ##text_<column>##).
+        $tokens = [...$tokens, ...$this->bodyComposer->statementTokens($workflow, $data, $vars, $email)];
 
         $tokens['link'] = $link;
 

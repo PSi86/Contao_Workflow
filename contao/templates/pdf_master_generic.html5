@@ -10,7 +10,7 @@
  * PDF variables (set per Briefpapier under „PDF-Variablen"):
  *   HeaderLine         the small sender line above the rule
  *   Footer1..Footer4   the four footer columns; use "|" to separate lines
- *   Jahr, Verein, Ort  available to the body texts (##var_jahr## …)
+ *   Jahr, Verein, Ort  available to the body texts (##letterhead_jahr## …)
  *
  * Layout/colours stay in this template; only the content is variable.
  *
@@ -45,6 +45,8 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
 <style>
     body { font-family: sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; }
     h1 { font-size: 15pt; margin: 0 0 2px; }
+    /* One blank line (one body line height) between heading and intro. */
+    .letter-intro { margin: 16pt 0 0; }
     .body, .letter-body { margin: 18px 0; }
     .amount { font-weight: bold; }
 

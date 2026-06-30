@@ -11,10 +11,13 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
+use Psimandl\WorkflowBundle\Form\QuestionWidgetFactory;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
+use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +32,9 @@ class WorkflowFormController extends AbstractFrontendModuleController
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly SubmissionProcessor $submissionProcessor,
+        private readonly DocumentBodyComposer $bodyComposer,
+        private readonly WorkflowFormView $formView,
+        private readonly QuestionWidgetFactory $widgetFactory,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $csrfTokenName,
     ) {
@@ -41,13 +47,14 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $assetDir = 'bundles/contaoworkflow';
         $GLOBALS['TL_CSS'][] = $assetDir.'/workflow-form.css';
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-signature.js';
+        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-form.js';
 
         $token = (string) $this->framework->getAdapter(Input::class)->get('auto_item');
 
         $template->set('requestToken', $this->csrfTokenManager->getDefaultTokenValue());
         $template->set('error', '');
-        $template->set('inputFields', []);
-        $template->set('data', []);
+        $template->set('heading', '');
+        $template->set('intro', '');
         $template->set('questions', []);
         $template->set('answers', []);
         $template->set('requireSignature', true);
@@ -68,6 +75,13 @@ class WorkflowFormController extends AbstractFrontendModuleController
             return $template->getResponse();
         }
 
+        // Heading + intro are the same texts the PDF shows (resolved by the
+        // shared composer), so the form page mirrors the document.
+        $data = $entry->getData();
+        $extra = $workflow->getMasterVars();
+        $template->set('heading', $this->bodyComposer->resolveHeading($workflow, $data, $extra, (string) $entry->email));
+        $template->set('intro', $this->bodyComposer->resolveIntro($workflow, $data, $extra, (string) $entry->email));
+
         if ((int) $entry->status >= WorkflowStatus::STATUS_RESPONDED) {
             $template->set('state', 'done');
 
@@ -76,10 +90,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         $questions = $workflow->getQuestions();
 
-        $template->set('inputFields', $workflow->getInputFields());
-        $template->set('data', $entry->getData());
         $template->set('email', $entry->email);
-        $template->set('questions', $this->buildQuestionViews($questions));
+        $template->set('questions', $this->formView->buildQuestionViews($questions, $workflow, $entry));
         $template->set('requireSignature', $workflow->isSignatureRequired());
         $template->set('formId', 'workflow_form_'.$entry->id);
         $template->set('state', 'form');
@@ -102,36 +114,6 @@ class WorkflowFormController extends AbstractFrontendModuleController
     }
 
     /**
-     * @param array<int, QuestionModel> $questions
-     *
-     * @return array<int, array{id: int, label: string, type: string, mandatory: bool, multiple: bool, options: array<int, array{value: string, label: string}>}>
-     */
-    private function buildQuestionViews(array $questions): array
-    {
-        $views = [];
-
-        foreach ($questions as $question) {
-            // "Aktuelle Zeit" fields flagged hidden never appear in the form –
-            // they are filled automatically on submission.
-            if ($question->isHiddenInForm()) {
-                continue;
-            }
-
-            $views[] = [
-                'id'        => (int) $question->id,
-                'label'     => (string) $question->label,
-                'type'      => (string) $question->type,
-                'mandatory' => $question->isMandatory(),
-                'multiple'  => $question->isMultiple(),
-                'options'   => $question->getOptions(),
-                'autoValue' => $question->isCurrentTime() ? date('d.m.Y') : '',
-            ];
-        }
-
-        return $views;
-    }
-
-    /**
      * @param array<int, QuestionModel>          $questions
      * @param array<int, string|array<string>>   $submitted   filled with the raw submitted values for repopulation
      */
@@ -146,8 +128,12 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $answers = [];
 
         foreach ($questions as $question) {
-            $name = 'q_'.$question->id;
             $storage = trim((string) $question->storageField);
+
+            // Read-only fields are output only – never validated, never stored.
+            if ($question->isReadOnly() && !$question->isCurrentTime()) {
+                continue;
+            }
 
             // "Aktuelle Zeit": always set to the current date on submission,
             // regardless of (and ignoring) any posted value – no validation.
@@ -162,21 +148,25 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 continue;
             }
 
+            // Contao's widget layer validates (mandatory, option whitelist)
+            // with the localised ERR.* messages.
+            $widget = $this->widgetFactory->create($question);
+
+            if (null === $widget) {
+                continue;
+            }
+
+            $widget->validate();
+
             if ($question->isMultiple()) {
                 $values = array_values(array_filter(
-                    array_map('strval', $request->request->all($name)),
+                    array_map('strval', (array) $widget->value),
                     static fn (string $v): bool => '' !== $v,
                 ));
                 $submitted[(int) $question->id] = $values;
 
-                foreach ($values as $value) {
-                    if (!\in_array($value, $question->getAllowedValues(), true)) {
-                        return $this->invalidChoice($question);
-                    }
-                }
-
-                if ($question->isMandatory() && [] === $values) {
-                    return $this->missingValue($question);
+                if ($widget->hasErrors()) {
+                    return (string) $widget->getErrorAsString();
                 }
 
                 if ('' !== $storage) {
@@ -186,15 +176,11 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 continue;
             }
 
-            $value = trim((string) $request->request->get($name, ''));
+            $value = trim((string) (\is_array($widget->value) ? '' : $widget->value));
             $submitted[(int) $question->id] = $value;
 
-            if ($question->hasOptions() && '' !== $value && !\in_array($value, $question->getAllowedValues(), true)) {
-                return $this->invalidChoice($question);
-            }
-
-            if ($question->isMandatory() && '' === $value) {
-                return $this->missingValue($question);
+            if ($widget->hasErrors()) {
+                return (string) $widget->getErrorAsString();
             }
 
             if ('date' === $question->type && '' !== $value) {
@@ -255,16 +241,6 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         // PNG magic bytes.
         return false !== $binary && str_starts_with($binary, "\x89PNG\r\n\x1a\n");
-    }
-
-    private function invalidChoice(QuestionModel $question): string
-    {
-        return sprintf('Ungültige Auswahl bei „%s".', (string) $question->label);
-    }
-
-    private function missingValue(QuestionModel $question): string
-    {
-        return sprintf('Bitte füllen Sie das Feld „%s" aus.', (string) $question->label);
     }
 
     /**

@@ -25,12 +25,13 @@ class SpreadsheetImporter
         private readonly ContaoFramework $framework,
         private readonly TokenGenerator $tokenGenerator,
         private readonly SpreadsheetInspector $inspector,
+        private readonly PlaceholderResolver $placeholderResolver,
         private readonly string $projectDir,
     ) {
     }
 
     /**
-     * @return array{skipped: bool, inserted: int, updated: int, total: int}
+     * @return array{skipped: bool, inserted: int, updated: int, total: int, collisions: array<string, array<int, string>>}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
@@ -44,6 +45,11 @@ class SpreadsheetImporter
             throw new \RuntimeException('Es konnten keine Spalten aus der Quelldatei gelesen werden.');
         }
 
+        // Columns whose names normalize to the same placeholder slug: only the
+        // first is reachable via ##data_<slug>##, the rest are reported so the
+        // user can disambiguate them in the source file.
+        $collisions = $this->placeholderResolver->slugCollisions($headers);
+
         $path = $this->resolveSourcePath($workflow);
         $hash = (string) md5_file($path);
 
@@ -52,7 +58,7 @@ class SpreadsheetImporter
         // Skip a redundant re-import of an unchanged file (but always run the
         // very first import, even if a stale hash happens to match).
         if (!$force && [] !== $existing && $hash === (string) $workflow->sourceHash) {
-            return ['skipped' => true, 'inserted' => 0, 'updated' => 0, 'total' => \count($existing)];
+            return ['skipped' => true, 'inserted' => 0, 'updated' => 0, 'total' => \count($existing), 'collisions' => $collisions];
         }
 
         $emailHeader = $this->resolveEmailHeader($workflow, $headers);
@@ -132,10 +138,11 @@ class SpreadsheetImporter
         $workflow->save();
 
         return [
-            'skipped'  => false,
-            'inserted' => $inserted,
-            'updated'  => $updated,
-            'total'    => \count($existing) + $inserted,
+            'skipped'    => false,
+            'inserted'   => $inserted,
+            'updated'    => $updated,
+            'total'      => \count($existing) + $inserted,
+            'collisions' => $collisions,
         ];
     }
 

@@ -46,13 +46,19 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
     ],
     'palettes' => [
         '__selector__' => ['type'],
-        'default'      => '{question_legend},label,type,storageField,mandatory',
+        'default'      => '{question_legend},label,type,storageField,mandatory,prefill,readOnly',
     ],
     'subpalettes' => [
+        // Value types carry ONE document text; choice types carry it PER OPTION
+        // (a per-question text would override the option texts).
+        'type_text'        => 'pdfStatement',
+        'type_textarea'    => 'pdfStatement',
+        'type_number'      => 'pdfStatement',
+        'type_date'        => 'pdfStatement',
         'type_select'      => 'options',
         'type_radio'       => 'options',
         'type_checkbox'    => 'options',
-        'type_currentTime' => 'hideInForm',
+        'type_currentTime' => 'hideInForm,pdfStatement',
     ],
     'fields' => [
         'id' => [
@@ -79,7 +85,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'type' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'options'   => ['text', 'textarea', 'select', 'radio', 'checkbox', 'date', 'currentTime'],
+            'options'   => ['text', 'textarea', 'number', 'date', 'select', 'radio', 'checkbox', 'currentTime'],
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'],
             'eval'      => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(16) NOT NULL default 'text'",
@@ -91,6 +97,22 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'sql'       => "varchar(128) NOT NULL default ''",
         ],
         'mandatory' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default ''",
+        ],
+        // Prefill the (editable) field with the stored data value (Excel source
+        // value or previous answer) – "output field = input field".
+        'prefill' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default ''",
+        ],
+        // Read-only: the field shows the stored data value but cannot be edited
+        // (never validated, never stored back). Available for every type.
+        'readOnly' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
             'eval'      => ['tl_class' => 'w50 m12'],
@@ -113,16 +135,32 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                     'value' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_value'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:220px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:160px'],
                     ],
                     'label' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_label'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:420px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:280px'],
+                    ],
+                    // Document text ("Textbaustein") of the option; empty means
+                    // the visible label counts verbatim in the document.
+                    'statement' => [
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'],
+                        'inputType' => 'text',
+                        'eval'      => ['decodeEntities' => true, 'style' => 'width:380px'],
                     ],
                 ],
             ],
             'sql' => 'blob NULL',
+        ],
+        // Statement template of a value-based question; ##answer## marks the
+        // entered value, other ##tokens## resolve as usual. Empty = "<label>: <value>".
+        'pdfStatement' => [
+            'exclude'   => true,
+            'search'    => true,
+            'inputType' => 'textarea',
+            'eval'      => ['decodeEntities' => true, 'style' => 'height:60px', 'tl_class' => 'clr'],
+            'sql'       => 'text NULL',
         ],
     ],
 ];

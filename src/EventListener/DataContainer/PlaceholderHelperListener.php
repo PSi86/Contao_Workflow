@@ -8,6 +8,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Input;
 use Psimandl\WorkflowBundle\Model\MasterModel;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
@@ -15,7 +16,7 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
  * Adds a small placeholder helper (autocomplete) to the workflow's placeholder
- * fields: typing surfaces the available ##data_*## / ##var_*## / ##email## /
+ * fields: typing surfaces the available ##data_*## / ##letterhead_*## / ##email## /
  * ##workflow_title## tokens and filters them as you type. The token list is built
  * per record from the workflow's source columns, answer fields and letterhead
  * variables; the slugs are produced with PlaceholderResolver so every suggestion
@@ -39,13 +40,23 @@ class PlaceholderHelperListener
     {
         $workflow = $dc->id ? WorkflowModel::findByPk((int) $dc->id) : null;
 
-        $this->applyTo('tl_workflow', ['pdfFileName', 'pdfTitle'], $workflow);
+        // No ##text_*## tokens here: heading and intro are also shown in the
+        // form (before answering), the file name resolves raw values only.
+        $this->applyTo('tl_workflow', ['pdfFileName', 'pdfTitle', 'introText'], $workflow, false);
     }
 
     #[AsCallback(table: 'tl_workflow_rule', target: 'config.onload')]
     public function enableForRule(DataContainer $dc): void
     {
-        $this->applyTo('tl_workflow_rule', ['pdfBody'], $this->resolveRuleWorkflow($dc));
+        $this->applyTo('tl_workflow_rule', ['pdfBody'], $this->resolveRuleWorkflow($dc), true);
+    }
+
+    #[AsCallback(table: 'tl_workflow_question', target: 'config.onload')]
+    public function enableForQuestion(DataContainer $dc): void
+    {
+        // Statements may use ##answer## plus the regular tokens, but no ##text_*##
+        // (statements do not nest).
+        $this->applyTo('tl_workflow_question', ['pdfStatement'], $this->resolveQuestionWorkflow($dc), false);
     }
 
     /**
@@ -54,13 +65,13 @@ class PlaceholderHelperListener
      *
      * @param array<int, string> $fields
      */
-    private function applyTo(string $table, array $fields, ?WorkflowModel $workflow): void
+    private function applyTo(string $table, array $fields, ?WorkflowModel $workflow, bool $withStatements): void
     {
         if (!\in_array((string) Input::get('act'), ['edit', 'editAll'], true)) {
             return;
         }
 
-        $json = json_encode($this->buildTokens($workflow), JSON_THROW_ON_ERROR);
+        $json = json_encode($this->buildTokens($workflow, $withStatements), JSON_THROW_ON_ERROR);
 
         foreach ($fields as $field) {
             if (!isset($GLOBALS['TL_DCA'][$table]['fields'][$field])) {
@@ -94,7 +105,7 @@ class PlaceholderHelperListener
      *
      * @return array<int, array{name: string, label: string}>
      */
-    private function buildTokens(?WorkflowModel $workflow): array
+    private function buildTokens(?WorkflowModel $workflow, bool $withStatements = false): array
     {
         $tokens = [];
         $seen = [];
@@ -113,6 +124,8 @@ class PlaceholderHelperListener
                 $add('data_'.$this->placeholders->normalize($name), 'Spalte: '.$name);
             }
 
+            $hasStatements = false;
+
             foreach ($workflow->getQuestions() as $question) {
                 $field = trim((string) $question->storageField);
 
@@ -122,10 +135,19 @@ class PlaceholderHelperListener
 
                 $label = trim((string) $question->label);
                 $add('data_'.$this->placeholders->normalize($field), 'Antwortfeld: '.('' !== $label ? $label : $field));
+
+                if ($withStatements) {
+                    $hasStatements = true;
+                    $add('text_'.$this->placeholders->normalize($field), 'Textbaustein: '.('' !== $label ? $label : $field));
+                }
+            }
+
+            if ($hasStatements) {
+                $add('text_all', 'Alle Textbausteine (in Feld-Reihenfolge)');
             }
 
             foreach ($this->masterVars($workflow) as $key) {
-                $add('var_'.$this->placeholders->normalize($key), 'Briefpapier: '.$key);
+                $add('letterhead_'.$this->placeholders->normalize($key), 'Briefpapier: '.$key);
             }
         }
 
@@ -136,7 +158,30 @@ class PlaceholderHelperListener
     }
 
     /**
-     * Variable keys (##var_*##) of the workflow's assigned master: the master's own
+     * Resolves the parent workflow of the answer field currently being edited or
+     * created (mirrors resolveRuleWorkflow for tl_workflow_question).
+     */
+    private function resolveQuestionWorkflow(DataContainer $dc): ?WorkflowModel
+    {
+        if (isset($dc->activeRecord->pid) && (int) $dc->activeRecord->pid > 0) {
+            $pid = (int) $dc->activeRecord->pid;
+        } elseif ($dc->id && 'create' !== Input::get('act')) {
+            $question = QuestionModel::findByPk((int) $dc->id);
+            $pid = null !== $question ? (int) $question->pid : 0;
+        } else {
+            $pid = (int) Input::get('pid');
+
+            if (1 === (int) Input::get('mode') && $pid > 0) {
+                $sibling = QuestionModel::findByPk($pid);
+                $pid = null !== $sibling ? (int) $sibling->pid : 0;
+            }
+        }
+
+        return $pid > 0 ? WorkflowModel::findByPk($pid) : null;
+    }
+
+    /**
+     * Variable keys (##letterhead_*##) of the workflow's assigned master: the master's own
      * key/value pairs, completed with the keys declared for its template.
      *
      * @return array<int, string>

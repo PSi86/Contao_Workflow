@@ -45,3 +45,8 @@ services:
     # referenced by class name and resolved via System::importStatic() – must be public.
     Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener:
         public: true
+
+    # DCA input_field_callback for the PDF/form preview buttons, referenced by class
+    # name and resolved via System::importStatic() – must be public.
+    Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener:
+        public: true
