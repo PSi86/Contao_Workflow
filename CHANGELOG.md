@@ -17,7 +17,20 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     wird. Fällt das Skript aus, sind alle Felder sichtbar (gutartiger Rückfall, kein
     Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
   - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
+  - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
+    wird erst beim Speichern des Workflows übernommen (`onsubmit_callback`); die
+    Reihenfolge bleibt über das Hinzufügen/Bearbeiten einzelner Felder hinweg
+    erhalten (verstecktes Formularfeld + erneutes Anwenden nach dcaWizard-Refresh).
   - Die betroffenen Hilfetexte („… wird sofort gespeichert") wurden angepasst.
+
+### Behoben
+- **Verwaiste „Regel/Antwortfeld"-Zeilen.** Wurde der „Neue Regel"- bzw.
+  „Neues Antwortfeld"-Dialog ohne Speichern geschlossen, blieb eine leere Zeile
+  (z. B. „Regel 82") in der Liste stehen und musste manuell gelöscht werden:
+  Contao legt bei „Neu" sofort einen leeren Datensatz an, und die eingebettete
+  Liste durchläuft Contaos eigene Aufräumroutine nie. Solche nie gespeicherten
+  Zeilen (`tstamp = 0`) werden jetzt nicht mehr angezeigt und beim Öffnen des
+  Workflows aus der Datenbank entfernt.
 
 ### Hinzugefügt
 - **PDF- und Formular-Vorschau in der Workflow-Bearbeiten-Maske.** Im Abschnitt

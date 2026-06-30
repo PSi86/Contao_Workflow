@@ -15,6 +15,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'ctable'           => ['tl_workflow_entry', 'tl_workflow_question', 'tl_workflow_rule'],
         'switchToEdit'     => true,
         'enableVersioning' => true,
+        // onload: drop never-saved (tstamp=0) child rows left behind when a
+        // "new question/rule" dialog is closed without saving (the embedded
+        // dcaWizard lists never trigger Contao's own cleanup).
+        // onsubmit: persist the answer-field order chosen by drag&drop, posted in
+        // the hidden "wfQuestionOrder" field – so the reordering is written only
+        // when the workflow is saved, not immediately.
+        'onload_callback'   => [[AnswerConfigListener::class, 'cleanupAbandonedChildren']],
+        'onsubmit_callback' => [[AnswerConfigListener::class, 'persistQuestionOrder']],
         'sql' => [
             'keys' => [
                 'id' => 'primary',
@@ -165,8 +173,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // Answer fields (tl_workflow_question), embedded in the edit mask.
         // hideButton: only the inline list (with its own new/edit/delete that
         // open clean record popups). Custom list_callback renders the rows with
-        // a drag handle – the order is changed directly in this list and
-        // persisted via the workflow_question_sort route.
+        // a drag handle – the order is changed directly in this list and written
+        // only when the workflow is saved (config.onsubmit persistQuestionOrder,
+        // posted via the hidden wfQuestionOrder field; see workflow-question-sort.js).
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
