@@ -35,6 +35,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']  = ['Erinnerungs-Benachrichtigu
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']    = ['Ergebnis-Benachrichtigung', 'Notification Center: Ergebnis-Mail mit angehängtem PDF.'];
 
 $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Antwortfelder', 'Felder, die die Person im Formular ausfüllt. „Neu" legt ein Feld an, „Bearbeiten" öffnet es im Dialog. Die Reihenfolge lässt sich direkt in der Liste per Drag & Drop (Griff links) ändern; sie wird beim Speichern des Workflows übernommen.'];
+$GLOBALS['TL_LANG']['tl_workflow']['questionOrder'] = ['Reihenfolge der Antwortfelder', 'Technisches Feld (ausgeblendet): hält die per Drag & Drop gewählte Reihenfolge für die Versionierung.'];
 $GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] = 'Noch keine Antwortfelder. Mit „Neu" anlegen.';
 $GLOBALS['TL_LANG']['tl_workflow']['questionsDrag']  = 'Ziehen, um die Reihenfolge zu ändern';
 $GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['PDF-Regeln (Brieftexte)', 'Jede Regel = Bedingungen + Brieftext. Die erste passende Regel liefert den Text; eine Regel OHNE Bedingung wird als „(Standardtext)" geführt und gilt immer (ans Ende stellen, nur eine erlaubt).'];

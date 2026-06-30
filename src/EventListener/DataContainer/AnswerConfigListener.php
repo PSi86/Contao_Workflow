@@ -167,35 +167,119 @@ class AnswerConfigListener
     }
 
     /**
-     * onsubmit_callback for tl_workflow: writes the answer-field order chosen by
-     * drag&drop in the embedded list. The order is posted as a comma-separated id
-     * list in the hidden "wfQuestionOrder" field (see workflow-question-sort.js);
-     * only rows belonging to this workflow are renumbered. Empty/absent = no
-     * reorder happened, so the existing sorting is left untouched.
+     * load_callback for tl_workflow.questionOrder: returns the workflow's current
+     * answer-field order (child sorting) as a comma-separated id list, so the
+     * hidden field always mirrors reality. Also loads the back end CSS that hides
+     * the field's row (the order is edited by drag&drop, not in this raw field).
+     *
+     * @param mixed $value
      */
-    public function persistQuestionOrder(DataContainer $dc): void
+    public function loadQuestionOrder(mixed $value, DataContainer $dc): mixed
+    {
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+
+        if (!$dc->id) {
+            return $value;
+        }
+
+        return implode(',', $this->questionIdsInOrder((int) $dc->id));
+    }
+
+    /**
+     * save_callback for tl_workflow.questionOrder: renumbers the child answer
+     * fields' sorting to the posted order (drag&drop) and returns the normalised
+     * order to store. Because this is a real column, a changed order is picked up
+     * by Contao's versioning (new version + visible diff). Questions of the
+     * workflow that are missing from the posted list are appended in their current
+     * order, so every row keeps a defined sorting.
+     *
+     * @param mixed $value
+     */
+    public function saveQuestionOrder(mixed $value, DataContainer $dc): mixed
     {
         if (!$dc->id) {
+            return $value;
+        }
+
+        $ordered = $this->renumberQuestions((int) $dc->id, (string) $value);
+
+        return implode(',', $ordered);
+    }
+
+    /**
+     * onrestore_version_callback for tl_workflow: re-applies a restored
+     * questionOrder to the child answer fields' sorting (a version restore writes
+     * the workflow row back but does not touch the child table).
+     *
+     * @param array<string, mixed> $data restored record data
+     */
+    public function restoreQuestionOrder(string $table, int $pid, int $version, array $data): void
+    {
+        if ('tl_workflow' !== $table) {
             return;
         }
 
-        $order = trim((string) Input::post('wfQuestionOrder'));
+        $this->renumberQuestions($pid, (string) ($data['questionOrder'] ?? ''));
+    }
 
-        if ('' === $order) {
-            return;
+    /**
+     * Child answer-field ids of a workflow in their current sorting order.
+     *
+     * @return array<int, int>
+     */
+    private function questionIdsInOrder(int $workflowId): array
+    {
+        $ids = [];
+        $questions = QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']);
+
+        if (null !== $questions) {
+            foreach ($questions as $question) {
+                $ids[] = (int) $question->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Renumbers a workflow's answer-field sorting to the given comma-separated id
+     * order; ids not belonging to the workflow are dropped, missing ones appended
+     * (in their current order). Writes nothing when the order is already as desired.
+     *
+     * @return array<int, int> the resulting order (valid ids only)
+     */
+    private function renumberQuestions(int $workflowId, string $order): array
+    {
+        $current = $this->questionIdsInOrder($workflowId);
+
+        // Requested ids that actually belong to the workflow, in requested order.
+        $requested = array_values(array_unique(array_filter(array_map('intval', explode(',', $order)))));
+        $target = array_values(array_intersect($requested, $current));
+
+        // Append any questions the posted order did not mention.
+        foreach ($current as $id) {
+            if (!\in_array($id, $target, true)) {
+                $target[] = $id;
+            }
+        }
+
+        if ($target === $current) {
+            return $current;
         }
 
         $sorting = 0;
 
-        foreach (array_filter(array_map('intval', explode(',', $order))) as $questionId) {
-            $question = QuestionModel::findByPk($questionId);
+        foreach ($target as $id) {
+            $question = QuestionModel::findByPk($id);
 
-            if (null !== $question && (int) $question->pid === (int) $dc->id) {
+            if (null !== $question) {
                 $question->sorting = $sorting += 64;
                 $question->tstamp = time();
                 $question->save();
             }
         }
+
+        return $target;
     }
 
     /**

@@ -35,6 +35,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']   = ['Reminder notification', '
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']     = ['Result notification', 'Notification Center: result mail with the attached PDF.'];
 
 $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Answer fields', 'Fields the recipient fills in the form. "New" adds a field, "Edit" opens it in a dialog. Reorder the fields directly in the list via drag & drop (handle on the left); the order is applied when the workflow is saved.'];
+$GLOBALS['TL_LANG']['tl_workflow']['questionOrder'] = ['Answer-field order', 'Technical (hidden) field: holds the drag & drop order for versioning.'];
 $GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] = 'No answer fields yet. Add one with "New".';
 $GLOBALS['TL_LANG']['tl_workflow']['questionsDrag']  = 'Drag to change the order';
 $GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['PDF rules (letter texts)', 'Each rule = conditions + a body text. The first matching rule provides the text; a rule WITHOUT conditions is marked "(default text)" and always applies (place it last, only one allowed).'];

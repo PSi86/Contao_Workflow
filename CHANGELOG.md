@@ -18,9 +18,12 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
   - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
   - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
-    wird erst beim Speichern des Workflows übernommen (`onsubmit_callback`); die
-    Reihenfolge bleibt über das Hinzufügen/Bearbeiten einzelner Felder hinweg
-    erhalten (verstecktes Formularfeld + erneutes Anwenden nach dcaWizard-Refresh).
+    wird erst beim Speichern des Workflows übernommen; die Reihenfolge bleibt über
+    das Hinzufügen/Bearbeiten einzelner Felder hinweg erhalten (verstecktes Feld
+    `questionOrder` + erneutes Anwenden nach dcaWizard-Refresh). Die Reihenfolge ist
+    nun ein **versioniertes** Workflow-Feld: Änderungen erscheinen in der Versions-
+    historie und werden beim Wiederherstellen einer Version mit zurückgesetzt
+    (neue Spalte `tl_workflow.questionOrder`).
   - Die betroffenen Hilfetexte („… wird sofort gespeichert") wurden angepasst.
 
 ### Behoben

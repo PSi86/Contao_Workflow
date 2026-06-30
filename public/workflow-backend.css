@@ -10,7 +10,10 @@
 }
 [data-question-sort] .tw-drag-handle:active { cursor: grabbing; }
 [data-question-sort] tr.tw-dragging { opacity: .4; }
-[data-question-sort].tw-sort-saved table { outline: 2px solid #4bb543; outline-offset: -2px; transition: outline-color .3s; }
+
+/* Technical, versioned field holding the answer-field order (driven by the
+   drag&drop above) – never shown to the user. */
+.wf-question-order { display: none; }
 
 /* Source-dependent fields of a not-yet-runnable workflow (e.g. a fresh copy). */
 .tw-invalid input,

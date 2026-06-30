@@ -3,9 +3,10 @@
  * mask (rendered by AnswerConfigListener::renderQuestionsList).
  *
  * Reordering NO LONGER writes to the server immediately. The new order is kept
- * in a hidden field ("wfQuestionOrder") appended to the edit FORM (outside the
- * dcaWizard widget, so it survives the widget's partial AJAX refresh) and is only
- * persisted when the workflow is saved (AnswerConfigListener::persistQuestionOrder).
+ * in the hidden workflow field #ctrl_questionOrder (a real tl_workflow column,
+ * rendered OUTSIDE the dcaWizard widget so it survives the widget's partial AJAX
+ * refresh) and is only persisted when the workflow is saved – its save_callback
+ * renumbers the answer-field sorting, so the reordering is also versioned.
  *
  * The dcaWizard re-renders just its own widget after a row modal is closed
  * (reloadDcaWizard → replaces #ctrl_<field> innerHTML); that re-render comes back
@@ -18,7 +19,6 @@
 (function () {
     'use strict';
 
-    var FIELD = 'wfQuestionOrder';
     var dragRow = null;
 
     function ready(fn) {
@@ -34,26 +34,16 @@
         return b ? Array.prototype.slice.call(b.querySelectorAll('tr[data-question-id]')) : [];
     }
 
-    // Hidden field lives on the FORM (not inside the widget), so the dcaWizard's
-    // partial refresh of the widget does not wipe the pending order.
-    function pendingField(b, create) {
-        var form = b ? b.closest('form') : null;
-        if (!form) { return null; }
-
-        var field = form.querySelector('input[name="' + FIELD + '"]');
-        if (!field && create) {
-            field = document.createElement('input');
-            field.type = 'hidden';
-            field.name = FIELD;
-            form.appendChild(field);
-        }
-        return field;
+    // The real tl_workflow field (rendered outside the dcaWizard widget, so it
+    // survives the widget's partial refresh). Always present on the edit mask.
+    function pendingField() {
+        return document.getElementById('ctrl_questionOrder');
     }
 
     // Store the current visible order into the hidden field.
     function sync(b) {
         if (!b) { return; }
-        var field = pendingField(b, true);
+        var field = pendingField();
         if (field) {
             field.value = rowsIn(b).map(function (r) { return r.getAttribute('data-question-id'); }).join(',');
         }
@@ -63,7 +53,7 @@
     // (e.g. a just-added field) keep their place after the known ones. Then
     // refresh the hidden field so it always mirrors the visible order.
     function reapply(b) {
-        var field = pendingField(b, false);
+        var field = pendingField();
         if (!field || !field.value) { return; }
 
         var tbody = b.querySelector('tbody');
