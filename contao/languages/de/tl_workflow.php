@@ -19,11 +19,11 @@ $GLOBALS['TL_LANG']['tl_workflow']['headerRow']     = ['Kopfzeile', 'Zeilennumme
 $GLOBALS['TL_LANG']['tl_workflow']['emailField']    = ['E-Mail-Spalte', 'Spalte mit der E-Mail-Adresse (Empfänger der Einladung).'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPage']      = ['Formularseite', 'Seite, auf der das Workflow-Formular-Modul liegt (Ziel der Links).'];
 $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Unterschrift verlangen', 'Wenn aktiv, muss im Formular unterschrieben werden (Unterschrift wird ins PDF eingebettet).'];
-$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF-Inhalt', 'Einfacher Brief: Brieftexte werden über die PDF-Regeln gepflegt (je nach Antwort). Spezielle Vorlage: eine Datei, die alles selbst regelt – dann gibt es keine PDF-Regeln. Hinweis: Eine Änderung wird sofort gespeichert.'];
+$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF-Inhalt', 'Einfacher Brief: Brieftexte werden über die PDF-Regeln gepflegt (je nach Antwort). Spezielle Vorlage: eine Datei, die alles selbst regelt – dann gibt es keine PDF-Regeln.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'] = ['letter' => 'Einfacher Brief (Texte über PDF-Regeln)', 'template' => 'Spezielle Vorlage (Datei)'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfTitle']        = ['Überschrift', 'Überschrift, die im Formular und im PDF angezeigt wird. Platzhalter erlaubt, z. B. ##data_vorname## ##data_name##, ##letterhead_jahr##.'];
 $GLOBALS['TL_LANG']['tl_workflow']['introText']       = ['Einleitungstext', 'Optionaler Text, der im Formular und im PDF nach der Überschrift angezeigt wird. Platzhalter erlaubt.'];
-$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body-Vorlage', 'Body-Vorlage (Datei „pdf_body_*"). Die Vorlage enthält ihre eigene Logik – PDF-Regeln entfallen. Hinweis: Eine Änderung wird sofort gespeichert.'];
+$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body-Vorlage', 'Body-Vorlage (Datei „pdf_body_*"). Die Vorlage enthält ihre eigene Logik – PDF-Regeln entfallen.'];
 $GLOBALS['TL_LANG']['tl_workflow']['master']        = ['Briefpapier', 'Briefpapier (Kopf/Fuß, Logo, Variablen). Wird unter „Briefpapier" gepflegt.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureDate'] = ['Datum für Unterschriftszeile', 'Datenfeld, dessen Wert als Datum in der Unterschriftszeile des PDFs gedruckt wird (z. B. ein „Aktuelle Zeit"-Antwortfeld). Leer = kein Datum.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocation'] = ['Ort für Unterschriftszeile', 'Datenfeld (z. B. Wohnort der Person aus der Quelldatei), dessen Wert als Ort in der Unterschriftszeile des PDFs gedruckt wird. Leer = kein Ort.'];

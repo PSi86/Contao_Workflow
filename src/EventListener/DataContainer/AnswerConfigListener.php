@@ -227,25 +227,16 @@ class AnswerConfigListener
     }
 
     /**
-     * onload_callback for tl_workflow_rule: when the rule is the "Standardtext"
-     * (isDefault), remove the conditions field from the edit palette so it is
-     * hidden and not validated. Toggling the checkbox (submitOnChange) reloads
-     * the form, re-running this callback.
+     * save_callback for tl_workflow_rule.conditions: a default rule ("Standardtext")
+     * always applies, so it must not keep conditions. The conditions wizard is hidden
+     * client-side while "isDefault" is checked (data-wf-toggle); this clears any
+     * leftover value on save, regardless of the client state.
+     *
+     * @param mixed $value serialized conditions
      */
-    public function hideConditionsForDefaultRule(DataContainer $dc): void
+    public function clearConditionsForDefaultRule(mixed $value, DataContainer $dc): mixed
     {
-        if (!$dc->id) {
-            return;
-        }
-
-        $rule = RuleModel::findByPk((int) $dc->id);
-
-        if (null === $rule || !$rule->isDefaultRule()) {
-            return;
-        }
-
-        $palette = &$GLOBALS['TL_DCA']['tl_workflow_rule']['palettes']['default'];
-        $palette = str_replace(',conditions', '', (string) $palette);
+        return Input::post('isDefault') ? serialize([]) : $value;
     }
 
     /**

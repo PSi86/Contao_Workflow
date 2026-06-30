@@ -73,20 +73,18 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['pdfBodyType', 'requireSignature'],
+        // No __selector__/subpalettes: the conditional fields (signature line,
+        // rules vs. body template) are always part of the palette and are shown or
+        // hidden client-side from their selector field (data-wf-toggle, see
+        // workflow-field-toggle.js). This replaces Contao's submitOnChange /
+        // toggleSubpalette, which would persist the record without the user
+        // clicking "save".
+        //
         // Functional grouping: workflow basics → source data → shared document
         // content (heading + intro, shown in the FORM and the PDF) → the form
         // (page, signature, answer fields) → the PDF (stationery, file name,
         // body) → notifications.
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,questions,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult',
-    ],
-    'subpalettes' => [
-        // The signature-line fields only matter when a signature is required.
-        'requireSignature'     => 'pdfSignatureDate,pdfSignatureLocation',
-        // Letter mode: the rules that carry the body texts.
-        // Template mode: just the template file (it handles branching itself).
-        'pdfBodyType_letter'   => 'rules',
-        'pdfBodyType_template' => 'pdfBodyTemplate',
+        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult',
     ],
     'fields' => [
         'id' => [
@@ -153,7 +151,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'requireSignature' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
-            'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
+            // data-wf-toggle: show the signature-line fields only while checked
+            // (client-side, no save). See workflow-field-toggle.js.
+            'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","on":["pdfSignatureDate","pdfSignatureLocation"]}'],
             'sql'       => "char(1) NOT NULL default '1'",
         ],
         'formPage' => [
@@ -235,7 +235,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'inputType' => 'select',
             'options'   => ['letter', 'template'],
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'],
-            'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50'],
+            // data-wf-toggle: "letter" shows the PDF rules, "template" the body
+            // template – switched client-side, no save. See workflow-field-toggle.js.
+            'eval'      => ['tl_class' => 'w50', 'data-wf-toggle' => '{"mode":"select","map":{"letter":["rules"],"template":["pdfBodyTemplate"]}}'],
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
         // Shared heading: shown at the top of the FORM and as the PDF heading.
@@ -272,9 +274,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfBodyTemplate' => [
             'exclude'   => true,
             'inputType' => 'select',
-            // submitOnChange kept for consistency with the other source/PDF fields;
-            // the selection is saved at once (pointed out in the help text).
-            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(64) NOT NULL default ''",
         ],
         // Internal: checksum of the last imported source file (change detection).

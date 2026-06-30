@@ -6,6 +6,19 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Geändert (kein Speichern ohne „Speichern"-Klick)
+- **Kein automatisches Speichern mehr beim Umschalten von Auswahlfeldern.** Mehrere
+  Felder lösten bisher per `submitOnChange`/`toggleSubpalette` ein sofortiges Speichern
+  des gesamten Datensatzes aus, ohne dass „Speichern" geklickt wurde. Erste Umsetzung:
+  - **PDF-Inhalt** (`pdfBodyType`) und **Unterschrift verlangen** (`requireSignature`) im
+    Workflow sowie **Standardtext** (`isDefault`) in den PDF-Regeln blenden ihre
+    abhängigen Felder jetzt **clientseitig** ein/aus (neues `workflow-field-toggle.js`),
+    statt das Formular abzuschicken. Es wird nichts gespeichert, bis „Speichern" geklickt
+    wird. Fällt das Skript aus, sind alle Felder sichtbar (gutartiger Rückfall, kein
+    Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
+  - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
+  - Die betroffenen Hilfetexte („… wird sofort gespeichert") wurden angepasst.
+
 ### Hinzugefügt
 - **PDF- und Formular-Vorschau in der Workflow-Bearbeiten-Maske.** Im Abschnitt
   *PDF-Inhalt* öffnet ein Button das generierte **PDF mit Beispieldaten** in einem neuen
