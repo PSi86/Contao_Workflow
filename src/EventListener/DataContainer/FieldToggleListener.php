@@ -29,6 +29,12 @@ class FieldToggleListener
         $this->loadAsset();
     }
 
+    #[AsCallback(table: 'tl_workflow_question', target: 'config.onload')]
+    public function enableForQuestion(DataContainer $dc): void
+    {
+        $this->loadAsset();
+    }
+
     /**
      * Registers the asset only on the actual edit mask, so the parent list view
      * stays untouched (mirrors PlaceholderHelperListener).

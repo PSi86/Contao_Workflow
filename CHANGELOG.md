@@ -27,6 +27,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     in einem eigenen Bereich ergänzen. Speicherformat (Schlüssel/Wert-Paare) und
     Versionierung unverändert; PDF-Erzeugung, `##letterhead_*##`-Platzhalter und
     Import/Export bleiben kompatibel.
+  - **Antwortfeld-Typ** (`type`): kein `submitOnChange` mehr. Die typabhängigen
+    Felder (Dokument-Text, Optionen, „aus Formular ausblenden" bzw. die
+    Pflicht-/Vorbeleg-/Schreibgeschützt-Optionen) werden clientseitig ein-/ausgeblendet
+    – ein Typwechsel speichert den Antwortfeld-Datensatz also nicht mehr sofort.
   - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
     wird erst beim Speichern des Workflows übernommen; die Reihenfolge bleibt über
     das Hinzufügen/Bearbeiten einzelner Felder hinweg erhalten (verstecktes Feld

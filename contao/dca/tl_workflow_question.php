@@ -10,7 +10,6 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'dataContainer'    => DC_Table::class,
         'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
-        'onload_callback'  => [[AnswerConfigListener::class, 'hideMandatoryForCurrentTime']],
         'sql' => [
             'keys' => [
                 'id'  => 'primary',
@@ -45,20 +44,14 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['type'],
-        'default'      => '{question_legend},label,type,storageField,mandatory,prefill,readOnly',
-    ],
-    'subpalettes' => [
-        // Value types carry ONE document text; choice types carry it PER OPTION
-        // (a per-question text would override the option texts).
-        'type_text'        => 'pdfStatement',
-        'type_textarea'    => 'pdfStatement',
-        'type_number'      => 'pdfStatement',
-        'type_date'        => 'pdfStatement',
-        'type_select'      => 'options',
-        'type_radio'       => 'options',
-        'type_checkbox'    => 'options',
-        'type_currentTime' => 'hideInForm,pdfStatement',
+        // No __selector__/subpalettes: the type-dependent fields are always in the
+        // palette and shown/hidden client-side from the "type" select
+        // (data-wf-toggle, workflow-field-toggle.js) – so changing the type no
+        // longer submits/saves the record. Value types show one document text
+        // (pdfStatement), choice types the options wizard, "Aktuelle Zeit" the
+        // hideInForm flag; for "Aktuelle Zeit" the mandatory/prefill/readOnly flags
+        // are hidden (they are meaningless there).
+        'default' => '{question_legend},label,type,storageField,mandatory,prefill,readOnly,options,pdfStatement,hideInForm',
     ],
     'fields' => [
         'id' => [
@@ -87,7 +80,22 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'inputType' => 'select',
             'options'   => ['text', 'textarea', 'number', 'date', 'select', 'radio', 'checkbox', 'currentTime'],
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'],
-            'eval'      => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
+            // data-wf-toggle: shows the fields relevant to the chosen type (client-
+            // side, no save). See workflow-field-toggle.js. Fields not listed for a
+            // type are hidden and disabled (not posted/validated).
+            'eval'      => [
+                'mandatory'      => true,
+                'tl_class'       => 'w50',
+                'data-wf-toggle' => '{"mode":"select","map":{'
+                    .'"text":["mandatory","prefill","readOnly","pdfStatement"],'
+                    .'"textarea":["mandatory","prefill","readOnly","pdfStatement"],'
+                    .'"number":["mandatory","prefill","readOnly","pdfStatement"],'
+                    .'"date":["mandatory","prefill","readOnly","pdfStatement"],'
+                    .'"select":["mandatory","prefill","readOnly","options"],'
+                    .'"radio":["mandatory","prefill","readOnly","options"],'
+                    .'"checkbox":["mandatory","prefill","readOnly","options"],'
+                    .'"currentTime":["hideInForm","pdfStatement"]}}',
+            ],
             'sql'       => "varchar(16) NOT NULL default 'text'",
         ],
         'storageField' => [

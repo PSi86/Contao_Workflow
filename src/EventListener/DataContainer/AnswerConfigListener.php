@@ -120,28 +120,6 @@ class AnswerConfigListener
     }
 
     /**
-     * onload_callback for tl_workflow_question: the "Aktuelle Zeit" field is
-     * filled automatically on submission, so "Pflichtfeld", "Vorbelegen" and
-     * "Schreibgeschützt" are meaningless – remove them from the edit palette
-     * for that type. Type changes (submitOnChange) re-run this callback.
-     */
-    public function hideMandatoryForCurrentTime(DataContainer $dc): void
-    {
-        if (!$dc->id) {
-            return;
-        }
-
-        $question = QuestionModel::findByPk((int) $dc->id);
-
-        if (null === $question || 'currentTime' !== (string) $question->type) {
-            return;
-        }
-
-        $palette = &$GLOBALS['TL_DCA']['tl_workflow_question']['palettes']['default'];
-        $palette = str_replace([',mandatory', ',prefill', ',readOnly'], '', (string) $palette);
-    }
-
-    /**
      * onload_callback for tl_workflow: deletes the workflow's never-saved child
      * records. Contao's act=create inserts a blank row (tstamp=0) at once and only
      * sets a real tstamp on save; its built-in cleanup (DC_Table::reviseTable) runs
