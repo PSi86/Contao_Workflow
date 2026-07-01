@@ -140,22 +140,25 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'eval'      => [
                 'tl_class'     => 'clr',
                 'columnFields' => [
+                    // No fixed pixel widths: the columns are sized by CSS so the
+                    // wizard (incl. its row buttons) always fits the dialog width –
+                    // see .multicolumnwizard rules in workflow-backend.css.
                     'value' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_value'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:160px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true],
                     ],
                     'label' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_label'],
                         'inputType' => 'text',
-                        'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'style' => 'width:280px'],
+                        'eval'      => ['mandatory' => true, 'decodeEntities' => true],
                     ],
                     // Document text ("Textbaustein") of the option; empty means
                     // the visible label counts verbatim in the document.
                     'statement' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'],
                         'inputType' => 'text',
-                        'eval'      => ['decodeEntities' => true, 'style' => 'width:380px'],
+                        'eval'      => ['decodeEntities' => true],
                     ],
                 ],
             ],

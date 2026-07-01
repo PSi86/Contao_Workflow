@@ -46,5 +46,8 @@ class FieldToggleListener
         }
 
         $GLOBALS['TL_JAVASCRIPT']['wf_field_toggle'] = 'bundles/contaoworkflow/workflow-field-toggle.js|static';
+        // Also carries the MultiColumnWizard fit rules (see workflow-backend.css)
+        // so the options/conditions wizard fits inside the modal dialog.
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
     }
 }

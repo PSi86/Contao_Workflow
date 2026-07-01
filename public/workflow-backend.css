@@ -15,6 +15,21 @@
    drag&drop above) – never shown to the user. */
 .wf-question-order { display: none; }
 
+/* Keep a MultiColumnWizard (answer-field options, rule conditions) and its row
+   operation buttons inside the (modal) dialog width instead of overflowing:
+   the inputs fill their cell, the operations column stays as small as possible. */
+.tl_modulewizard.multicolumnwizard { width: 100%; }
+.tl_modulewizard.multicolumnwizard td input.tl_text,
+.tl_modulewizard.multicolumnwizard td textarea.tl_textarea {
+    width: 100%;
+    min-width: 4em;
+    box-sizing: border-box;
+}
+.tl_modulewizard.multicolumnwizard td.operations {
+    width: 1px;
+    white-space: nowrap;
+}
+
 /* Template-driven "PDF-Variablen" editor (PdfVarsWidget). */
 .wf-pdfvars-group { margin-bottom: 1em; }
 .wf-pdfvars-h {
