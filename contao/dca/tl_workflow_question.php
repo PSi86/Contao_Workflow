@@ -51,7 +51,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // (pdfStatement), choice types the options wizard, "Aktuelle Zeit" the
         // hideInForm flag; for "Aktuelle Zeit" the mandatory/prefill/readOnly flags
         // are hidden (they are meaningless there).
-        'default' => '{question_legend},label,type,storageField,mandatory,prefill,readOnly,options,pdfStatement,hideInForm',
+        'default' => '{question_legend},label,type,storageField,mandatory,readOnly,prefill,options,pdfStatement,hideInForm',
     ],
     'fields' => [
         'id' => [

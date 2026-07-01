@@ -18,7 +18,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['sourceSheet']   = ['Worksheet', 'Which sheet
 $GLOBALS['TL_LANG']['tl_workflow']['headerRow']     = ['Header row', 'Row number that holds the column headers (default 1). Note: a change is saved immediately.'];
 $GLOBALS['TL_LANG']['tl_workflow']['emailField']    = ['E-mail column', 'Column holding the e-mail address (invitation recipient).'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPage']      = ['Form page', 'Page that hosts the workflow form module (link target).'];
-$GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Require signature', 'When enabled, the form requires a signature (embedded into the PDF).'];
+$GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Signature required', 'When enabled, the form requires a signature (embedded into the PDF).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['PDF content', 'Simple letter: the body texts are maintained via PDF rules (per answer). Specific template: a file that handles everything itself – then there are no PDF rules.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'] = ['letter' => 'Simple letter (texts via PDF rules)', 'template' => 'Specific template (file)'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfTitle']        = ['Heading', 'Heading shown in the form and in the PDF. Placeholders allowed, e.g. ##data_vorname## ##data_name##, ##letterhead_jahr##.'];

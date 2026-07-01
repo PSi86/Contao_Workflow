@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\FilesModel;
+use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\EntryModel;
@@ -38,10 +39,22 @@ class WorkflowIntegrityListener
     ) {
     }
 
+    /**
+     * These notices/red outlines are only meaningful on the actual edit mask.
+     * WITHOUT this guard they also run during act=copy (with $dc->id = the ORIGINAL
+     * record), and Contao carries the resulting flash messages over to the fresh
+     * copy's edit page – e.g. the slug-collision warning of the original's source
+     * file, which is misleading on a copy that (by design) has no source file yet.
+     */
+    private function isEditMask(): bool
+    {
+        return \in_array((string) Input::get('act'), ['edit', 'editAll'], true);
+    }
+
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function flagIncomplete(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -106,7 +119,7 @@ class WorkflowIntegrityListener
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnSlugCollisions(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -139,7 +152,7 @@ class WorkflowIntegrityListener
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnStatementAndPrefillIssues(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -280,7 +293,7 @@ class WorkflowIntegrityListener
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnPublicSourceFile(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 

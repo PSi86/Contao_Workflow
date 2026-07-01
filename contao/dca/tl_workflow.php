@@ -235,7 +235,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfSignatureDate' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            // clr: start a new row so the two signature-line fields sit BELOW the
+            // "Signatur benötigt" checkbox (not next to it).
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50 clr'],
             'sql'       => "varchar(128) NOT NULL default ''",
         ],
         // Source column whose value is printed as the place in the signature line
