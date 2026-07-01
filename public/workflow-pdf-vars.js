@@ -165,12 +165,21 @@
         this.fitAll();
     };
 
+    // Height that fits the content without a scrollbar. scrollHeight excludes the
+    // border, but box-sizing:border-box counts it into height() – so add it, else
+    // the content is a few px too tall and a scrollbar appears.
+    PdfVars.prototype.autoHeight = function (el) {
+        el.style.height = 'auto';
+        var cs = window.getComputedStyle(el);
+        var border = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+        el.style.height = (el.scrollHeight + border) + 'px';
+    };
+
     // Size a value field to its content: height fits all lines, width grows with
     // the longest line (from the CSS default up to the row width). min-height +
     // max-width in CSS keep the default/upper bounds; the field stays resizable.
     PdfVars.prototype.fit = function (el) {
-        el.style.height = 'auto';
-        el.style.height = el.scrollHeight + 'px';
+        this.autoHeight(el);
 
         var lines = (el.value || '').split('\n');
         var longest = 0;
@@ -223,7 +232,7 @@
         this.rowsBox.addEventListener('input', function (e) {
             var t = e.target;
             if (t && t.classList && t.classList.contains('wf-pdfvars-v') && t.scrollHeight > t.clientHeight) {
-                t.style.height = t.scrollHeight + 'px';
+                self.autoHeight(t);
             }
         });
     };
