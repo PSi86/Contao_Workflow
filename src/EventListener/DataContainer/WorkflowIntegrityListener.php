@@ -40,15 +40,20 @@ class WorkflowIntegrityListener
     }
 
     /**
-     * These notices/red outlines are only meaningful on the actual edit mask.
-     * WITHOUT this guard they also run during act=copy (with $dc->id = the ORIGINAL
-     * record), and Contao carries the resulting flash messages over to the fresh
-     * copy's edit page – e.g. the slug-collision warning of the original's source
-     * file, which is misleading on a copy that (by design) has no source file yet.
+     * True only while the edit form is being RENDERED (GET on act=edit/editAll).
+     * These notices/red outlines belong on the edit mask of one specific workflow –
+     * nowhere else. Two ways they used to leak as orphaned flash messages onto the
+     * list/overview (unclear which workflow they referred to):
+     *   - other actions (copy/delete/toggle/show) run config.onload with $dc->id set
+     *     and then redirect elsewhere;
+     *   - a save POST (esp. "save & close") runs onload, then redirects to the list.
+     * Both are excluded here (not the listed acts / not a form submit); after a plain
+     * save Contao reloads the edit form via GET, so the notices reappear there.
      */
     private function isEditMask(): bool
     {
-        return \in_array((string) Input::get('act'), ['edit', 'editAll'], true);
+        return \in_array((string) Input::get('act'), ['edit', 'editAll'], true)
+            && '' === (string) Input::post('FORM_SUBMIT');
     }
 
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
