@@ -72,7 +72,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte
    - **Inhalt (Formular & PDF):** **Überschrift** und optionaler **Einleitungstext** –
      erscheinen **identisch** oben im Formular und im PDF (Platzhalter erlaubt).
-   - **Formular & Antwortfelder:** *Unterschrift verlangen* (mit Auswahl der
+   - **Formular & Antwortfelder:** *Unterschrift benötigt* (mit Auswahl der
      Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
      eingebetteten **Antwortfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
      pro Feld Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen, **Aktuelle Zeit**),

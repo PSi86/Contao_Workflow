@@ -51,20 +51,30 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
 > `<sethtmlpageheader>/<sethtmlpagefooter>`). Kopf-/Fußzeilentext ist hier **fest** im Template.
 > Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende Seitenränder; diese setzt
-> `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die Unterschriftszeile ist
+> `PdfGenerator::renderPdf` (`margin_top/bottom/left/right/header/footer`) – standardmäßig aus
+> eingebauten Defaults, oder **pro Briefpapier** aus Layout-Variablen, sofern das Template
+> solche deklariert (siehe `pdf_master_generic` unten). Die Unterschriftszeile ist
 > gespiegelt (Wert über der Linie, Label darunter).
 
 > **Generischer Master `pdf_master_generic`** (organisationsneutral): identisches Layout, aber
 > **aller** Kopf-/Fußzeilentext kommt aus den PDF-Variablen des Briefpapiers, nichts ist fest
-> verdrahtet:
-> - `HeaderLine` – Absenderzeile über der Linie
-> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig** (eine Zeile je Eingabezeile;
->   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
+> verdrahtet. **Inhalts-Variablen:**
+> - `HeaderLine` – Absenderzeile über der Linie; **mehrzeilig**
+> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig**
 > - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##letterhead_jahr##` …)
 >
-> Beispiel-Briefpapier dafür: ein Briefpapier mit Layout-Vorlage `pdf_master_generic`; die
-> Werte werden beim Auswählen des Templates aus
-> `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']` vorgeschlagen.
+> Mehrzeilig heißt: eine Zeile je Eingabezeile (Enter im Feld) **oder** je `|`. Kopf- und
+> Fußzeile brechen **nicht automatisch um** – jede Zeile folgt strikt der Eingabe. Zu lange
+> Zeilen laufen über; dann selbst umbrechen oder Schriftgröße/Ränder (siehe unten) anpassen.
+>
+> **Layout-Variablen** (Editor-Gruppe „Layout & Maße", pro Briefpapier einstellbar; Defaults =
+> die eingebauten Werte, ein unverändertes Briefpapier rendert also wie zuvor):
+> `MarginTop/Bottom/Left/Right` und `MarginHeader/MarginFooter` (mm), `FontSizeHeader/Body/Footer`
+> (pt), `FooterColSpacing` (px). `PdfGenerator` liest+prüft die Ränder daraus (numerisch,
+> begrenzt), die Vorlage die Schriftgrößen/Abstände.
+>
+> Nach Wahl der Layout-Vorlage werden alle diese Variablen im Briefpapier-Editor **sofort** als
+> Felder vorgeschlagen (aus `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']`).
 
 ### Body-Vorlage (`pdf_body_*`)
 | Variable | Inhalt |
@@ -140,8 +150,11 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 2. Nach `templates/` legen (Name beginnt mit `pdf_master`).
 3. Bietet das Layout feste Variablen, in `contao/config/config.php` unter
    `$GLOBALS['TL_WORKFLOW_PDF_VARS']` einen Eintrag
-   `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
-   Briefpapier automatisch vorgeschlagen.
+   `'pdf_master_xyz' => ['Verein' => '', …]` ergänzen → werden im Briefpapier
+   vorgeschlagen. Je Variable ist der Wert entweder ein **einfacher Default**
+   (Inhalts-Variable) **oder** ein **Array** `['default'=>…, 'label'=>…, 'group'=>'layout']`
+   für Layout-Maße (eigene Editor-Gruppe, nicht als `##letterhead_*##`-Token, von
+   `PdfGenerator`/Template gelesen).
 
 > **Eine Mailmerge-Vorlage (`.docm`) als Ausgangspunkt?** Ein lokaler Konverter kann aus
 > einer Word-`.docm` ein Body-Gerüst erzeugen – das ist ein **Entwickler-Werkzeug** der
@@ -153,4 +166,5 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 - Body-Vorlagen: Dateiname `pdf_body_*.html5`.
 - Master-Vorlagen: Dateiname `pdf_master*.html5`.
 - PDF-Variablen je Master-Layout: `$GLOBALS['TL_WORKFLOW_PDF_VARS']` in
-  `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`).
+  `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`);
+  Layout-Maße als `['default'=>…, 'label'=>…, 'group'=>'layout']`.
