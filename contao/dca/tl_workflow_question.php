@@ -119,11 +119,14 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'sql'       => "char(1) NOT NULL default ''",
         ],
         // Read-only: the field shows the stored data value but cannot be edited
-        // (never validated, never stored back). Available for every type.
+        // (never validated, never stored back). Available for every type. A
+        // read-only field already shows the stored value, so "prefill" is
+        // redundant there – data-wf-toggle hides it while read-only is checked
+        // (combined with the type toggle via workflow-field-toggle.js).
         'readOnly' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
-            'eval'      => ['tl_class' => 'w50 m12'],
+            'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","off":["prefill"]}'],
             'sql'       => "char(1) NOT NULL default ''",
         ],
         // "Aktuelle Zeit" only: leave the field out of the public form (it is

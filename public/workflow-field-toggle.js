@@ -11,6 +11,11 @@
  * Hidden fields are also disabled, so they are neither submitted nor validated –
  * nothing is written until the user saves. If the asset fails to load, every field
  * stays visible (it is part of the palette): a benign degradation, no auto-save.
+ *
+ * Several selectors may govern the SAME field (e.g. on the answer-field mask both
+ * "type" and "readOnly" affect "prefill"). Visibility is therefore COMBINED: a
+ * field is shown only if every selector governing it currently shows it (hidden if
+ * any one hides it).
  */
 (function () {
     'use strict';
@@ -77,37 +82,51 @@
         return [];
     }
 
-    function apply(selector, cfg) {
-        var visible = visibleFields(cfg, selector);
+    var selectors = [];
 
-        governedFields(cfg).forEach(function (field) {
-            setVisible(field, visible.indexOf(field) !== -1);
+    // Recompute every governed field: visible only if ALL selectors governing it
+    // currently show it (combined across selectors).
+    function recompute() {
+        var byField = {};
+
+        selectors.forEach(function (s) {
+            var visible = visibleFields(s.cfg, s.el);
+
+            governedFields(s.cfg).forEach(function (field) {
+                var v = visible.indexOf(field) !== -1;
+                byField[field] = (field in byField) ? (byField[field] && v) : v;
+            });
+        });
+
+        Object.keys(byField).forEach(function (field) {
+            setVisible(field, byField[field]);
         });
     }
 
-    function init(selector) {
-        if (selector.dataset.wfToggleReady) {
-            return;
-        }
-
-        var cfg;
-        try {
-            cfg = JSON.parse(selector.getAttribute('data-wf-toggle'));
-        } catch (e) {
-            return;
-        }
-
-        if (!cfg || !cfg.mode) {
-            return;
-        }
-
-        selector.dataset.wfToggleReady = '1';
-        selector.addEventListener('change', function () { apply(selector, cfg); });
-        apply(selector, cfg);
-    }
-
     function scan() {
-        document.querySelectorAll('[data-wf-toggle]').forEach(init);
+        selectors = [];
+
+        document.querySelectorAll('[data-wf-toggle]').forEach(function (el) {
+            var cfg;
+            try {
+                cfg = JSON.parse(el.getAttribute('data-wf-toggle'));
+            } catch (e) {
+                return;
+            }
+
+            if (!cfg || !cfg.mode) {
+                return;
+            }
+
+            selectors.push({ el: el, cfg: cfg });
+
+            if (!el.dataset.wfToggleBound) {
+                el.dataset.wfToggleBound = '1';
+                el.addEventListener('change', recompute);
+            }
+        });
+
+        recompute();
     }
 
     ready(scan);
