@@ -10,7 +10,6 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
         'dataContainer'    => DC_Table::class,
         'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
-        'onload_callback'  => [[AnswerConfigListener::class, 'hideConditionsForDefaultRule']],
         'sql' => [
             'keys' => [
                 'id'  => 'primary',
@@ -48,8 +47,10 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
         ],
     ],
     'palettes' => [
-        // "conditions" is removed from the palette at runtime when isDefault is set
-        // (see AnswerConfigListener::hideConditionsForDefaultRule).
+        // "conditions" is always in the palette and hidden client-side when isDefault
+        // is checked (data-wf-toggle, workflow-field-toggle.js). On save it is cleared
+        // for a default rule (AnswerConfigListener::clearConditionsForDefaultRule), so
+        // no submitOnChange/reload-and-save is needed.
         'default' => '{rule_legend},title,isDefault,conditions;{text_legend},pdfBody',
     ],
     'fields' => [
@@ -77,12 +78,17 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
         'isDefault' => [
             'exclude'   => true,
             'inputType' => 'checkbox',
-            'eval'      => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
+            // data-wf-toggle: hide the conditions wizard while checked (the default
+            // rule always applies) – client-side, no save. See workflow-field-toggle.js.
+            'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","off":["conditions"]}'],
             'sql'       => "char(1) NOT NULL default ''",
         ],
         'conditions' => [
             'exclude'   => true,
             'inputType' => 'multiColumnWizard',
+            // Cleared on save when the rule is the default rule, so a rule toggled to
+            // "default" does not keep orphaned (and never evaluated) conditions.
+            'save_callback' => [[AnswerConfigListener::class, 'clearConditionsForDefaultRule']],
             'eval'      => [
                 'tl_class'     => 'clr',
                 'columnFields' => [

@@ -10,7 +10,9 @@ namespace Psimandl\WorkflowBundle\Service;
  *
  * Canonical tokens (identical everywhere, Notification-Center safe):
  *   ##data_<slug>##  every data column (source columns incl. stored answer values)
- *   ##letterhead_<slug>##   every master/letterhead variable (Jahr, Verein, …)
+ *   ##letterhead_<slug>##   every master/letterhead variable (Verein, Ort, …)
+ *   ##system_year## / ##system_month## / ##system_today## / ##system_time## /
+ *   ##system_datetime##     built-in date/time, computed at render time
  *   ##email##        recipient address
  *   ##workflow_title##
  *
@@ -60,10 +62,36 @@ class PlaceholderResolver
             $tokens[$name] ??= (string) $value;
         }
 
+        // Built-in ##system_*## tokens win unconditionally: they live in their own
+        // prefix and can never collide with data_/letterhead_ slugs.
+        foreach ($this->systemTokens() as $name => $value) {
+            $tokens[$name] = $value;
+        }
+
         $tokens['email'] = $email;
         $tokens['workflow_title'] = $workflowTitle;
 
         return $tokens;
+    }
+
+    /**
+     * Built-in, context-independent tokens computed at render time, available in
+     * every context (PDF body, heading, file name, mail, statements) without any
+     * configuration. The suffix is a fixed, closed vocabulary – only these resolve,
+     * anything else stays literal. Shared with the integrity check so it can warn
+     * on an unknown ##system_*## token.
+     *
+     * @return array<string, string> token name (no ## marks) => current value
+     */
+    public function systemTokens(): array
+    {
+        return [
+            'system_year'     => date('Y'),        // 2026
+            'system_month'    => date('m'),        // 07
+            'system_today'    => date('d.m.Y'),    // 01.07.2026
+            'system_time'     => date('H:i'),      // 14:30
+            'system_datetime' => date('d.m.Y H:i'), // 01.07.2026 14:30
+        ];
     }
 
     /**

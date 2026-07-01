@@ -45,32 +45,43 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
 | `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (Beispiel-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
-| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Jahr']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
+| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Verein']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
 
 > Das mitgelieferte **`pdf_master`** ist ein neutraler Beispiel-Briefkopf (Musterverein): blaue Kopfzeile + Logo + Linie und
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
 > `<sethtmlpageheader>/<sethtmlpagefooter>`). Kopf-/Fußzeilentext ist hier **fest** im Template.
 > Eigene Master mit Lauf-Kopf/Fußzeile brauchen passende Seitenränder; diese setzt
-> `PdfGenerator::renderPdf` (`margin_top/bottom/header/footer`). Die Unterschriftszeile ist
+> `PdfGenerator::renderPdf` (`margin_top/bottom/left/right/header/footer`) – standardmäßig aus
+> eingebauten Defaults, oder **pro Briefpapier** aus Layout-Variablen, sofern das Template
+> solche deklariert (siehe `pdf_master_generic` unten). Die Unterschriftszeile ist
 > gespiegelt (Wert über der Linie, Label darunter).
 
 > **Generischer Master `pdf_master_generic`** (organisationsneutral): identisches Layout, aber
 > **aller** Kopf-/Fußzeilentext kommt aus den PDF-Variablen des Briefpapiers, nichts ist fest
-> verdrahtet:
-> - `HeaderLine` – Absenderzeile über der Linie
-> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig** (eine Zeile je Eingabezeile;
->   ein `|` wird ebenfalls als Zeilentrenner akzeptiert)
-> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##letterhead_jahr##` …)
+> verdrahtet. **Inhalts-Variablen:**
+> - `HeaderLine` – Absenderzeile über der Linie; **mehrzeilig**
+> - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig**
+> - `Verein`, `Ort` – für die Brieftexte (`##letterhead_verein##` …); das aktuelle
+>   Jahr/Datum liefern die eingebauten `##system_year##` / `##system_today##`
 >
-> Beispiel-Briefpapier dafür: ein Briefpapier mit Layout-Vorlage `pdf_master_generic`; die
-> Werte werden beim Auswählen des Templates aus
-> `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']` vorgeschlagen.
+> Mehrzeilig heißt: eine Zeile je Eingabezeile (Enter im Feld) **oder** je `|`. Kopf- und
+> Fußzeile brechen **nicht automatisch um** – jede Zeile folgt strikt der Eingabe. Zu lange
+> Zeilen laufen über; dann selbst umbrechen oder Schriftgröße/Ränder (siehe unten) anpassen.
+>
+> **Layout-Variablen** (Editor-Gruppe „Layout & Maße", pro Briefpapier einstellbar; Defaults =
+> die eingebauten Werte, ein unverändertes Briefpapier rendert also wie zuvor):
+> `MarginTop/Bottom/Left/Right` und `MarginHeader/MarginFooter` (mm), `FontSizeHeader/Body/Footer`
+> (pt), `FooterColSpacing` (px). `PdfGenerator` liest+prüft die Ränder daraus (numerisch,
+> begrenzt), die Vorlage die Schriftgrößen/Abstände.
+>
+> Nach Wahl der Layout-Vorlage werden alle diese Variablen im Briefpapier-Editor **sofort** als
+> Felder vorgeschlagen (aus `$GLOBALS['TL_WORKFLOW_PDF_VARS']['pdf_master_generic']`).
 
 ### Body-Vorlage (`pdf_body_*`)
 | Variable | Inhalt |
 |---|---|
 | `$this->data` | **alle** importierten Spalten **inkl. der gespeicherten Antwortwerte** (assoz.), Zugriff per `$d('Spaltenname')` |
-| `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Jahr')`, `$x('Verein')` … |
+| `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Verein')`, `$x('Ort')` … |
 | `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Antwortfelder: `text_<speicherfeld-slug>` je Feld + `text_all` (alle, in Formular-Reihenfolge), Klartext |
 | `$this->heading` | die Workflow-**Überschrift** (Platzhalter bereits aufgelöst; im Formular identisch sichtbar) |
 | `$this->intro` | der optionale **Einleitungstext** (aufgelöst; im Formular identisch sichtbar) |
@@ -88,8 +99,9 @@ Bei „Einfacher Brief" kommen **Überschrift** und **Einleitungstext** aus dem 
 **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
 E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
 kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
-`##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_jahr##`,
-`##letterhead_verein##`), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
+`##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_verein##`,
+`##letterhead_ort##`), **`##system_year##`/`##system_month##`/`##system_today##`/`##system_time##`/`##system_datetime##`**
+(eingebaute Datums-/Zeit-Platzhalter), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
 **Dokument-Texte der Antwortfelder** (die Texte, die der Teilnehmer im Formular sieht – in
 `##text_all##` stehen Felder ohne eigenen Dokument-Text zeilenweise als „Beschriftung: Wert",
 Felder mit eigenem Dokument-Text beginnen als eigener Absatz), dazu `##email##`. (In
@@ -140,8 +152,11 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 2. Nach `templates/` legen (Name beginnt mit `pdf_master`).
 3. Bietet das Layout feste Variablen, in `contao/config/config.php` unter
    `$GLOBALS['TL_WORKFLOW_PDF_VARS']` einen Eintrag
-   `'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen → werden im
-   Briefpapier automatisch vorgeschlagen.
+   `'pdf_master_xyz' => ['Verein' => '', …]` ergänzen → werden im Briefpapier
+   vorgeschlagen. Je Variable ist der Wert entweder ein **einfacher Default**
+   (Inhalts-Variable) **oder** ein **Array** `['default'=>…, 'label'=>…, 'group'=>'layout']`
+   für Layout-Maße (eigene Editor-Gruppe, nicht als `##letterhead_*##`-Token, von
+   `PdfGenerator`/Template gelesen).
 
 > **Eine Mailmerge-Vorlage (`.docm`) als Ausgangspunkt?** Ein lokaler Konverter kann aus
 > einer Word-`.docm` ein Body-Gerüst erzeugen – das ist ein **Entwickler-Werkzeug** der
@@ -153,4 +168,5 @@ Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.h
 - Body-Vorlagen: Dateiname `pdf_body_*.html5`.
 - Master-Vorlagen: Dateiname `pdf_master*.html5`.
 - PDF-Variablen je Master-Layout: `$GLOBALS['TL_WORKFLOW_PDF_VARS']` in
-  `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`).
+  `contao/config/config.php` (`'<master-template>' => ['Var' => 'Default', …]`);
+  Layout-Maße als `['default'=>…, 'label'=>…, 'group'=>'layout']`.

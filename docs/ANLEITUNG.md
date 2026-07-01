@@ -94,8 +94,11 @@ nicht mehr im Workflow.
 2. **Titel** (z. B. „Musterverein Briefkopf").
 3. **Layout-Vorlage** wählen (z. B. `pdf_master` – Kopf/Fuß/Unterschrift).
 4. **PDF-Logo** auswählen (Bilddatei aus der Dateiverwaltung).
-5. **PDF-Variablen**: werden nach Wahl der Layout-Vorlage automatisch vorgeschlagen
-   (z. B. `Jahr`, `Verein`, `Ort`, `Footer`) – nur noch Werte eintragen.
+5. **PDF-Variablen**: Nach Wahl der Layout-Vorlage erscheinen die passenden Variablen
+   **sofort** als beschriftete Felder – ohne Zwischenspeichern. Bei `pdf_master_generic`
+   sind sie in **Inhalt** (Kopf-/Fußzeilentexte) und **Layout & Maße** (Seitenränder,
+   Schriftgrößen, Spaltenabstand der Fußzeile) gruppiert; darunter lassen sich eigene
+   Variablen ergänzen. Nur die Werte eintragen und speichern.
 6. Speichern. Diesen Briefkopf können beliebig viele Workflows nutzen.
 
 ---
@@ -136,9 +139,9 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
    **Einleitungstext** erscheinen **identisch im Formular und im PDF** (oben, vor den
    Feldern bzw. dem Brieftext). Platzhalter wie `##data_vorname##` oder `##letterhead_verein##`
    sind erlaubt. So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
-7. **Unterschrift verlangen:** ankreuzen, wenn der Trainer im Formular unterschreiben
-   muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option zusätzlich **Datum**
-   und **Ort für die Unterschriftszeile** wählen – je ein **Datenfeld** (z. B. ein
+7. **Unterschrift benötigt:** ankreuzen, wenn der Trainer im Formular unterschreiben
+   muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option erscheinen
+   **darunter** zusätzlich **Datum** und **Ort für die Unterschriftszeile** – je ein **Datenfeld** (z. B. ein
    „Aktuelle Zeit"-Antwortfeld als Datum, die Spalte `Wohnort` als Ort). So steht im PDF
    genau der gespeicherte Wert (PDF == DB == Export). Sonst entfällt das Unterschriftsfeld.
 8. **Formularseite** = die Seite aus Abschnitt 1.
@@ -157,14 +160,17 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         **PDF-Regeln** (Abschnitt 3 b‑2) — so können sie je nach Antwort variieren.
         Platzhalter (überall identisch – PDF, E-Mail, Export): `##data_<slug>##` für jede
         Quellspalte inkl. Antwortfelder (z. B. `##data_vorname##`, `##data_verzicht##`),
-        `##letterhead_<slug>##` für Briefkopf-Variablen (z. B. `##letterhead_jahr##`, `##letterhead_verein##`),
+        `##letterhead_<slug>##` für Briefkopf-Variablen (z. B. `##letterhead_verein##`, `##letterhead_ort##`),
+        `##system_year##` / `##system_month##` / `##system_today##` / `##system_time##` /
+        `##system_datetime##` (eingebaute Datums-/Zeit-Platzhalter – aktuelles Jahr/Datum/Uhrzeit,
+        ohne Konfiguration überall verfügbar),
         `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte der
         Antwortfelder** (Abschnitt 3 b‑3), dazu `##email##`.
       - **Spezielle Vorlage** (detailliertes Layout): **Body-Vorlage** aus der **Auswahlliste**
         wählen (alle `pdf_body_*`-Vorlagen erscheinen automatisch). Die Vorlage **enthält ihre
         eigene Logik** → **PDF-Regeln entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
     - Header (Logo), Unterschrift und Footer kommen aus der gewählten **Briefkopf-Vorlage**;
-      die Briefkopf-Variablen (`##letterhead_jahr##`, `##letterhead_verein##`, …) stammen ebenfalls von dort.
+      die Briefkopf-Variablen (`##letterhead_verein##`, `##letterhead_ort##`, …) stammen ebenfalls von dort.
 11. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
 12. **Speichern.**
 
@@ -172,8 +178,8 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 
 Im Abschnitt **Antwortfelder** mit **„Neu"** ein Feld anlegen, mit **„Bearbeiten"** im Dialog
 öffnen. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
-links in jeder Zeile ziehen – die neue Reihenfolge wird sofort gespeichert und gilt für
-Formular **und** `##text_all##` im PDF). Pro Feld:
+links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des Workflows**
+übernommen und gilt für Formular **und** `##text_all##` im PDF). Pro Feld:
 - **Beschriftung** (die Frage im Formular),
 - **Typ:** Freitext (ein-/mehrzeilig), **Zahl**, Datum, Dropdown, Radio-Buttons,
   Checkboxen (Mehrfachauswahl) oder **Aktuelle Zeit**,
@@ -266,8 +272,8 @@ Dankes-Satz nur bei Zustimmung). Verbindungsglied ist das **Speicherfeld**:
 - **Antwortfeld** „Ihre Entscheidung" (Radio, Speicherfeld **`Entscheidung`**) mit zwei
   Optionen, deren **Dokument-Texte** vollständige Sätze sind:
   - „Einverstanden"→`ja`, Dokument-Text *„Hiermit erkläre ich mein Einverständnis gegenüber
-    dem ##letterhead_verein## für das Jahr ##letterhead_jahr##."*
-  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##letterhead_jahr## erteile ich …
+    dem ##letterhead_verein## für das Jahr ##system_year##."*
+  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##system_year## erteile ich …
     kein Einverständnis."*
 - **PDF-Regeln:**
   1. „Einverständnis erteilt" — Bedingung **`Entscheidung` ist gleich `ja`** →
@@ -309,7 +315,7 @@ Der Trainer öffnet den Link aus der Einladungsmail (`…/workflow-formular/<tok
    Hinweis **„So erscheint dies im Dokument: …"** mit dem Satz, der ins PDF übernommen
    wird – der Inhalt des PDFs ist damit keine Überraschung,
 3. **unterschreibt** im Unterschriftenfeld (Maus/Finger/Stift) – nur wenn am Workflow
-   *Unterschrift verlangen* aktiv ist; „Unterschrift löschen" korrigiert,
+   *Unterschrift benötigt* aktiv ist; „Unterschrift löschen" korrigiert,
 4. klickt **„Absenden"** → Bestätigungsseite „Vielen Dank…".
 
 Folge: Status → **2**; das **PDF** wird erzeugt und sicher gespeichert; eine
@@ -440,9 +446,13 @@ nach `templates/` legen → erscheint in „Briefkopf-Vorlagen → Layout-Vorlag
 (nicht mehr automatisch). Die mitgelieferte `pdf_master` ist ein **neutraler Beispiel-Briefkopf** (Musterverein) mit
 Lauf-Kopf-/Fußzeile (siehe [PDF-TEMPLATES.md](PDF-TEMPLATES.md)).
 Feste Variablen, die ein Master-Layout anbietet, in
-`contao/config/config.php` unter `$GLOBALS['TL_WORKFLOW_PDF_VARS']` als
-`'pdf_master_xyz' => ['Jahr' => date('Y'), 'Verein' => '', …]` ergänzen – sie werden
-dann im Briefkopf automatisch vorgeschlagen.
+`contao/config/config.php` unter `$GLOBALS['TL_WORKFLOW_PDF_VARS']` ergänzen – sie
+werden dann im Briefkopf vorgeschlagen. Ein Eintrag ist entweder ein einfacher
+Default (Inhalts-Variable), z. B. `'Verein' => ''`, **oder** – für Layout-Maße – ein
+Array `['default' => '20', 'label' => 'Rand links (mm)', 'group' => 'layout']`.
+„layout"-Variablen erscheinen im Editor in der Gruppe **„Layout & Maße"**, werden von
+`PdfGenerator` (Seitenränder) bzw. der Vorlage (Schriftgrößen, Abstände) gelesen und
+**nicht** als `##letterhead_*##`-Token angeboten.
 
 > **Kurz:** Auswahl/Texte/Logo/Variablen = **online**. Eine neue **Datei-Vorlage**
 > (Body `pdf_body_*` oder Master `pdf_master_*`) wird wie Code behandelt und auf den

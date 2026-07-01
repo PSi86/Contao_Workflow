@@ -49,20 +49,22 @@ class AnswerConfigListener
     /**
      * Renders the embedded answer-field list (dcaWizard list_callback) with a
      * drag handle per row: the order is changed directly in this list (HTML5
-     * drag&drop, see public/workflow-question-sort.js) and persisted via the
-     * workflow_question_sort route – no extra dialog needed.
+     * drag&drop, see public/workflow-question-sort.js). The new order is held in
+     * a hidden form field and only written when the workflow is saved
+     * (AnswerConfigListener::persistQuestionOrder) – nothing is persisted before
+     * the user clicks "save".
      *
      * @param array<int, array<string, mixed>> $records
      */
     public function renderQuestionsList(array $records, string $id, object $widget): string
     {
+        // Hide abandoned "new" records (act=create inserts a tstamp=0 row at once;
+        // see cleanupAbandonedChildren for the DB cleanup).
+        $records = array_values(array_filter($records, static fn (array $r): bool => (int) ($r['tstamp'] ?? 0) > 0));
+
         if ([] === $records) {
             return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] ?? '')).'</p>';
         }
-
-        $container = System::getContainer();
-        $sortUrl = $container->get('router')->generate('workflow_question_sort', ['id' => (int) $widget->currentRecord]);
-        $requestToken = $container->get('contao.csrf.token_manager')->getDefaultTokenValue();
 
         $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
         $GLOBALS['TL_JAVASCRIPT']['wf_qsort'] = 'bundles/contaoworkflow/workflow-question-sort.js|static';
@@ -106,7 +108,7 @@ class AnswerConfigListener
                 .'</tr>';
         }
 
-        return '<div data-question-sort data-sort-url="'.StringUtil::specialchars($sortUrl).'" data-rt="'.StringUtil::specialchars($requestToken).'">'
+        return '<div data-question-sort>'
             .'<table class="tl_listing showColumns"><thead><tr>'
             .'<th class="tl_folder_tlist"></th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hLabel).'</th>'
@@ -118,25 +120,144 @@ class AnswerConfigListener
     }
 
     /**
-     * onload_callback for tl_workflow_question: the "Aktuelle Zeit" field is
-     * filled automatically on submission, so "Pflichtfeld", "Vorbelegen" and
-     * "Schreibgeschützt" are meaningless – remove them from the edit palette
-     * for that type. Type changes (submitOnChange) re-run this callback.
+     * onload_callback for tl_workflow: deletes the workflow's never-saved child
+     * records. Contao's act=create inserts a blank row (tstamp=0) at once and only
+     * sets a real tstamp on save; its built-in cleanup (DC_Table::reviseTable) runs
+     * on the child table's own list view, which is never shown for the embedded
+     * questions/rules – so abandoned "new" rows would pile up. A saved record always
+     * has tstamp>0, so deleting tstamp=0 rows of this workflow is safe (a row being
+     * created lives in an open modal; this runs on the workflow edit load only).
      */
-    public function hideMandatoryForCurrentTime(DataContainer $dc): void
+    public function cleanupAbandonedChildren(DataContainer $dc): void
     {
         if (!$dc->id) {
             return;
         }
 
-        $question = QuestionModel::findByPk((int) $dc->id);
+        $db = System::getContainer()->get('database_connection');
 
-        if (null === $question || 'currentTime' !== (string) $question->type) {
+        foreach (['tl_workflow_question', 'tl_workflow_rule'] as $table) {
+            $db->executeStatement(
+                'DELETE FROM '.$table.' WHERE pid = ? AND tstamp = 0',
+                [(int) $dc->id],
+            );
+        }
+    }
+
+    /**
+     * load_callback for tl_workflow.questionOrder: returns the workflow's current
+     * answer-field order (child sorting) as a comma-separated id list, so the
+     * hidden field always mirrors reality. Also loads the back end CSS that hides
+     * the field's row (the order is edited by drag&drop, not in this raw field).
+     *
+     * @param mixed $value
+     */
+    public function loadQuestionOrder(mixed $value, DataContainer $dc): mixed
+    {
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+
+        if (!$dc->id) {
+            return $value;
+        }
+
+        return implode(',', $this->questionIdsInOrder((int) $dc->id));
+    }
+
+    /**
+     * save_callback for tl_workflow.questionOrder: renumbers the child answer
+     * fields' sorting to the posted order (drag&drop) and returns the normalised
+     * order to store. Because this is a real column, a changed order is picked up
+     * by Contao's versioning (new version + visible diff). Questions of the
+     * workflow that are missing from the posted list are appended in their current
+     * order, so every row keeps a defined sorting.
+     *
+     * @param mixed $value
+     */
+    public function saveQuestionOrder(mixed $value, DataContainer $dc): mixed
+    {
+        if (!$dc->id) {
+            return $value;
+        }
+
+        $ordered = $this->renumberQuestions((int) $dc->id, (string) $value);
+
+        return implode(',', $ordered);
+    }
+
+    /**
+     * onrestore_version_callback for tl_workflow: re-applies a restored
+     * questionOrder to the child answer fields' sorting (a version restore writes
+     * the workflow row back but does not touch the child table).
+     *
+     * @param array<string, mixed> $data restored record data
+     */
+    public function restoreQuestionOrder(string $table, int $pid, int $version, array $data): void
+    {
+        if ('tl_workflow' !== $table) {
             return;
         }
 
-        $palette = &$GLOBALS['TL_DCA']['tl_workflow_question']['palettes']['default'];
-        $palette = str_replace([',mandatory', ',prefill', ',readOnly'], '', (string) $palette);
+        $this->renumberQuestions($pid, (string) ($data['questionOrder'] ?? ''));
+    }
+
+    /**
+     * Child answer-field ids of a workflow in their current sorting order.
+     *
+     * @return array<int, int>
+     */
+    private function questionIdsInOrder(int $workflowId): array
+    {
+        $ids = [];
+        $questions = QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']);
+
+        if (null !== $questions) {
+            foreach ($questions as $question) {
+                $ids[] = (int) $question->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Renumbers a workflow's answer-field sorting to the given comma-separated id
+     * order; ids not belonging to the workflow are dropped, missing ones appended
+     * (in their current order). Writes nothing when the order is already as desired.
+     *
+     * @return array<int, int> the resulting order (valid ids only)
+     */
+    private function renumberQuestions(int $workflowId, string $order): array
+    {
+        $current = $this->questionIdsInOrder($workflowId);
+
+        // Requested ids that actually belong to the workflow, in requested order.
+        $requested = array_values(array_unique(array_filter(array_map('intval', explode(',', $order)))));
+        $target = array_values(array_intersect($requested, $current));
+
+        // Append any questions the posted order did not mention.
+        foreach ($current as $id) {
+            if (!\in_array($id, $target, true)) {
+                $target[] = $id;
+            }
+        }
+
+        if ($target === $current) {
+            return $current;
+        }
+
+        $sorting = 0;
+
+        foreach ($target as $id) {
+            $question = QuestionModel::findByPk($id);
+
+            if (null !== $question) {
+                $question->sorting = $sorting += 64;
+                $question->tstamp = time();
+                $question->save();
+            }
+        }
+
+        return $target;
     }
 
     /**
@@ -148,6 +269,10 @@ class AnswerConfigListener
      */
     public function renderRulesList(array $records, string $id, object $widget): string
     {
+        // Hide abandoned "new" records (act=create inserts a tstamp=0 row at once;
+        // see cleanupAbandonedChildren for the DB cleanup).
+        $records = array_values(array_filter($records, static fn (array $r): bool => (int) ($r['tstamp'] ?? 0) > 0));
+
         if ([] === $records) {
             return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] ?? '')).'</p>';
         }
@@ -227,25 +352,16 @@ class AnswerConfigListener
     }
 
     /**
-     * onload_callback for tl_workflow_rule: when the rule is the "Standardtext"
-     * (isDefault), remove the conditions field from the edit palette so it is
-     * hidden and not validated. Toggling the checkbox (submitOnChange) reloads
-     * the form, re-running this callback.
+     * save_callback for tl_workflow_rule.conditions: a default rule ("Standardtext")
+     * always applies, so it must not keep conditions. The conditions wizard is hidden
+     * client-side while "isDefault" is checked (data-wf-toggle); this clears any
+     * leftover value on save, regardless of the client state.
+     *
+     * @param mixed $value serialized conditions
      */
-    public function hideConditionsForDefaultRule(DataContainer $dc): void
+    public function clearConditionsForDefaultRule(mixed $value, DataContainer $dc): mixed
     {
-        if (!$dc->id) {
-            return;
-        }
-
-        $rule = RuleModel::findByPk((int) $dc->id);
-
-        if (null === $rule || !$rule->isDefaultRule()) {
-            return;
-        }
-
-        $palette = &$GLOBALS['TL_DCA']['tl_workflow_rule']['palettes']['default'];
-        $palette = str_replace(',conditions', '', (string) $palette);
+        return Input::post('isDefault') ? serialize([]) : $value;
     }
 
     /**

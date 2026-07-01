@@ -8,7 +8,7 @@ $GLOBALS['TL_LANG']['tl_workflow_rule']['text_legend'] = 'Brieftext';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['title']      = ['Bezeichnung', 'Name der Regel, z. B. „Zustimmung" oder „Ablehnung" (nur zur Übersicht).'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['isDefault']  = ['Standardtext', 'Dieser Text gilt immer, wenn keine andere Regel zutrifft (Sonst-Fall). Bei aktivierter Option entfallen die Bedingungen. Es darf nur EINE Standardtext-Regel geben – stellen Sie sie ans Ende. Hinweis: Eine Änderung wird sofort gespeichert.'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['conditions'] = ['Bedingungen', 'Alle Bedingungen müssen zutreffen (UND), damit dieser Text genutzt wird.'];
-$GLOBALS['TL_LANG']['tl_workflow_rule']['pdfBody']    = ['Brieftext', 'Text, der ins PDF kommt, wenn diese Regel greift. Überschrift, Logo, Unterschrift und Footer kommen aus dem Workflow bzw. Briefpapier. Platzhalter: ##data_<feld>## (Spalten inkl. Antwortfelder, z. B. ##data_verzicht##), ##letterhead_<variable>## (Briefpapier-Variablen, z. B. ##letterhead_jahr##, ##letterhead_verein##), ##email##.'];
+$GLOBALS['TL_LANG']['tl_workflow_rule']['pdfBody']    = ['Brieftext', 'Text, der ins PDF kommt, wenn diese Regel greift. Überschrift, Logo, Unterschrift und Footer kommen aus dem Workflow bzw. Briefpapier. Platzhalter: ##data_<feld>## (Spalten inkl. Antwortfelder, z. B. ##data_verzicht##), ##letterhead_<variable>## (Briefpapier-Variablen, z. B. ##letterhead_verein##, ##letterhead_ort##), ##system_year## / ##system_today## (aktuelles Jahr/Datum), ##email##.'];
 
 $GLOBALS['TL_LANG']['tl_workflow_rule']['cond_field']    = 'Antwortfeld';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['cond_operator'] = 'Operator';

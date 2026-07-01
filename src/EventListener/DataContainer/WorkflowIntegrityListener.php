@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\FilesModel;
+use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\EntryModel;
@@ -38,10 +39,27 @@ class WorkflowIntegrityListener
     ) {
     }
 
+    /**
+     * True only while the edit form is being RENDERED (GET on act=edit/editAll).
+     * These notices/red outlines belong on the edit mask of one specific workflow –
+     * nowhere else. Two ways they used to leak as orphaned flash messages onto the
+     * list/overview (unclear which workflow they referred to):
+     *   - other actions (copy/delete/toggle/show) run config.onload with $dc->id set
+     *     and then redirect elsewhere;
+     *   - a save POST (esp. "save & close") runs onload, then redirects to the list.
+     * Both are excluded here (not the listed acts / not a form submit); after a plain
+     * save Contao reloads the edit form via GET, so the notices reappear there.
+     */
+    private function isEditMask(): bool
+    {
+        return \in_array((string) Input::get('act'), ['edit', 'editAll'], true)
+            && '' === (string) Input::post('FORM_SUBMIT');
+    }
+
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function flagIncomplete(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -106,7 +124,7 @@ class WorkflowIntegrityListener
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnSlugCollisions(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -133,13 +151,14 @@ class WorkflowIntegrityListener
      * Non-blocking warnings for the statement ("Textbaustein") layer:
      * - ##text_*## tokens in the PDF heading or a rule body that match no
      *   answer field (typo or removed field would render as literal text),
+     * - ##system_*## tokens whose suffix is not a built-in system token,
      * - prefill values in the data that match no option of a choice question
      *   (the form would silently start empty for those entries).
      */
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnStatementAndPrefillIssues(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 
@@ -159,9 +178,51 @@ class WorkflowIntegrityListener
             ));
         }
 
+        foreach ($this->unknownSystemTokens($workflow, $questions) as $token) {
+            Message::addInfo(sprintf(
+                'Hinweis: „##%s##" ist kein bekannter System-Platzhalter (verfügbar sind %s) '
+                .'und würde im PDF unersetzt stehen bleiben.',
+                StringUtil::specialchars($token),
+                implode(', ', array_map(static fn (string $name): string => '##'.$name.'##', array_keys($this->placeholders->systemTokens()))),
+            ));
+        }
+
         foreach ($this->prefillMismatches($workflow, $questions) as $message) {
             Message::addInfo($message);
         }
+    }
+
+    /**
+     * ##system_*## tokens in the workflow's texts (heading, intro, file name, rule
+     * bodies, value-field statements) whose suffix is not one of the built-in
+     * system tokens – a typo would render as literal text in the PDF. The valid
+     * set is shared with PlaceholderResolver so both stay in lock-step.
+     *
+     * @param array<int, QuestionModel> $questions
+     *
+     * @return array<int, string>
+     */
+    private function unknownSystemTokens(WorkflowModel $workflow, array $questions): array
+    {
+        $valid = array_keys($this->placeholders->systemTokens());
+
+        $texts = [
+            (string) $workflow->pdfTitle,
+            (string) $workflow->introText,
+            (string) $workflow->pdfFileName,
+        ];
+
+        foreach ($questions as $question) {
+            $texts[] = (string) $question->pdfStatement;
+        }
+
+        foreach ($workflow->getRules() as $rule) {
+            $texts[] = (string) $rule->getPdfBody();
+        }
+
+        preg_match_all('/##(system_[a-z0-9_]+)##/i', implode("\n", $texts), $matches);
+
+        return array_values(array_diff(array_unique(array_map('strtolower', $matches[1])), $valid));
     }
 
     /**
@@ -280,7 +341,7 @@ class WorkflowIntegrityListener
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnPublicSourceFile(DataContainer $dc): void
     {
-        if (!$dc->id) {
+        if (!$dc->id || !$this->isEditMask()) {
             return;
         }
 

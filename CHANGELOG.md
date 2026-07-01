@@ -7,6 +7,64 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Eingebaute `##system_*##`-Platzhalter** für Datum und Uhrzeit, die zur Laufzeit
+  berechnet werden und **ohne jede Konfiguration überall** verfügbar sind (PDF-Text,
+  Überschrift, Einleitung, Dateiname, E-Mails, Dokument-Texte): `##system_year##`
+  (Jahr), `##system_month##` (Monat), `##system_today##` (Datum), `##system_time##`
+  (Uhrzeit) und `##system_datetime##` (Datum + Uhrzeit). Sie erscheinen in der
+  Platzhalter-Hilfe und werden im Bearbeiten-Dialog auf unbekannte Schreibweisen geprüft.
+
+### Entfernt
+- Die Briefpapier-Variable **`Jahr`** wird nicht mehr als PDF-Variable vorgeschlagen –
+  das aktuelle Jahr liefert jetzt der eingebaute `##system_year##`. **`Verein`** und
+  **`Ort`** bleiben unverändert als eigene Briefpapier-Variablen erhalten. Bereits
+  gespeicherte `Jahr`-Werte bleiben gültig (`##letterhead_jahr##` löst weiterhin auf) –
+  es ist **keine Migration nötig**. Die mitgelieferte Demo nutzt jetzt `##system_year##`.
+
+### Geändert (kein Speichern ohne „Speichern"-Klick)
+- **Kein automatisches Speichern mehr beim Umschalten von Auswahlfeldern.** Mehrere
+  Felder lösten bisher per `submitOnChange`/`toggleSubpalette` ein sofortiges Speichern
+  des gesamten Datensatzes aus, ohne dass „Speichern" geklickt wurde. Erste Umsetzung:
+  - **PDF-Inhalt** (`pdfBodyType`) und **Unterschrift verlangen** (`requireSignature`) im
+    Workflow sowie **Standardtext** (`isDefault`) in den PDF-Regeln blenden ihre
+    abhängigen Felder jetzt **clientseitig** ein/aus (neues `workflow-field-toggle.js`),
+    statt das Formular abzuschicken. Es wird nichts gespeichert, bis „Speichern" geklickt
+    wird. Fällt das Skript aus, sind alle Felder sichtbar (gutartiger Rückfall, kein
+    Auto-Speichern). Ein Standardtext ohne Bedingungen wird beim Speichern bereinigt.
+  - **Body-Vorlage** (`pdfBodyTemplate`): überflüssiges `submitOnChange` entfernt.
+  - **Layout-Vorlage des Briefpapiers** (`masterTemplate`): kein `submitOnChange`
+    mehr.
+  - **PDF-Variablen** (`pdfData`): neuer, vorlagen-geführter Editor (eigenes
+    Backend-Widget statt MultiColumnWizard). Die zur gewählten Layout-Vorlage
+    deklarierten Variablen erscheinen **sofort** als beschriftete Wertfelder und
+    werden beim Wechsel der Vorlage **clientseitig** neu aufgebaut – ohne dass
+    zwischendurch gespeichert werden muss. Zusätzliche eigene Variablen lassen sich
+    in einem eigenen Bereich ergänzen. Speicherformat (Schlüssel/Wert-Paare) und
+    Versionierung unverändert; PDF-Erzeugung, `##letterhead_*##`-Platzhalter und
+    Import/Export bleiben kompatibel.
+  - **Antwortfeld-Typ** (`type`): kein `submitOnChange` mehr. Die typabhängigen
+    Felder (Dokument-Text, Optionen, „aus Formular ausblenden" bzw. die
+    Pflicht-/Vorbeleg-/Schreibgeschützt-Optionen) werden clientseitig ein-/ausgeblendet
+    – ein Typwechsel speichert den Antwortfeld-Datensatz also nicht mehr sofort.
+  - **Antwortfeld-Reihenfolge** (Drag & Drop): schreibt nicht mehr sofort, sondern
+    wird erst beim Speichern des Workflows übernommen; die Reihenfolge bleibt über
+    das Hinzufügen/Bearbeiten einzelner Felder hinweg erhalten (verstecktes Feld
+    `questionOrder` + erneutes Anwenden nach dcaWizard-Refresh). Die Reihenfolge ist
+    nun ein **versioniertes** Workflow-Feld: Änderungen erscheinen in der Versions-
+    historie und werden beim Wiederherstellen einer Version mit zurückgesetzt
+    (neue Spalte `tl_workflow.questionOrder`).
+  - Die betroffenen Hilfetexte („… wird sofort gespeichert") wurden angepasst.
+
+### Behoben
+- **Verwaiste „Regel/Antwortfeld"-Zeilen.** Wurde der „Neue Regel"- bzw.
+  „Neues Antwortfeld"-Dialog ohne Speichern geschlossen, blieb eine leere Zeile
+  (z. B. „Regel 82") in der Liste stehen und musste manuell gelöscht werden:
+  Contao legt bei „Neu" sofort einen leeren Datensatz an, und die eingebettete
+  Liste durchläuft Contaos eigene Aufräumroutine nie. Solche nie gespeicherten
+  Zeilen (`tstamp = 0`) werden jetzt nicht mehr angezeigt und beim Öffnen des
+  Workflows aus der Datenbank entfernt.
+
+### Hinzugefügt
 - **PDF- und Formular-Vorschau in der Workflow-Bearbeiten-Maske.** Im Abschnitt
   *PDF-Inhalt* öffnet ein Button das generierte **PDF mit Beispieldaten** in einem neuen
   Tab; im Formular-Abschnitt zeigt ein Button eine **Vorschau des Formulars** (Absenden

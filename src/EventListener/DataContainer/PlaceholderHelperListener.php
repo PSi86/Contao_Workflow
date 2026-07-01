@@ -16,8 +16,8 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
  * Adds a small placeholder helper (autocomplete) to the workflow's placeholder
- * fields: typing surfaces the available ##data_*## / ##letterhead_*## / ##email## /
- * ##workflow_title## tokens and filters them as you type. The token list is built
+ * fields: typing surfaces the available ##data_*## / ##letterhead_*## / ##system_*## /
+ * ##email## / ##workflow_title## tokens and filters them as you type. The token list is built
  * per record from the workflow's source columns, answer fields and letterhead
  * variables; the slugs are produced with PlaceholderResolver so every suggestion
  * matches exactly the token replaced later in the PDF and the e-mails.
@@ -151,6 +151,11 @@ class PlaceholderHelperListener
             }
         }
 
+        $add('system_year', 'Aktuelles Jahr');
+        $add('system_month', 'Aktueller Monat');
+        $add('system_today', 'Heutiges Datum');
+        $add('system_time', 'Aktuelle Uhrzeit');
+        $add('system_datetime', 'Aktuelles Datum und Uhrzeit');
         $add('email', 'E-Mail-Adresse des Empfängers');
         $add('workflow_title', 'Titel des Workflows');
 
@@ -194,12 +199,28 @@ class PlaceholderHelperListener
             return [];
         }
 
-        $keys = array_keys($master->getPdfData());
-
         $declared = $GLOBALS['TL_WORKFLOW_PDF_VARS'][$master->getMasterTemplate()] ?? [];
 
+        // Keys declared as "layout" are page metrics (margins, font sizes …), not
+        // body content – exclude them from the ##letterhead_*## suggestions.
+        $layout = [];
+
+        foreach ($declared as $key => $decl) {
+            if (\is_array($decl) && 'layout' === ($decl['group'] ?? 'content')) {
+                $layout[$key] = true;
+            }
+        }
+
+        $keys = [];
+
+        foreach (array_keys($master->getPdfData()) as $key) {
+            if (!isset($layout[$key])) {
+                $keys[] = $key;
+            }
+        }
+
         foreach (array_keys($declared) as $key) {
-            if (!\in_array($key, $keys, true)) {
+            if (!isset($layout[$key]) && !\in_array($key, $keys, true)) {
                 $keys[] = $key;
             }
         }

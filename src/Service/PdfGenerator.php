@@ -63,7 +63,14 @@ class PdfGenerator
     {
         $this->framework->initialize();
 
-        return $this->renderPdf($this->renderHtml($entry, $workflow));
+        $masterModel = $this->resolveMaster($workflow);
+        $templateName = null !== $masterModel ? $masterModel->getMasterTemplate() : self::MASTER_TEMPLATE;
+        $extra = $this->resolveExtra($masterModel, $templateName);
+
+        return $this->renderPdf(
+            $this->renderHtml($entry, $workflow, $masterModel, $templateName, $extra),
+            $extra,
+        );
     }
 
     /**
@@ -102,16 +109,14 @@ class PdfGenerator
         return mb_substr($name, 0, 120);
     }
 
-    private function renderHtml(EntryModel $entry, WorkflowModel $workflow): string
+    /**
+     * @param array<string, string> $extra letterhead variables completed with defaults
+     */
+    private function renderHtml(EntryModel $entry, WorkflowModel $workflow, ?MasterModel $masterModel, string $templateName, array $extra): string
     {
-        $masterModel = $this->resolveMaster($workflow);
-
         $data = $entry->getData();
-        $extra = null !== $masterModel ? $masterModel->getPdfData() : [];
 
         $bodyHtml = $this->bodyComposer->compose($workflow, $entry, $data, $extra);
-
-        $templateName = null !== $masterModel ? $masterModel->getMasterTemplate() : self::MASTER_TEMPLATE;
 
         /** @var FrontendTemplate $master */
         $master = $this->framework->createInstance(FrontendTemplate::class, [$templateName]);
@@ -168,7 +173,69 @@ class PdfGenerator
         return $this->framework->getAdapter(MasterModel::class)->findByPk((int) $workflow->master);
     }
 
-    private function renderPdf(string $html): string
+    /**
+     * PDF variables for a template: the stored per-Briefpapier values completed with
+     * the template's declared defaults ($GLOBALS['TL_WORKFLOW_PDF_VARS']). Layout
+     * metrics (group "layout") fall back to their default when empty or non-numeric;
+     * content variables are only filled when entirely absent (an intentionally
+     * emptied content value stays empty).
+     *
+     * @return array<string, string>
+     */
+    private function resolveExtra(?MasterModel $masterModel, string $templateName): array
+    {
+        $stored = null !== $masterModel ? $masterModel->getPdfData() : [];
+        $registry = $GLOBALS['TL_WORKFLOW_PDF_VARS'][$templateName] ?? [];
+
+        $extra = $stored;
+
+        foreach ($registry as $key => $declaration) {
+            [$default, $group] = $this->declaration($declaration);
+
+            if ('layout' === $group) {
+                $value = trim((string) ($stored[$key] ?? ''));
+                $extra[$key] = is_numeric($value) ? $value : $default;
+            } elseif (!\array_key_exists($key, $extra)) {
+                $extra[$key] = $default;
+            }
+        }
+
+        return $extra;
+    }
+
+    /**
+     * Normalises a registry entry to [default value, group]. An entry is either a
+     * plain default (content variable) or ['default'=>…, 'label'=>…, 'group'=>…].
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function declaration(mixed $declaration): array
+    {
+        if (\is_array($declaration)) {
+            return [(string) ($declaration['default'] ?? ''), (string) ($declaration['group'] ?? 'content')];
+        }
+
+        return [(string) $declaration, 'content'];
+    }
+
+    /**
+     * A page-margin value (mm) from the letterhead variables: numeric, clamped to a
+     * sane range, else the built-in default.
+     *
+     * @param array<string, string> $extra
+     */
+    private function marginMm(array $extra, string $key, float $default): float
+    {
+        $value = $extra[$key] ?? '';
+        $value = is_numeric($value) ? (float) $value : $default;
+
+        return max(0.0, min(100.0, $value));
+    }
+
+    /**
+     * @param array<string, string> $extra letterhead variables completed with defaults
+     */
+    private function renderPdf(string $html, array $extra): string
     {
         $tempDir = $this->projectDir.'/var/cache/mpdf';
 
@@ -176,18 +243,18 @@ class PdfGenerator
             mkdir($tempDir, 0777, true);
         }
 
-        // Margins leave room for the master template's running page header
-        // (logo + address + blue rule) and the 4-column footer.
+        // Page margins come from the Briefpapier's layout variables (defaults leave
+        // room for the running header – logo + address + rule – and the footer).
         $mpdf = new Mpdf([
             'tempDir'       => $tempDir,
             'mode'          => 'utf-8',
             'format'        => 'A4',
-            'margin_top'    => 34,
-            'margin_bottom' => 30,
-            'margin_left'   => 20,
-            'margin_right'  => 20,
-            'margin_header' => 8,
-            'margin_footer' => 8,
+            'margin_top'    => $this->marginMm($extra, 'MarginTop', 34),
+            'margin_bottom' => $this->marginMm($extra, 'MarginBottom', 30),
+            'margin_left'   => $this->marginMm($extra, 'MarginLeft', 20),
+            'margin_right'  => $this->marginMm($extra, 'MarginRight', 20),
+            'margin_header' => $this->marginMm($extra, 'MarginHeader', 8),
+            'margin_footer' => $this->marginMm($extra, 'MarginFooter', 8),
             // Block remote (http/https) and file:// resources so a stray <img>/<link>
             // in a body (e.g. an unescaped custom template) cannot trigger an SSRF or
             // read local files. Our logo/signature use plain local paths (no scheme),
