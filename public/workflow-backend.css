@@ -37,13 +37,16 @@
     font-weight: 600;
     overflow-wrap: anywhere;
 }
-/* Compact by default but still user-resizable (drag handle kept). */
+/* Compact default; JS grows height/width to fit the content (workflow-pdf-vars.js
+   fit()). Stays user-resizable in both directions, and never overflows the row. */
 .wf-pdfvars .wf-pdfvars-v {
-    flex: 1 1 auto;
-    max-width: 34em;
-    min-height: 2.2em;
-    height: 2.4em;
-    resize: vertical;
+    flex: 0 1 auto;
+    width: 34em;
+    max-width: 100%;
+    min-height: 2.4em;
+    resize: both;
+    overflow: auto;
+    box-sizing: border-box;
 }
 .wf-pdfvars-row--custom .wf-pdfvars-k {
     flex: 0 0 11em;

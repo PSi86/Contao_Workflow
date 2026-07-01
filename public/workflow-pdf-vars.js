@@ -162,6 +162,27 @@
         this.rowsBox.appendChild(tplGroup);
         this.rowsBox.appendChild(customGroup);
         this.reindex();
+        this.fitAll();
+    };
+
+    // Size a value field to its content: height fits all lines, width grows with
+    // the longest line (from the CSS default up to the row width). min-height +
+    // max-width in CSS keep the default/upper bounds; the field stays resizable.
+    PdfVars.prototype.fit = function (el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+
+        var lines = (el.value || '').split('\n');
+        var longest = 0;
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i].length > longest) { longest = lines[i].length; }
+        }
+        el.style.width = Math.max(longest + 3, 34) + 'ch';
+    };
+
+    PdfVars.prototype.fitAll = function () {
+        var self = this;
+        this.rowsBox.querySelectorAll('.wf-pdfvars-v').forEach(function (el) { self.fit(el); });
     };
 
     PdfVars.prototype.addCustom = function () {
@@ -196,6 +217,14 @@
             e.preventDefault();
             var row = del.closest('[data-row]');
             if (row) { row.parentNode.removeChild(row); self.reindex(); }
+        });
+
+        // Grow the height while typing (grow-only, so a manual resize is kept).
+        this.rowsBox.addEventListener('input', function (e) {
+            var t = e.target;
+            if (t && t.classList && t.classList.contains('wf-pdfvars-v') && t.scrollHeight > t.clientHeight) {
+                t.style.height = t.scrollHeight + 'px';
+            }
         });
     };
 
