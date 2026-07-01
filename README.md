@@ -65,6 +65,13 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      Dieselben Tokens gelten **identisch** im PDF.
    - Ergebnis-Mail: Anhang über **„Anhänge über Tokens“** mit `##attachment##`
      (das erzeugte PDF).
+   - **Hinweis zur `##`-Vorschlagsliste des Notification Center:** Vorgeschlagen
+     (auto-suggest) werden nur `##data_*##`, `##email##`, `##link##`,
+     `##workflow_title##` und `##attachment##`. Die übrigen Workflow-Platzhalter
+     (`##letterhead_*##`, `##system_*##`, `##text_*##` / `##text_all##`) werden
+     **nicht vorgeschlagen, funktionieren beim Versand aber trotzdem** – einfach
+     ausschreiben. (Fehlt zu einem `##data_*##`-Token die Spalte im Eintrag, bleibt
+     der Platzhalter unersetzt im Text stehen.)
 2. **Seite + Modul**: Frontend-Modul „Workflow-Formular“ anlegen und auf einer
    Seite einfügen, die `auto_item` nutzt. Diese Seite unter *Formularseite*
    am Workflow auswählen.

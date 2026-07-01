@@ -78,9 +78,19 @@ Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `
      - bei **Ergebnis**: Feld **„Anhänge über Tokens" = `##attachment##`** (hängt das PDF an)
    - Verfügbare Tokens: `##email##`, `##link##`, `##workflow_title##`,
      `##attachment##`, `##data_<Spalte>##` (jede importierte Spalte – inkl. der
-     gespeicherten Antwortwerte, z. B. `##data_verzicht##`) sowie
-     `##text_<Speicherfeld>##` / `##text_all##` (die **Dokument-Texte** der
-     Antwortfelder, z. B. um in der Ergebnis-Mail die Auswahl wörtlich zu zitieren).
+     gespeicherten Antwortwerte, z. B. `##data_verzicht##`),
+     `##letterhead_<Variable>##` (Briefkopf-Variablen, z. B. `##letterhead_verein##`),
+     `##system_year##` / `##system_today##` … (aktuelles Datum/Uhrzeit, ohne
+     Konfiguration) sowie `##text_<Speicherfeld>##` / `##text_all##` (die
+     **Dokument-Texte** der Antwortfelder, z. B. um in der Ergebnis-Mail die Auswahl
+     wörtlich zu zitieren).
+   - **Achtung – Vorschlagsliste ist unvollständig:** Die `##`-Auto-Vorschläge des
+     Notification Center zeigen nur `##data_*##`, `##email##`, `##link##`,
+     `##workflow_title##` und `##attachment##` (und je Feld gefiltert nach Kontext).
+     Die übrigen (`##letterhead_*##`, `##system_*##`, `##text_*##`) werden **nicht
+     vorgeschlagen, beim Versand aber trotzdem ersetzt** – einfach ausschreiben.
+     Fehlt zu einem `##data_*##`-Token die passende Spalte im Eintrag, bleibt der
+     Platzhalter unersetzt stehen (er wird nicht durch Leerstring ersetzt).
 
 ---
 
