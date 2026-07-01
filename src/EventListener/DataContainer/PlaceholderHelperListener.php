@@ -194,12 +194,28 @@ class PlaceholderHelperListener
             return [];
         }
 
-        $keys = array_keys($master->getPdfData());
-
         $declared = $GLOBALS['TL_WORKFLOW_PDF_VARS'][$master->getMasterTemplate()] ?? [];
 
+        // Keys declared as "layout" are page metrics (margins, font sizes …), not
+        // body content – exclude them from the ##letterhead_*## suggestions.
+        $layout = [];
+
+        foreach ($declared as $key => $decl) {
+            if (\is_array($decl) && 'layout' === ($decl['group'] ?? 'content')) {
+                $layout[$key] = true;
+            }
+        }
+
+        $keys = [];
+
+        foreach (array_keys($master->getPdfData()) as $key) {
+            if (!isset($layout[$key])) {
+                $keys[] = $key;
+            }
+        }
+
         foreach (array_keys($declared) as $key) {
-            if (!\in_array($key, $keys, true)) {
+            if (!isset($layout[$key]) && !\in_array($key, $keys, true)) {
                 $keys[] = $key;
             }
         }

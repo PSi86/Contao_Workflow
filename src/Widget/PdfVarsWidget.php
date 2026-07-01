@@ -60,14 +60,15 @@ class PdfVarsWidget extends Widget
 
         return sprintf(
             '<div class="wf-pdfvars" data-name="%s" data-template-field="ctrl_masterTemplate" data-registry="%s"'
-            .' data-label-template="%s" data-label-custom="%s" data-label-key="%s" data-label-value="%s"'
-            .' data-label-add="%s" data-label-remove="%s">'
+            .' data-label-content="%s" data-label-layout="%s" data-label-custom="%s" data-label-key="%s"'
+            .' data-label-value="%s" data-label-add="%s" data-label-remove="%s">'
             .'<div class="wf-pdfvars-rows">%s</div>'
             .'<p class="wf-pdfvars-foot"><button type="button" class="tl_submit wf-pdfvars-add">%s</button></p>'
             .'</div>',
             StringUtil::specialchars($this->strName),
             StringUtil::specialchars(json_encode($registry, JSON_THROW_ON_ERROR)),
-            StringUtil::specialchars((string) ($lang['pdfData_groupTemplate'] ?? 'Variablen der Vorlage')),
+            StringUtil::specialchars((string) ($lang['pdfData_groupContent'] ?? 'Inhalt der Vorlage')),
+            StringUtil::specialchars((string) ($lang['pdfData_groupLayout'] ?? 'Layout & Maße')),
             StringUtil::specialchars((string) ($lang['pdfData_groupCustom'] ?? 'Eigene Variablen')),
             StringUtil::specialchars((string) ($lang['pdfData_key'] ?? 'Variable')),
             StringUtil::specialchars((string) ($lang['pdfData_value'] ?? 'Wert')),

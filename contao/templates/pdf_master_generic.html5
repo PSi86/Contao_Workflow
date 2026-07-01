@@ -29,6 +29,10 @@ $escVar = static fn ($v): string => htmlspecialchars(
 );
 $x = fn (string $k): string => (string) ($this->extra[$k] ?? '');
 
+// Numeric layout metric from the PDF variables (PdfGenerator already sanitises
+// them to a valid number or the default; $def is a last-resort fallback).
+$num = fn (string $k, string $def): string => is_numeric($this->extra[$k] ?? null) ? (string) $this->extra[$k] : $def;
+
 // Footer values are multi-line: split on real line breaks (or a legacy "|"),
 // trim, decode+escape each line and join with <br>.
 $lines = static function (string $value) use ($escVar): string {
@@ -43,7 +47,7 @@ $lines = static function (string $value) use ($escVar): string {
 $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
 ?>
 <style>
-    body { font-family: sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; }
+    body { font-family: sans-serif; font-size: <?= $num('FontSizeBody', '11') ?>pt; color: #1a1a1a; line-height: 1.45; }
     h1 { font-size: 15pt; margin: 0 0 2px; }
     /* One blank line (one body line height) between heading and intro. */
     .letter-intro { margin: 16pt 0 0; }
@@ -52,7 +56,9 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
 
     .pdf-head { width: 100%; border-collapse: collapse; }
     .pdf-head td { vertical-align: bottom; padding: 0; }
-    .pdf-head .addr { color: #1059A7; font-size: 8pt; }
+    /* nowrap: no automatic line breaks – the header follows the variable's own
+       formatting (use "|" or a line break in the variable to break a line). */
+    .pdf-head .addr { color: #1059A7; font-size: <?= $num('FontSizeHeader', '8') ?>pt; white-space: nowrap; }
     .pdf-head .logo { text-align: right; }
     .pdf-head .logo img { width: 64px; }
     .pdf-rule { border-bottom: 1.5pt solid #1059A7; line-height: 0; font-size: 0; margin-top: 4px; }
@@ -62,14 +68,15 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
     .sig .sigimg { height: 70px; }
     .sig .line { border-top: 1px solid #333; padding-top: 4px; color: #444; font-size: 9pt; }
 
-    .pdf-foot { width: 100%; border-collapse: collapse; color: #1059A7; font-size: 7.5pt; line-height: 1.35; }
-    .pdf-foot td { width: 25%; vertical-align: top; padding: 4px 8px 0 0; border-top: 1pt solid #1059A7; }
+    .pdf-foot { width: 100%; border-collapse: collapse; color: #1059A7; font-size: <?= $num('FontSizeFooter', '7.5') ?>pt; line-height: 1.35; }
+    /* nowrap: footer columns break only where the variable itself breaks. */
+    .pdf-foot td { width: 25%; vertical-align: top; padding: 4px <?= $num('FooterColSpacing', '8') ?>px 0 0; border-top: 1pt solid #1059A7; white-space: nowrap; }
 </style>
 
 <htmlpageheader name="wfHeader">
     <table class="pdf-head">
         <tr>
-            <td class="addr"><?= $escVar($x('HeaderLine')) ?></td>
+            <td class="addr"><?= $lines($x('HeaderLine')) ?: '&nbsp;' ?></td>
             <td class="logo"><?php if ($this->logoSrc): ?><img src="<?= $esc($this->logoSrc) ?>" width="58" style="width:58px;" alt="Logo"><?php endif; ?></td>
         </tr>
     </table>

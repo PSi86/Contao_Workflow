@@ -67,6 +67,14 @@
     flex: 0 0 11em;
     align-self: flex-start;
 }
+/* Layout metric rows: wider label (longer captions), small single-line input. */
+.wf-pdfvars-row--metric .wf-pdfvars-label { flex-basis: 16em; }
+.wf-pdfvars .wf-pdfvars-num {
+    flex: 0 0 auto;
+    width: 8em;
+    min-width: 5em;
+    resize: none;
+}
 .wf-pdfvars-del {
     flex: 0 0 auto;
     border: 0;
