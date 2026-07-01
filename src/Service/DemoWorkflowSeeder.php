@@ -220,12 +220,12 @@ class DemoWorkflowSeeder
                         [
                             'value'     => 'ja',
                             'label'     => 'Einverstanden',
-                            'statement' => 'Hiermit erkläre ich mein Einverständnis gegenüber dem ##letterhead_verein## für das Jahr ##letterhead_jahr##.',
+                            'statement' => 'Hiermit erkläre ich mein Einverständnis gegenüber dem ##letterhead_verein## für das Jahr ##system_year##.',
                         ],
                         [
                             'value'     => 'nein',
                             'label'     => 'Nicht einverstanden',
-                            'statement' => 'Für das Jahr ##letterhead_jahr## erteile ich gegenüber dem ##letterhead_verein## kein Einverständnis.',
+                            'statement' => 'Für das Jahr ##system_year## erteile ich gegenüber dem ##letterhead_verein## kein Einverständnis.',
                         ],
                     ],
                 ],
@@ -261,7 +261,6 @@ class DemoWorkflowSeeder
                     ['key' => 'Footer2', 'value' => "Vorstand: Max Mustermann\nVereinsregister: VR 0000"],
                     ['key' => 'Footer3', 'value' => "www.example.org\ninfo@example.org\nTelefon: 01234 56789"],
                     ['key' => 'Footer4', 'value' => "Bankverbindung (Demo)\nIBAN: DE00 0000 0000 0000 0000 00"],
-                    ['key' => 'Jahr', 'value' => date('Y')],
                     ['key' => 'Verein', 'value' => 'Musterverein e.V.'],
                     ['key' => 'Ort', 'value' => 'Musterstadt'],
                 ],

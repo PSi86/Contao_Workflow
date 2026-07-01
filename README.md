@@ -56,7 +56,10 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - `##data_<slug>##` für jede importierte Spalte (inkl. der gespeicherten
      Antwortwerte). `<slug>` = kleingeschrieben, Umlaute transliteriert (ä→ae, ß→ss …);
      z. B. `##data_verzicht##`, „davon Spende“ → `##data_davon_spende##`.
-   - `##letterhead_<slug>##` für jede Briefpapier-Variable (z. B. `##letterhead_jahr##`, `##letterhead_verein##`).
+   - `##letterhead_<slug>##` für jede Briefpapier-Variable (z. B. `##letterhead_verein##`, `##letterhead_ort##`).
+   - `##system_year##`, `##system_month##`, `##system_today##`, `##system_time##`,
+     `##system_datetime##` – eingebaute Datums-/Zeit-Platzhalter (aktuelles Jahr/Datum/Uhrzeit),
+     ohne Konfiguration überall verfügbar.
    - `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte (Textbausteine)**
      der Antwortfelder (z. B. um die Auswahl in der Ergebnis-Mail wörtlich zu zitieren).
      Dieselben Tokens gelten **identisch** im PDF.

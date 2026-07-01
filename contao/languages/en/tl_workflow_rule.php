@@ -8,7 +8,7 @@ $GLOBALS['TL_LANG']['tl_workflow_rule']['text_legend'] = 'Letter text';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['title']      = ['Name', 'Rule name, e.g. "Accept" or "Reject" (for overview only).'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['isDefault']  = ['Default text', 'This text always applies when no other rule matches (else case). Enabling it hides the conditions. There may be only ONE default-text rule – place it last. Note: a change is saved immediately.'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['conditions'] = ['Conditions', 'All conditions must match (AND) for this text to be used.'];
-$GLOBALS['TL_LANG']['tl_workflow_rule']['pdfBody']    = ['Body text', 'Text used in the PDF when this rule applies. Heading, logo, signature and footer come from the workflow/stationery. Placeholders: ##data_<field>## (columns incl. answer fields, e.g. ##data_verzicht##), ##letterhead_<variable>## (stationery variables, e.g. ##letterhead_jahr##, ##letterhead_verein##), ##email##.'];
+$GLOBALS['TL_LANG']['tl_workflow_rule']['pdfBody']    = ['Body text', 'Text used in the PDF when this rule applies. Heading, logo, signature and footer come from the workflow/stationery. Placeholders: ##data_<field>## (columns incl. answer fields, e.g. ##data_verzicht##), ##letterhead_<variable>## (stationery variables, e.g. ##letterhead_verein##, ##letterhead_ort##), ##system_year## / ##system_today## (current year/date), ##email##.'];
 
 $GLOBALS['TL_LANG']['tl_workflow_rule']['cond_field']    = 'Answer field';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['cond_operator'] = 'Operator';

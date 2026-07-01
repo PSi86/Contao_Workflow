@@ -6,6 +6,21 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Eingebaute `##system_*##`-Platzhalter** für Datum und Uhrzeit, die zur Laufzeit
+  berechnet werden und **ohne jede Konfiguration überall** verfügbar sind (PDF-Text,
+  Überschrift, Einleitung, Dateiname, E-Mails, Dokument-Texte): `##system_year##`
+  (Jahr), `##system_month##` (Monat), `##system_today##` (Datum), `##system_time##`
+  (Uhrzeit) und `##system_datetime##` (Datum + Uhrzeit). Sie erscheinen in der
+  Platzhalter-Hilfe und werden im Bearbeiten-Dialog auf unbekannte Schreibweisen geprüft.
+
+### Entfernt
+- Die Briefpapier-Variable **`Jahr`** wird nicht mehr als PDF-Variable vorgeschlagen –
+  das aktuelle Jahr liefert jetzt der eingebaute `##system_year##`. **`Verein`** und
+  **`Ort`** bleiben unverändert als eigene Briefpapier-Variablen erhalten. Bereits
+  gespeicherte `Jahr`-Werte bleiben gültig (`##letterhead_jahr##` löst weiterhin auf) –
+  es ist **keine Migration nötig**. Die mitgelieferte Demo nutzt jetzt `##system_year##`.
+
 ### Geändert (kein Speichern ohne „Speichern"-Klick)
 - **Kein automatisches Speichern mehr beim Umschalten von Auswahlfeldern.** Mehrere
   Felder lösten bisher per `submitOnChange`/`toggleSubpalette` ein sofortiges Speichern

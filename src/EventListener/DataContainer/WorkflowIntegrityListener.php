@@ -151,6 +151,7 @@ class WorkflowIntegrityListener
      * Non-blocking warnings for the statement ("Textbaustein") layer:
      * - ##text_*## tokens in the PDF heading or a rule body that match no
      *   answer field (typo or removed field would render as literal text),
+     * - ##system_*## tokens whose suffix is not a built-in system token,
      * - prefill values in the data that match no option of a choice question
      *   (the form would silently start empty for those entries).
      */
@@ -177,9 +178,51 @@ class WorkflowIntegrityListener
             ));
         }
 
+        foreach ($this->unknownSystemTokens($workflow, $questions) as $token) {
+            Message::addInfo(sprintf(
+                'Hinweis: „##%s##" ist kein bekannter System-Platzhalter (verfügbar sind %s) '
+                .'und würde im PDF unersetzt stehen bleiben.',
+                StringUtil::specialchars($token),
+                implode(', ', array_map(static fn (string $name): string => '##'.$name.'##', array_keys($this->placeholders->systemTokens()))),
+            ));
+        }
+
         foreach ($this->prefillMismatches($workflow, $questions) as $message) {
             Message::addInfo($message);
         }
+    }
+
+    /**
+     * ##system_*## tokens in the workflow's texts (heading, intro, file name, rule
+     * bodies, value-field statements) whose suffix is not one of the built-in
+     * system tokens – a typo would render as literal text in the PDF. The valid
+     * set is shared with PlaceholderResolver so both stay in lock-step.
+     *
+     * @param array<int, QuestionModel> $questions
+     *
+     * @return array<int, string>
+     */
+    private function unknownSystemTokens(WorkflowModel $workflow, array $questions): array
+    {
+        $valid = array_keys($this->placeholders->systemTokens());
+
+        $texts = [
+            (string) $workflow->pdfTitle,
+            (string) $workflow->introText,
+            (string) $workflow->pdfFileName,
+        ];
+
+        foreach ($questions as $question) {
+            $texts[] = (string) $question->pdfStatement;
+        }
+
+        foreach ($workflow->getRules() as $rule) {
+            $texts[] = (string) $rule->getPdfBody();
+        }
+
+        preg_match_all('/##(system_[a-z0-9_]+)##/i', implode("\n", $texts), $matches);
+
+        return array_values(array_diff(array_unique(array_map('strtolower', $matches[1])), $valid));
     }
 
     /**

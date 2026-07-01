@@ -45,7 +45,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
 | `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (Beispiel-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
-| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Jahr']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
+| `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Verein']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
 
 > Das mitgelieferte **`pdf_master`** ist ein neutraler Beispiel-Briefkopf (Musterverein): blaue Kopfzeile + Logo + Linie und
 > eine 4-spaltige Fußzeile als **mPDF-Lauf-Kopf/Fußzeile** (`<htmlpageheader>`/`<htmlpagefooter>` +
@@ -61,7 +61,8 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 > verdrahtet. **Inhalts-Variablen:**
 > - `HeaderLine` – Absenderzeile über der Linie; **mehrzeilig**
 > - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig**
-> - `Jahr`, `Verein`, `Ort` – für die Brieftexte (`##letterhead_jahr##` …)
+> - `Verein`, `Ort` – für die Brieftexte (`##letterhead_verein##` …); das aktuelle
+>   Jahr/Datum liefern die eingebauten `##system_year##` / `##system_today##`
 >
 > Mehrzeilig heißt: eine Zeile je Eingabezeile (Enter im Feld) **oder** je `|`. Kopf- und
 > Fußzeile brechen **nicht automatisch um** – jede Zeile folgt strikt der Eingabe. Zu lange
@@ -80,7 +81,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | Variable | Inhalt |
 |---|---|
 | `$this->data` | **alle** importierten Spalten **inkl. der gespeicherten Antwortwerte** (assoz.), Zugriff per `$d('Spaltenname')` |
-| `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Jahr')`, `$x('Verein')` … |
+| `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Verein')`, `$x('Ort')` … |
 | `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Antwortfelder: `text_<speicherfeld-slug>` je Feld + `text_all` (alle, in Formular-Reihenfolge), Klartext |
 | `$this->heading` | die Workflow-**Überschrift** (Platzhalter bereits aufgelöst; im Formular identisch sichtbar) |
 | `$this->intro` | der optionale **Einleitungstext** (aufgelöst; im Formular identisch sichtbar) |
@@ -98,8 +99,9 @@ Bei „Einfacher Brief" kommen **Überschrift** und **Einleitungstext** aus dem 
 **PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
 E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
 kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
-`##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_jahr##`,
-`##letterhead_verein##`), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
+`##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_verein##`,
+`##letterhead_ort##`), **`##system_year##`/`##system_month##`/`##system_today##`/`##system_time##`/`##system_datetime##`**
+(eingebaute Datums-/Zeit-Platzhalter), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
 **Dokument-Texte der Antwortfelder** (die Texte, die der Teilnehmer im Formular sieht – in
 `##text_all##` stehen Felder ohne eigenen Dokument-Text zeilenweise als „Beschriftung: Wert",
 Felder mit eigenem Dokument-Text beginnen als eigener Absatz), dazu `##email##`. (In

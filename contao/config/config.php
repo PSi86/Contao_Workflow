@@ -46,16 +46,17 @@ $GLOBALS['TL_MODELS']['tl_workflow_master'] = MasterModel::class;
  * template that needs static variables.
  */
 $GLOBALS['TL_WORKFLOW_PDF_VARS'] = [
-    'pdf_master' => ['Jahr' => date('Y'), 'Verein' => '', 'Ort' => '', 'Footer' => ''],
+    'pdf_master' => ['Verein' => '', 'Ort' => '', 'Footer' => ''],
     // Generic, fully variable-driven letterhead (header line + 4 footer columns;
-    // footer columns use "|" as line break). Jahr/Verein/Ort feed the body texts.
+    // footer columns use "|" as line break). Verein/Ort feed the body texts; the
+    // current year/date come from the built-in ##system_year## / ##system_today##
+    // tokens (no per-Briefpapier "Jahr" variable needed anymore).
     'pdf_master_generic' => [
         'HeaderLine' => '',
         'Footer1'    => '',
         'Footer2'    => '',
         'Footer3'    => '',
         'Footer4'    => '',
-        'Jahr'       => date('Y'),
         'Verein'     => '',
         'Ort'        => '',
         // Layout metrics – per-Briefpapier adjustable. A declaration may be a plain

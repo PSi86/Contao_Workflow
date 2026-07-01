@@ -160,14 +160,17 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         **PDF-Regeln** (Abschnitt 3 b‑2) — so können sie je nach Antwort variieren.
         Platzhalter (überall identisch – PDF, E-Mail, Export): `##data_<slug>##` für jede
         Quellspalte inkl. Antwortfelder (z. B. `##data_vorname##`, `##data_verzicht##`),
-        `##letterhead_<slug>##` für Briefkopf-Variablen (z. B. `##letterhead_jahr##`, `##letterhead_verein##`),
+        `##letterhead_<slug>##` für Briefkopf-Variablen (z. B. `##letterhead_verein##`, `##letterhead_ort##`),
+        `##system_year##` / `##system_month##` / `##system_today##` / `##system_time##` /
+        `##system_datetime##` (eingebaute Datums-/Zeit-Platzhalter – aktuelles Jahr/Datum/Uhrzeit,
+        ohne Konfiguration überall verfügbar),
         `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte der
         Antwortfelder** (Abschnitt 3 b‑3), dazu `##email##`.
       - **Spezielle Vorlage** (detailliertes Layout): **Body-Vorlage** aus der **Auswahlliste**
         wählen (alle `pdf_body_*`-Vorlagen erscheinen automatisch). Die Vorlage **enthält ihre
         eigene Logik** → **PDF-Regeln entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
     - Header (Logo), Unterschrift und Footer kommen aus der gewählten **Briefkopf-Vorlage**;
-      die Briefkopf-Variablen (`##letterhead_jahr##`, `##letterhead_verein##`, …) stammen ebenfalls von dort.
+      die Briefkopf-Variablen (`##letterhead_verein##`, `##letterhead_ort##`, …) stammen ebenfalls von dort.
 11. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
 12. **Speichern.**
 
@@ -269,8 +272,8 @@ Dankes-Satz nur bei Zustimmung). Verbindungsglied ist das **Speicherfeld**:
 - **Antwortfeld** „Ihre Entscheidung" (Radio, Speicherfeld **`Entscheidung`**) mit zwei
   Optionen, deren **Dokument-Texte** vollständige Sätze sind:
   - „Einverstanden"→`ja`, Dokument-Text *„Hiermit erkläre ich mein Einverständnis gegenüber
-    dem ##letterhead_verein## für das Jahr ##letterhead_jahr##."*
-  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##letterhead_jahr## erteile ich …
+    dem ##letterhead_verein## für das Jahr ##system_year##."*
+  - „Nicht einverstanden"→`nein`, Dokument-Text *„Für das Jahr ##system_year## erteile ich …
     kein Einverständnis."*
 - **PDF-Regeln:**
   1. „Einverständnis erteilt" — Bedingung **`Entscheidung` ist gleich `ja`** →
