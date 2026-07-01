@@ -21,6 +21,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   gespeicherte `Jahr`-Werte bleiben gültig (`##letterhead_jahr##` löst weiterhin auf) –
   es ist **keine Migration nötig**. Die mitgelieferte Demo nutzt jetzt `##system_year##`.
 
+### Dokumentation
+- Klargestellt, dass Workflow-Mails **alle** Platzhalter auflösen (`##data_*##`,
+  `##letterhead_*##`, `##system_*##`, `##text_*##` / `##text_all##`), obwohl die
+  `##`-Vorschlagsliste des Notification Center nur eine Teilmenge zeigt
+  (`##data_*##`, `##email##`, `##link##`, `##workflow_title##`, `##attachment##`) –
+  die übrigen werden nicht vorgeschlagen, beim Versand aber ersetzt (README,
+  `docs/ANLEITUNG.md`, Kommentar in `WorkflowNotificationType`).
+
 ### Geändert (kein Speichern ohne „Speichern"-Klick)
 - **Kein automatisches Speichern mehr beim Umschalten von Auswahlfeldern.** Mehrere
   Felder lösten bisher per `submitOnChange`/`toggleSubpalette` ein sofortiges Speichern
