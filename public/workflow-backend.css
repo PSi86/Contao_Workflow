@@ -26,18 +26,29 @@
 }
 .wf-pdfvars-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: .5em;
     margin-bottom: .4em;
 }
 .wf-pdfvars-label {
     flex: 0 0 11em;
+    padding-top: .45em;
     text-align: right;
     font-weight: 600;
     overflow-wrap: anywhere;
 }
-.wf-pdfvars-v { flex: 1 1 auto; }
-.wf-pdfvars-row--custom .wf-pdfvars-k { flex: 0 0 11em; }
+/* Compact by default but still user-resizable (drag handle kept). */
+.wf-pdfvars .wf-pdfvars-v {
+    flex: 1 1 auto;
+    max-width: 34em;
+    min-height: 2.2em;
+    height: 2.4em;
+    resize: vertical;
+}
+.wf-pdfvars-row--custom .wf-pdfvars-k {
+    flex: 0 0 11em;
+    align-self: flex-start;
+}
 .wf-pdfvars-del {
     flex: 0 0 auto;
     border: 0;

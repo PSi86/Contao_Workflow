@@ -84,10 +84,12 @@ class PdfVarsWidget extends Widget
      */
     private function renderRow(int $i, string $key, string $value): string
     {
+        // data-key / data-value markers are REQUIRED: workflow-pdf-vars.js reads the
+        // saved values from them (collect()) before re-rendering the grouped UI.
         return sprintf(
             '<div class="wf-pdfvars-row" data-row>'
-            .'<input type="text" name="%1$s[%2$d][key]" value="%3$s" class="tl_text wf-pdfvars-k">'
-            .'<textarea name="%1$s[%2$d][value]" rows="2" class="tl_textarea wf-pdfvars-v">%4$s</textarea>'
+            .'<input type="text" name="%1$s[%2$d][key]" value="%3$s" data-key class="tl_text wf-pdfvars-k">'
+            .'<textarea name="%1$s[%2$d][value]" rows="2" data-value class="tl_textarea wf-pdfvars-v">%4$s</textarea>'
             .'</div>',
             StringUtil::specialchars($this->strName),
             $i,
