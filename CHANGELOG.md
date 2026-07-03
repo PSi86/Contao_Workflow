@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.5.0] – 2026-07-03
+
 ### Hinzugefügt
 - **Eingebaute `##system_*##`-Platzhalter** für Datum und Uhrzeit, die zur Laufzeit
   berechnet werden und **ohne jede Konfiguration überall** verfügbar sind (PDF-Text,
