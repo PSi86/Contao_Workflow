@@ -6,6 +6,18 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.5.1] – 2026-07-03
+
+### Behoben
+- **Absturz bei `contao:migrate` auf Upgrade-Installationen behoben** („Unknown
+  column"). Die Token-Umbenennungs-Migrationen (`RenameValueTokenMigration`,
+  `RenameVarStmtTokensMigration`) prüften nur die Existenz der Tabelle, fragten dann
+  aber Spalten (`pdfStatement`, `introText`) ab, die der Schema-Diff erst danach
+  anlegt. Existierte die Tabelle bereits ohne diese Spalten – beim Upgrade einer
+  älteren Version oder direkt nach dem Trainer→Workflow-Tabellen-Rename – brach die
+  Migration mit „Unknown column" ab. Beide Migrationen prüfen jetzt die Spalten und
+  überspringen sauber, wenn sie fehlen. Neuinstallationen waren nicht betroffen.
+
 ## [2.5.0] – 2026-07-03
 
 ### Hinzugefügt
