@@ -87,10 +87,25 @@ class RenameVarStmtTokensMigration extends AbstractMigration
      */
     private function plainTargets(object $schemaManager): array
     {
+        // Filter on the actual column, not just the table: on an upgrade the table
+        // can exist before the schema diff adds a newer column (e.g. introText /
+        // pdfStatement), and a LIKE on a missing column aborts contao:migrate with
+        // "Unknown column".
         return array_values(array_filter(
             self::PLAIN_COLUMNS,
-            static fn (array $target): bool => $schemaManager->tablesExist([$target[0]]),
+            fn (array $target): bool => $this->columnExists($schemaManager, $target[0], $target[1]),
         ));
+    }
+
+    private function columnExists(object $schemaManager, string $table, string $column): bool
+    {
+        if (!$schemaManager->tablesExist([$table])) {
+            return false;
+        }
+
+        $existing = array_map('strtolower', array_keys($schemaManager->listTableColumns($table)));
+
+        return \in_array(strtolower($column), $existing, true);
     }
 
     private function ncTablesExist(object $schemaManager): bool

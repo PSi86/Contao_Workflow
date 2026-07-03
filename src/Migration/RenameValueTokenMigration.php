@@ -24,15 +24,43 @@ class RenameValueTokenMigration extends AbstractMigration
 
     public function shouldRun(): bool
     {
-        $schemaManager = $this->connection->createSchemaManager();
-
-        if (!$schemaManager->tablesExist(['tl_workflow_question'])) {
+        // Gate on the actual columns, not just the table: on an upgrade the table
+        // can exist before the schema diff adds pdfStatement (e.g. an older schema,
+        // or right after the Trainer->Workflow table rename), and a LIKE on a
+        // missing column aborts contao:migrate with "Unknown column".
+        if (!$this->columnsExist('tl_workflow_question', ['pdfStatement', 'options'])) {
             return false;
         }
 
         return false !== $this->connection->fetchOne(
             "SELECT id FROM tl_workflow_question WHERE pdfStatement LIKE '%##value##%' OR options LIKE '%##value##%' LIMIT 1",
         );
+    }
+
+    /**
+     * True only if $table exists AND every column in $columns is present. Used to
+     * keep shouldRun()/run() from touching columns the schema diff has not created
+     * yet on an upgrade.
+     *
+     * @param array<int, string> $columns
+     */
+    private function columnsExist(string $table, array $columns): bool
+    {
+        $schemaManager = $this->connection->createSchemaManager();
+
+        if (!$schemaManager->tablesExist([$table])) {
+            return false;
+        }
+
+        $existing = array_map('strtolower', array_keys($schemaManager->listTableColumns($table)));
+
+        foreach ($columns as $column) {
+            if (!\in_array(strtolower($column), $existing, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function run(): MigrationResult
