@@ -27,7 +27,9 @@ class WorkflowConfigImporter
     // still accepted; their inputFields import as read-only questions).
     // v3: per-question readOnly flag replaces the v2 "display" type (mapped on
     // import), "number" type, workflow introText.
-    public const VERSION = 3;
+    // v4: per-question "description" (form-only) and "showStatementInForm" flag,
+    // "explanation" question type (a static text paragraph).
+    public const VERSION = 4;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -361,9 +363,13 @@ class WorkflowConfigImporter
                 $readOnly = true;
             }
 
+            // Legacy configs (v1–v3) have no "showStatementInForm"; default it to on so
+            // their fields keep showing the document-text hint in the form.
+            $showStatement = ($q['showStatementInForm'] ?? true) ? '1' : '';
+
             $this->connection->executeStatement(
-                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, mandatory, prefill, readOnly, hideInForm, pdfStatement, options) '
-                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, mandatory, prefill, readOnly, hideInForm, description, showStatementInForm, pdfStatement, options) '
+                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $workflowId,
                     $sorting,
@@ -374,6 +380,8 @@ class WorkflowConfigImporter
                     ($q['prefill'] ?? false) ? '1' : '',
                     $readOnly ? '1' : '',
                     ($q['hideInForm'] ?? false) ? '1' : '',
+                    (string) ($q['description'] ?? ''),
+                    $showStatement,
                     (string) ($q['pdfStatement'] ?? ''),
                     $options ? serialize($options) : null,
                 ],

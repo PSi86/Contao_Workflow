@@ -29,6 +29,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'col_email'        => 'E-Mail',
     'col_name'         => 'Name',
     'col_vorname'      => 'Vorname',
+    'col_abteilung'    => 'Abteilung',
     'close'            => 'Schließen',
     'mode_auto'        => 'Automatisch (Adressaten nach Status)',
     'mode_manual'      => 'Manuelle Auswahl (markierte Teilnehmer)',
@@ -51,6 +52,6 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'source_unreadable'  => 'Die Quelldatei ist nicht lesbar oder enthält keine Spalten.',
     'no_email_col'       => 'Es ist keine E-Mail-Spalte gewählt.',
     'email_col_missing'  => 'Die E-Mail-Spalte „%s“ fehlt in der Quelldatei.',
-    'storage_missing'    => 'Das Speicherfeld „%s“ (Antwortfeld „%s“) fehlt in der Quelldatei.',
-    'rule_unknown_field' => 'Die PDF-Regel „%s“ verwendet das unbekannte Feld „%s“.',
+    'storage_missing'    => 'Das Speicherfeld „%s“ (Formularfeld „%s“) fehlt in der Quelldatei.',
+    'rule_unknown_field' => 'Der Dokument-Text „%s“ verwendet das unbekannte Feld „%s“.',
 ];

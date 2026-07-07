@@ -6,8 +6,10 @@ namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
@@ -84,7 +86,7 @@ class SpreadsheetImporter
             $data = [];
             foreach ($headers as $colIndex => $name) {
                 $letter = Coordinate::stringFromColumnIndex($colIndex);
-                $data[$name] = trim((string) $sheet->getCell($letter.$r)->getFormattedValue());
+                $data[$name] = $this->cellValue($sheet->getCell($letter.$r));
             }
 
             $email = null !== $emailHeader ? ($data[$emailHeader] ?? '') : '';
@@ -144,6 +146,31 @@ class SpreadsheetImporter
             'total'      => \count($existing) + $inserted,
             'collisions' => $collisions,
         ];
+    }
+
+    /**
+     * The value of a source cell as a trimmed string. Excel date cells carry a serial
+     * number plus a (possibly locale-specific, e.g. US "m/d/yyyy") number format;
+     * getFormattedValue() would print that raw format, so a birthday stored as an Excel
+     * date ends up as "12/17/1955". Normalise every date/date-time cell to the German
+     * d.m.Y (or d.m.Y H:i when a time part is present), matching the format used
+     * everywhere else in the workflow (submission, "Aktuelle Zeit", ##system_today##).
+     */
+    private function cellValue(Cell $cell): string
+    {
+        $raw = $cell->getValue();
+
+        // Only reformat real date cells. Date::isDateTime() is also true for pure
+        // time / duration formats (serial < 1, a fraction of a day); those must keep
+        // their formatted value ("12:00") instead of becoming a 1899 epoch date.
+        if (is_numeric($raw) && (float) $raw >= 1.0 && Date::isDateTime($cell)) {
+            $date = Date::excelToDateTimeObject((float) $raw);
+            $hasTime = '000000' !== $date->format('His');
+
+            return $date->format($hasTime ? 'd.m.Y H:i' : 'd.m.Y');
+        }
+
+        return trim((string) $cell->getFormattedValue());
     }
 
     /**

@@ -5,7 +5,7 @@ erstellt: Vorlagen-Syntax, verfügbare Variablen und mPDF-Regeln.
 
 Architektur (Details: [ANLEITUNG.md](ANLEITUNG.md) Abschnitt 2b/8):
 ein **Master** liefert Briefpapier (Kopf/Fuß, Logo, Unterschrift, Footer) + PDF-Variablen, ein
-**Body** liefert den Brieftext. PDF = Master umschließt Body.
+**Body** liefert den Dokument-Text. PDF = Master umschließt Body.
 
 ---
 
@@ -61,7 +61,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 > verdrahtet. **Inhalts-Variablen:**
 > - `HeaderLine` – Absenderzeile über der Linie; **mehrzeilig**
 > - `Footer1`…`Footer4` – die vier Fußzeilen-Spalten; **mehrzeilig**
-> - `Verein`, `Ort` – für die Brieftexte (`##letterhead_verein##` …); das aktuelle
+> - `Verein`, `Ort` – für die Dokument-Texte (`##letterhead_verein##` …); das aktuelle
 >   Jahr/Datum liefern die eingebauten `##system_year##` / `##system_today##`
 >
 > Mehrzeilig heißt: eine Zeile je Eingabezeile (Enter im Feld) **oder** je `|`. Kopf- und
@@ -82,36 +82,43 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 |---|---|
 | `$this->data` | **alle** importierten Spalten **inkl. der gespeicherten Antwortwerte** (assoz.), Zugriff per `$d('Spaltenname')` |
 | `$this->extra` | Master-PDF-Variablen, Zugriff per `$x('Verein')`, `$x('Ort')` … |
-| `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Antwortfelder: `text_<speicherfeld-slug>` je Feld + `text_all` (alle, in Formular-Reihenfolge), Klartext |
+| `$this->statements` | die gerenderten **Dokument-Texte (Textbausteine)** der Formularfelder: `text_<speicherfeld-slug>` je Feld + `text_all` (alle, in Formular-Reihenfolge), Klartext |
 | `$this->heading` | die Workflow-**Überschrift** (Platzhalter bereits aufgelöst; im Formular identisch sichtbar) |
 | `$this->intro` | der optionale **Einleitungstext** (aufgelöst; im Formular identisch sichtbar) |
 
 > Eine Body-Vorlage **enthält ihre gesamte Verzweigung selbst** – sie bekommt alle Antwortwerte
 > in `$this->data` und entscheidet im Code (z. B. `$accept = 'ja' === $d('Verzicht');`). Bei
-> „Spezielle Vorlage" gibt es deshalb **keine** PDF-Regeln. Vorlagen sind für komplexe/pixelgenaue
+> „Spezielle Vorlage" gibt es deshalb **keine** Dokument-Texte. Vorlagen sind für komplexe/pixelgenaue
 > Fälle gedacht. Für die Formular/PDF-Übereinstimmung empfiehlt sich, wo möglich
 > `$this->statements` zu nutzen – das sind exakt die Texte, die der Teilnehmer im Formular
 > gesehen hat.
 
 ### Einfacher Brief (Letter-Modus, ganz ohne Datei)
 Bei „Einfacher Brief" kommen **Überschrift** und **Einleitungstext** aus dem Workflow-Abschnitt
-*Inhalt (Formular & PDF)* (sie erscheinen identisch im Formular); die **Brieftexte** werden als
-**PDF-Regeln** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
-E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Antwortfelder (Slug =
+*Inhalt (Formular & Dokument)* (sie erscheinen identisch im Formular); die **Dokument-Texte** werden
+im gleichnamigen Abschnitt **Dokument-Texte** gepflegt (je nach Antwort). Platzhalter (überall identisch – PDF,
+E-Mail, Export): **`##data_<slug>##`** für jede Quellspalte inkl. Formularfelder (Slug =
 kleingeschrieben, Umlaute transliteriert, z. B. `##data_vorname##`, „davon Spende" →
 `##data_davon_spende##`), **`##letterhead_<slug>##`** für Master-Variablen (`##letterhead_verein##`,
 `##letterhead_ort##`), **`##system_year##`/`##system_month##`/`##system_today##`/`##system_time##`/`##system_datetime##`**
 (eingebaute Datums-/Zeit-Platzhalter), **`##text_<speicherfeld>##`** / **`##text_all##`** für die
-**Dokument-Texte der Antwortfelder** (die Texte, die der Teilnehmer im Formular sieht – in
-`##text_all##` stehen Felder ohne eigenen Dokument-Text zeilenweise als „Beschriftung: Wert",
-Felder mit eigenem Dokument-Text beginnen als eigener Absatz), dazu `##email##`. (In
-Überschrift/Einleitung/Dateiname sind `##text_*##` nicht verfügbar.)
+**Dokument-Texte der Formularfelder** (die Texte, die der Teilnehmer im Formular sieht). Diese
+Textbausteine – **und** die „Erklärung"-Absätze – erscheinen im Dokument **nur dort, wo ein
+`##text_*##`-Platzhalter im Dokument-Text steht**: `##text_<speicherfeld>##` fügt den Baustein
+**eines** Felds ein, `##text_all##` **alle** in Formular-Reihenfolge (so wird keiner vergessen;
+Felder ohne eigenen Dokument-Text stehen zeilenweise als „Überschrift: Wert", Felder/Erklärungen
+mit eigenem Text beginnen einen neuen Absatz). Enthält ein Dokument-Text **kein** `##text_*##`,
+erscheinen die Bausteine dort **nicht** – der Text wird dann komplett von Hand geschrieben (z. B.
+mit einzelnen `##data_*##`). Dazu `##email##`. (In Überschrift/Einleitung/Dateiname sind
+`##text_*##` nicht verfügbar.) Zusätzlich funktionieren in allen Textfeldern des Workflows
+(Überschrift, Einleitung, Dokument-Text, Dateiname) auch **Contao-Insert-Tags** `{{…}}`
+(z. B. `{{date::d.m.Y}}`).
 
-> So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Antwortfelds.
+> So entscheidet sich der Text: Verbindungsglied ist das **Speicherfeld** eines Formularfelds.
 > Die Regel-Engine prüft die Regeln der Reihe nach gegen die gespeicherten Werte; die erste
-> passende liefert den Brieftext, eine Regel **ohne Bedingung** gilt immer (Sonst-Fall).
-> Empfohlenes Muster: der Brieftext besteht aus `##text_all##` (alle Antworten, wörtlich wie im
-> Formular) plus Rahmen-Sätzen je Regel – so kann kein Antwortfeld im PDF vergessen werden.
+> passende liefert den Dokument-Text, eine Regel **ohne Bedingung** gilt immer (Sonst-Fall).
+> Empfohlenes Muster: der Dokument-Text besteht aus `##text_all##` (alle Antworten, wörtlich wie im
+> Formular) plus Rahmen-Sätzen je Regel – so kann kein Formularfeld im PDF vergessen werden.
 
 ---
 
@@ -128,6 +135,12 @@ Gerendert wird mit **mPDF**. Es versteht UTF-8 und viel HTML4/5, aber nur eine
 - **Bilder** als **lokalen Dateipfad** einbinden (`logoSrc`/`signatureSrc` sind Pfade).
   Data-URIs (`data:image/png;base64,…`) werden von mPDF **nicht** zuverlässig
   gerendert – deshalb schreibt der Generator Logo/Unterschrift als Dateien.
+- **Unterschrift-Bild braucht eine explizite Breite:** `signatureSrc` – wie das Logo – ein
+  **`width`-Attribut** geben. Ohne Breite nimmt mPDF die natürliche Pixelbreite des Bildes,
+  hält die Unterschriftstabelle für zu breit und **verkleinert die Schrift der ganzen Tabelle**
+  (so würden „Ort, Datum"/„Unterschrift" kleiner als der Fließtext gerendert). Die
+  mitgelieferten Master setzen `width="210" height="70"` und eine explizite `font-size` am
+  Unterschriftsblock in Höhe der Fließtext-Größe.
 - Seitenformat A4, kein JavaScript.
 
 Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.html) ·

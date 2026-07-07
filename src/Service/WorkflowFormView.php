@@ -40,6 +40,20 @@ class WorkflowFormView
                 continue;
             }
 
+            // "Erklärung": a static text block (paragraph), no input. The text is
+            // resolved server-side (same as the document) and shown as flowing text.
+            if ($question->isExplanation()) {
+                $views[] = [
+                    'id'          => (int) $question->id,
+                    'type'        => 'explanation',
+                    'label'       => (string) $question->label,
+                    'description' => $question->getDescription(),
+                    'text'        => $this->bodyComposer->renderStatement($question, '', $data, $extra, $email, (string) $workflow->title),
+                ];
+
+                continue;
+            }
+
             $storage = trim((string) $question->storageField);
 
             // The statement parts let the form show exactly the text the
@@ -65,15 +79,17 @@ class WorkflowFormView
                 'id'                => (int) $question->id,
                 'label'             => (string) $question->label,
                 'type'              => (string) $question->type,
+                'description'       => $question->getDescription(),
                 'mandatory'         => !$readOnly && $question->isMandatory(),
                 'multiple'          => $question->isMultiple(),
                 'readOnly'          => $readOnly,
                 'options'           => $options,
                 'autoValue'         => $autoValue,
                 'initial'           => $this->resolveInitialValue($question, $data),
-                // Hint only when a statement was explicitly configured – without
-                // one the visible label/option text counts verbatim anyway.
-                'hasStatement'      => $question->hasExplicitStatement(),
+                // Hint only when a statement was explicitly configured AND the field
+                // is set to preview it in the form – without an explicit statement the
+                // visible label/option text counts verbatim anyway.
+                'hasStatement'      => $question->hasExplicitStatement() && $question->showsStatementInForm(),
                 'statementTemplate' => $parts['template'],
                 'statement'         => '' !== $staticValue
                     ? $this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title)

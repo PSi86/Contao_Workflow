@@ -47,6 +47,15 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
     </div>
 
     <?php foreach ($this->questions as $q): ?>
+      <?php if ('explanation' === $q['type']): ?>
+        <?php // "Erklärung": static text block (no input), shown as a paragraph. ?>
+        <div class="tw-field tw-field--explanation">
+          <?php if ('' !== (string) $q['text']): ?>
+            <div class="tw-explanation-text"><?= nl2br($esc($q['text'])) ?></div>
+          <?php endif; ?>
+        </div>
+        <?php continue; ?>
+      <?php endif; ?>
       <?php
         $fieldName = 'q_'.$q['id'];
         $ctrlId = 'ctrl_'.$fieldName;
@@ -72,6 +81,11 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
       ?>
       <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
         <<?= $labelTag ?><?= $forAttr ?>><?= $esc($q['label']).$star ?></<?= $labelTag ?>>
+
+        <?php // Optional description, shown in the form only (never in the document). ?>
+        <?php if ('' !== (string) ($q['description'] ?? '')): ?>
+          <p class="tw-field-desc"><?= nl2br($esc($q['description'])) ?></p>
+        <?php endif; ?>
 
         <?php if ('currentTime' === $q['type']): ?>
           <input type="text" id="<?= $esc($ctrlId) ?>" value="<?= $esc($q['autoValue']) ?>" readonly>

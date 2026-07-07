@@ -70,7 +70,7 @@ class AnswerConfigListener
         $GLOBALS['TL_JAVASCRIPT']['wf_qsort'] = 'bundles/contaoworkflow/workflow-question-sort.js|static';
 
         $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
-        $hLabel = $lang['label'][0] ?? 'Beschriftung';
+        $hLabel = $lang['label'][0] ?? 'Überschrift';
         $hType = $lang['type'][0] ?? 'Typ';
         $hStorage = $lang['storageField'][0] ?? 'Speicherfeld';
         $hMandatory = $lang['mandatory'][0] ?? 'Pflichtfeld';
@@ -117,6 +117,44 @@ class AnswerConfigListener
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hMandatory).'</th>'
             .'<th class="tl_folder_tlist"></th>'
             .'</tr></thead><tbody>'.$body.'</tbody></table></div>';
+    }
+
+    /**
+     * edit.buttons_callback for the answer-field / document-text dialogs. When a
+     * record is edited in a dcaWizard modal, Contao passes nb=1 and therefore drops
+     * the "save and close" button – the dialog then only offers "save" and has to be
+     * closed with the ×. Re-add "save and close" here; dcaWizard's own
+     * CloseModalListener (registered after this callback) turns the re-added button
+     * into one that closes the modal (it converts an existing saveNclose button). In a
+     * normal full-page edit the button already exists, so nothing is changed there.
+     *
+     * @param array<string, string> $buttons
+     *
+     * @return array<string, string>
+     */
+    public function addSaveAndClose(array $buttons, DataContainer $dc): array
+    {
+        if (isset($buttons['saveNclose']) || null === Input::get('dcawizard')) {
+            return $buttons;
+        }
+
+        $label = $GLOBALS['TL_LANG']['MSC']['saveNclose'] ?? 'Save and close';
+        $close = '<button type="submit" name="saveNclose" id="saveNclose" class="tl_submit" accesskey="c" data-action="contao--scroll-offset#discard">'.$label.'</button>';
+
+        // Insert right after the "save" button.
+        $out = [];
+
+        foreach ($buttons as $key => $html) {
+            $out[$key] = $html;
+
+            if ('save' === $key) {
+                $out['saveNclose'] = $close;
+            }
+        }
+
+        $out['saveNclose'] ??= $close;
+
+        return $out;
     }
 
     /**

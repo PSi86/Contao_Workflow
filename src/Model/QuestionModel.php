@@ -16,12 +16,14 @@ use Contao\StringUtil;
  * @property int    $sorting
  * @property int    $tstamp
  * @property string $label        Question/field label shown in the form.
- * @property string $type         text | textarea | number | date | select | radio | checkbox | currentTime.
+ * @property string $type         text | textarea | number | date | select | radio | checkbox | currentTime | explanation.
  * @property string $storageField Source column the answer value is written into.
  * @property string $mandatory    Whether an answer is required ("1"/"").
  * @property string $hideInForm   "Aktuelle Zeit" only: hide the field in the form ("1"/"").
  * @property string $options      Serialized list of [value, label, statement] option rows.
- * @property string $pdfStatement Statement template (##answer## = entered value / option statement).
+ * @property string $pdfStatement Statement template (##answer## = entered value / option statement); "Erklärung": the text.
+ * @property string $description  Optional description shown in the form only (never in the document).
+ * @property string $showStatementInForm Whether the document text is previewed in the form ("1"/"").
  * @property string $prefill      Prefill the field with the stored data value ("1"/"").
  * @property string $readOnly     Show the stored data value read-only ("1"/"").
  */
@@ -62,6 +64,35 @@ class QuestionModel extends Model
     public function isCurrentTime(): bool
     {
         return 'currentTime' === (string) $this->type;
+    }
+
+    /**
+     * Static explanatory text ("Erklärung"): no input, no stored value. Its text
+     * (pdfStatement) is rendered as a paragraph in the form and carried into the
+     * document (##text_all##).
+     */
+    public function isExplanation(): bool
+    {
+        return 'explanation' === (string) $this->type;
+    }
+
+    /**
+     * Optional description shown in the form below the label (never in the
+     * document); empty when none is configured.
+     */
+    public function getDescription(): string
+    {
+        return trim((string) $this->description);
+    }
+
+    /**
+     * Whether the document text ("Textbaustein") is previewed in the form
+     * ("So erscheint dies im Dokument"). The column defaults to "1" (SQL default and
+     * importer), so existing fields keep the hint; an explicit uncheck hides it.
+     */
+    public function showsStatementInForm(): bool
+    {
+        return '1' === (string) $this->showStatementInForm;
     }
 
     /**
@@ -144,6 +175,12 @@ class QuestionModel extends Model
     {
         $template = trim((string) $this->pdfStatement);
 
+        // "Erklärung" is static text: the pdfStatement is the paragraph itself, with
+        // no "<label>: ##answer##" fallback (there is no answer).
+        if ($this->isExplanation()) {
+            return $template;
+        }
+
         return '' !== $template ? $template : trim((string) $this->label).': ##answer##';
     }
 
@@ -157,6 +194,11 @@ class QuestionModel extends Model
      */
     public function hasExplicitStatement(): bool
     {
+        // "Erklärung": its text is always a standalone paragraph in ##text_all##.
+        if ($this->isExplanation()) {
+            return '' !== trim((string) $this->pdfStatement);
+        }
+
         if ($this->hasOptions()) {
             foreach ($this->getOptions() as $option) {
                 if ('' !== $option['statement']) {

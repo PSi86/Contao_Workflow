@@ -30,6 +30,24 @@
     white-space: nowrap;
 }
 
+/* Answer-field options wizard (Wert / Options-Text / Dokument-Text): the
+   Dokument-Text is usually the longest value, so give its column most of the
+   width and let it be multi-line, while Wert/Options-Text stay compact. Scoped
+   by the wizard id so the rule-conditions wizard (#ctrl_conditions) keeps its
+   own layout. table-layout: fixed makes the widths deterministic; the columns
+   without an explicit width (col 3 = Dokument-Text) share the remaining space. */
+#ctrl_options.multicolumnwizard { table-layout: fixed; }
+#ctrl_options.multicolumnwizard th:nth-child(1),
+#ctrl_options.multicolumnwizard td:nth-child(1) { width: 14%; }
+#ctrl_options.multicolumnwizard th:nth-child(2),
+#ctrl_options.multicolumnwizard td:nth-child(2) { width: 22%; }
+#ctrl_options.multicolumnwizard th:nth-child(4),
+#ctrl_options.multicolumnwizard td:nth-child(4) { width: 5.5em; }
+#ctrl_options.multicolumnwizard td:nth-child(3) textarea.tl_textarea {
+    resize: vertical;
+    vertical-align: top;
+}
+
 /* Template-driven "PDF-Variablen" editor (PdfVarsWidget). */
 .wf-pdfvars-group { margin-bottom: 1em; }
 .wf-pdfvars-h {

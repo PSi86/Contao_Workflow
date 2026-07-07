@@ -29,6 +29,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'col_email'        => 'E-mail',
     'col_name'         => 'Name',
     'col_vorname'      => 'First name',
+    'col_abteilung'    => 'Department',
     'close'            => 'Close',
     'mode_auto'        => 'Automatic (recipients by status)',
     'mode_manual'      => 'Manual selection (checked participants)',
@@ -51,6 +52,6 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'source_unreadable'  => 'The source file is not readable or contains no columns.',
     'no_email_col'       => 'No e-mail column selected.',
     'email_col_missing'  => 'The e-mail column “%s” is missing from the source file.',
-    'storage_missing'    => 'The storage field “%s” (answer field “%s”) is missing from the source file.',
-    'rule_unknown_field' => 'The PDF rule “%s” uses the unknown field “%s”.',
+    'storage_missing'    => 'The storage field “%s” (form field “%s”) is missing from the source file.',
+    'rule_unknown_field' => 'The document text “%s” uses the unknown field “%s”.',
 ];

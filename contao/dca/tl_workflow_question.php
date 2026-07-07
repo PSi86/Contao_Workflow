@@ -17,6 +17,10 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             ],
         ],
     ],
+    // Re-add "save and close" in the dcaWizard modal (Contao drops it there via nb=1).
+    'edit' => [
+        'buttons_callback' => [[AnswerConfigListener::class, 'addSaveAndClose']],
+    ],
     'list' => [
         'sorting' => [
             'mode'         => 4,
@@ -50,8 +54,10 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // longer submits/saves the record. Value types show one document text
         // (pdfStatement), choice types the options wizard, "Aktuelle Zeit" the
         // hideInForm flag; for "Aktuelle Zeit" the mandatory/prefill/readOnly flags
-        // are hidden (they are meaningless there).
-        'default' => '{question_legend},label,type,storageField,mandatory,readOnly,prefill,options,pdfStatement,hideInForm',
+        // are hidden (they are meaningless there). "Erklärung" is a static text
+        // block (pdfStatement only) shown as a paragraph in the form and the
+        // document – no storage field, no input.
+        'default' => '{question_legend},label,type,storageField,mandatory,readOnly,prefill,description,options,pdfStatement,showStatementInForm,hideInForm',
     ],
     'fields' => [
         'id' => [
@@ -78,7 +84,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'type' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'options'   => ['text', 'textarea', 'number', 'date', 'select', 'radio', 'checkbox', 'currentTime'],
+            'options'   => ['text', 'textarea', 'number', 'date', 'select', 'radio', 'checkbox', 'currentTime', 'explanation'],
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'],
             // data-wf-toggle: shows the fields relevant to the chosen type (client-
             // side, no save). See workflow-field-toggle.js. Fields not listed for a
@@ -87,21 +93,26 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                 'mandatory'      => true,
                 'tl_class'       => 'w50',
                 'data-wf-toggle' => '{"mode":"select","map":{'
-                    .'"text":["mandatory","prefill","readOnly","pdfStatement"],'
-                    .'"textarea":["mandatory","prefill","readOnly","pdfStatement"],'
-                    .'"number":["mandatory","prefill","readOnly","pdfStatement"],'
-                    .'"date":["mandatory","prefill","readOnly","pdfStatement"],'
-                    .'"select":["mandatory","prefill","readOnly","options"],'
-                    .'"radio":["mandatory","prefill","readOnly","options"],'
-                    .'"checkbox":["mandatory","prefill","readOnly","options"],'
-                    .'"currentTime":["hideInForm","pdfStatement"]}}',
+                    .'"text":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
+                    .'"textarea":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
+                    .'"number":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
+                    .'"date":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
+                    .'"select":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
+                    .'"radio":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
+                    .'"checkbox":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
+                    .'"currentTime":["storageField","hideInForm","pdfStatement"],'
+                    .'"explanation":["pdfStatement"]}}',
             ],
             'sql'       => "varchar(16) NOT NULL default 'text'",
         ],
+        // Not "mandatory": the "Erklärung" type hides this field (it stores nothing),
+        // and Contao would otherwise fail validation on the hidden/disabled field.
+        // An input field without a storage column simply does not store its answer;
+        // the workflow validator handles that softly (an empty field is skipped).
         'storageField' => [
             'exclude'   => true,
             'inputType' => 'select',
-            'eval'      => ['mandatory' => true, 'includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(128) NOT NULL default ''",
         ],
         'mandatory' => [
@@ -128,6 +139,25 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'inputType' => 'checkbox',
             'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","off":["prefill"]}'],
             'sql'       => "char(1) NOT NULL default ''",
+        ],
+        // Optional field description, shown in the FORM only (below the label) and
+        // only when not empty. Never printed in the document – purely a hint for the
+        // person filling in the form.
+        'description' => [
+            'exclude'   => true,
+            'search'    => true,
+            'inputType' => 'textarea',
+            'eval'      => ['decodeEntities' => true, 'style' => 'height:60px', 'tl_class' => 'clr'],
+            'sql'       => 'text NULL',
+        ],
+        // Whether the document text ("Textbaustein") is previewed in the front-end
+        // form ("So erscheint dies im Dokument"). Default on, so existing fields keep
+        // showing the hint; turn off to hide it from the person filling in the form.
+        'showStatementInForm' => [
+            'exclude'   => true,
+            'inputType' => 'checkbox',
+            'eval'      => ['tl_class' => 'w50 m12'],
+            'sql'       => "char(1) NOT NULL default '1'",
         ],
         // "Aktuelle Zeit" only: leave the field out of the public form (it is
         // filled automatically on submission).
@@ -157,11 +187,13 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                         'eval'      => ['mandatory' => true, 'decodeEntities' => true],
                     ],
                     // Document text ("Textbaustein") of the option; empty means
-                    // the visible label counts verbatim in the document.
+                    // the visible label counts verbatim in the document. Multi-line
+                    // (usually the longest of the three columns); its column is
+                    // widened via CSS (see #ctrl_options in workflow-backend.css).
                     'statement' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'],
-                        'inputType' => 'text',
-                        'eval'      => ['decodeEntities' => true],
+                        'inputType' => 'textarea',
+                        'eval'      => ['decodeEntities' => true, 'style' => 'height:44px'],
                     ],
                 ],
             ],
