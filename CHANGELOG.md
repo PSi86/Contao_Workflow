@@ -6,7 +6,7 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
-## [2.6.0] – 2026-07-07
+## [2.6.0] – 2026-07-08
 
 ### Hinzugefügt
 - **Contao-Insert-Tags `{{…}}`** werden jetzt in **allen Textfeldern** eines Workflows
