@@ -17,6 +17,10 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
             ],
         ],
     ],
+    // Re-add "save and close" in the dcaWizard modal (Contao drops it there via nb=1).
+    'edit' => [
+        'buttons_callback' => [[AnswerConfigListener::class, 'addSaveAndClose']],
+    ],
     'list' => [
         'sorting' => [
             'mode'         => 4,

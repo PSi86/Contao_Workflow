@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Contao\CoreBundle\InsertTag\InsertTagParser;
+
 /**
  * Single source of the workflow placeholders so that the exact same token works
  * in the PDF, the Notification Center mails and matches the export/DB columns.
@@ -35,6 +37,10 @@ class PlaceholderResolver
         'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue',
         'ß' => 'ss',
     ];
+
+    public function __construct(private readonly InsertTagParser $insertTagParser)
+    {
+    }
 
     /**
      * Canonical, Notification-Center-safe tokens (name => raw value, no ## marks).
@@ -143,7 +149,15 @@ class PlaceholderResolver
      */
     public function renderPdfText(string $text, array $data, array $vars, string $email, string $workflowTitle, callable $esc, array $extraTokens = []): string
     {
-        return strtr($esc($text), $this->pdfTokenMap($data, $vars, $email, $workflowTitle, $esc, $extraTokens));
+        // Escape the admin template first, then resolve Contao insert tags ({{...}} –
+        // their syntax survives htmlspecialchars) so an insert tag's output is not
+        // re-escaped, then substitute the ##tokens## with their (escaped) values. User
+        // data only enters through the token map and is therefore never parsed as an
+        // insert tag.
+        return strtr(
+            $this->parseInsertTags($esc($text)),
+            $this->pdfTokenMap($data, $vars, $email, $workflowTitle, $esc, $extraTokens),
+        );
     }
 
     /**
@@ -155,7 +169,26 @@ class PlaceholderResolver
      */
     public function fill(string $text, array $data, array $vars, string $email, string $workflowTitle): string
     {
-        return strtr($text, $this->tokenMap($data, $vars, $email, $workflowTitle, static fn (string $value): string => $value));
+        return strtr(
+            $this->parseInsertTags($text),
+            $this->tokenMap($data, $vars, $email, $workflowTitle, static fn (string $value): string => $value),
+        );
+    }
+
+    /**
+     * Resolves Contao insert tags ({{...}}) in an admin-authored template (heading,
+     * intro, rule body, statement, file name …). Only the template is parsed – the
+     * ##tokens## carrying user-submitted data are substituted afterwards, so form data
+     * can never inject an insert tag. replaceInline() escapes the value of a text
+     * insert tag and passes an HTML insert tag through, so the result is safe to embed.
+     */
+    private function parseInsertTags(string $text): string
+    {
+        if (!str_contains($text, '{{')) {
+            return $text;
+        }
+
+        return $this->insertTagParser->replaceInline($text);
     }
 
     public function transliterate(string $value): string

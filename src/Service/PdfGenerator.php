@@ -28,6 +28,7 @@ class PdfGenerator
         private readonly PdfStorage $pdfStorage,
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly PersonNameResolver $nameResolver,
         private readonly string $projectDir,
     ) {
     }
@@ -124,7 +125,10 @@ class PdfGenerator
             'bodyHtml'     => $bodyHtml,
             'logoSrc'      => null !== $masterModel ? $this->resolveLogo($masterModel->pdfLogo) : '',
             'signatureSrc' => $this->writeSignatureImage($entry),
-            'signerName'   => trim(($data['Vorname'] ?? '').' '.($data['Name'] ?? '')),
+            // Full name for the signature line, resolved from the first/last-name
+            // columns however they are spelled in the source (Vorname/Nachname,
+            // First name/Surname …) – not from the literal "Vorname"/"Name" columns.
+            'signerName'   => $this->nameResolver->fullName($data),
             'ort'          => $this->resolveSignatureLocation($workflow, $data),
             'datum'        => $this->resolveSignatureDate($workflow, $data),
             'footer'       => (string) ($extra['Footer'] ?? ''),
@@ -249,6 +253,12 @@ class PdfGenerator
             'tempDir'       => $tempDir,
             'mode'          => 'utf-8',
             'format'        => 'A4',
+            // mPDF's built-in default font is a SERIF face (dejavuserifcondensed).
+            // The templates set the body to sans-serif, but any element that does not
+            // inherit that (e.g. a <div> nested in a table cell like the signature
+            // labels) falls back to the serif default and looks different from the
+            // body. Make the document default sans-serif so the fallback matches.
+            'default_font'  => 'dejavusanscondensed',
             'margin_top'    => $this->marginMm($extra, 'MarginTop', 34),
             'margin_bottom' => $this->marginMm($extra, 'MarginBottom', 30),
             'margin_left'   => $this->marginMm($extra, 'MarginLeft', 20),

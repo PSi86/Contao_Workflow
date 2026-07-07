@@ -33,6 +33,11 @@ services:
     Psimandl\WorkflowBundle\Service\SpreadsheetInspector:
         public: true
 
+    # Accessed from the (non-service) back end dashboard module via the container
+    # (and injected into PdfGenerator for the signature name).
+    Psimandl\WorkflowBundle\Service\PersonNameResolver:
+        public: true
+
     # DCA callback class for the answer-field / PDF-rule child tables, referenced
     # by class name in tl_workflow*.php and resolved via System::importStatic() by
     # Contao core, MultiColumnWizard and dcaWizard. Must be public, otherwise

@@ -45,7 +45,7 @@ php -S 127.0.0.1:8000 -t public                  # oder symfony server:start / D
 ```
 
 `contao:migrate` legt die Tabellen `tl_workflow`, `tl_workflow_question`
-(Antwortfelder), `tl_workflow_rule` (PDF-Regeln) und `tl_workflow_entry` aus den
+(Formularfelder), `tl_workflow_rule` (Dokument-Texte) und `tl_workflow_entry` aus den
 DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 `public/bundles/contaoworkflow/` veröffentlicht.
 
@@ -61,8 +61,12 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      `##system_datetime##` – eingebaute Datums-/Zeit-Platzhalter (aktuelles Jahr/Datum/Uhrzeit),
      ohne Konfiguration überall verfügbar.
    - `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte (Textbausteine)**
-     der Antwortfelder (z. B. um die Auswahl in der Ergebnis-Mail wörtlich zu zitieren).
+     der Formularfelder (z. B. um die Auswahl in der Ergebnis-Mail wörtlich zu zitieren).
      Dieselben Tokens gelten **identisch** im PDF.
+   - **Contao-Insert-Tags** `{{…}}` (z. B. `{{date::d.m.Y}}`) werden in allen Textfeldern
+     eines Workflows aufgelöst (Überschrift, Einleitung, Dokument-Text, Textbaustein,
+     PDF-Dateiname). Sie werden nur in den (im Backend gepflegten) Vorlagen ausgewertet,
+     nie in eingegebenen Antwortdaten.
    - Ergebnis-Mail: Anhang über **„Anhänge über Tokens“** mit `##attachment##`
      (das erzeugte PDF).
    - **Hinweis zur `##`-Vorschlagsliste des Notification Center:** Vorgeschlagen
@@ -80,31 +84,40 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
    - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte
-   - **Inhalt (Formular & PDF):** **Überschrift** und optionaler **Einleitungstext** –
-     erscheinen **identisch** oben im Formular und im PDF (Platzhalter erlaubt).
-   - **Formular & Antwortfelder:** *Unterschrift benötigt* (mit Auswahl der
+   - **Inhalt (Formular & Dokument):** **Überschrift** und optionaler **Einleitungstext** –
+     erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt).
+   - **Formular & Formularfelder:** *Unterschrift benötigt* (mit Auswahl der
      Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
-     eingebetteten **Antwortfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
-     pro Feld Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen, **Aktuelle Zeit**),
-     Speicherfeld (Quellspalte, Pflicht), *Pflichtfeld*, *Mit Wert aus den Daten vorbelegen*
-     (editierbar vorausgefüllt) und *Schreibgeschützt* (reines Anzeige-Feld, jeder Typ).
-     Dazu der **Dokument-Text (Textbaustein)**: bei Wert-Typen ein Satz mit `##answer##`,
-     bei Optionstypen je Option (Wert + Options-Text + Dokument-Text; leer = Options-Text
-     gilt wörtlich). Das Formular zeigt den Dokument-Text live unter dem Feld
-     („So erscheint dies im Dokument") – **Formular und PDF nutzen dieselben Texte**.
-     **„Aktuelle Zeit"** wird beim Absenden automatisch mit dem Datum gefüllt
-     und kann im Formular ausgeblendet werden. Ja/Nein = Radio mit zwei Optionen (z. B.
-     „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
-   - **PDF-Inhalt:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern,
-     z. B. `Verzicht_##data_name##_##data_vorname##`) + Typ. **Einfacher Brief** → die
-     Brieftexte stehen in den **PDF-Regeln**. **Spezielle
-     Vorlage** → eine Datei `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** PDF-Regeln).
-   - **PDF-Regeln** (nur bei *Einfacher Brief*): die **Brieftexte** als Liste. Jede Regel =
-     Bedingungen `Feld / Operator / Wert` (UND) + Brieftext; erste passende gewinnt, eine Regel
-     **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende). Empfohlen: den Brief aus den
-     Dokument-Texten zusammensetzen – `##text_<speicherfeld>##` für ein Feld, `##text_all##`
-     für **alle** Antwortfelder (so kann keines im PDF vergessen werden; Felder mit eigenem
-     Dokument-Text beginnen darin als eigener Absatz). Verbindung Antwort↔Text = das **Speicherfeld**.
+     eingebetteten **Formularfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
+     pro Feld **Überschrift**, Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen,
+     **Aktuelle Zeit**, **Erklärung**), Speicherfeld (Quellspalte), *Pflichtfeld*,
+     *Mit Wert aus den Daten vorbelegen* (editierbar vorausgefüllt) und *Schreibgeschützt*
+     (reines Anzeige-Feld). Optional eine **Beschreibung** (erscheint **nur im Formular**
+     unter der Überschrift, nie im Dokument). Dazu der **Dokument-Text (Textbaustein)**:
+     bei Wert-Typen ein Satz mit `##answer##`, bei Optionstypen je Option (Wert +
+     Options-Text + Dokument-Text; leer = Options-Text gilt wörtlich). Das Formular zeigt
+     den Dokument-Text live unter dem Feld („So erscheint dies im Dokument"); mit
+     *Textbaustein im Formular anzeigen* lässt sich diese Vorschau je Feld ausblenden –
+     **Formular und PDF nutzen dieselben Texte**. **„Aktuelle Zeit"** wird beim Absenden
+     automatisch mit dem Datum gefüllt und kann im Formular ausgeblendet werden.
+     **„Erklärung"** ist ein reiner Textabsatz (kein Eingabefeld): der Text steht im
+     *Dokument-Text* und erscheint als Fließtext im Formular **und** im Dokument.
+     Ja/Nein = Radio mit zwei Optionen (z. B. „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
+   - **Dokument-Einstellungen:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern,
+     z. B. `Verzicht_##data_name##_##data_vorname##`) + **Dokument-Inhalt**. **Einfacher Brief**
+     → die Texte stehen in den **Dokument-Texten**. **Spezielle Vorlage** → eine Datei
+     `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** Dokument-Texte).
+   - **Dokument-Texte** (nur bei *Einfacher Brief*): die Texte als Liste. Jede Regel =
+     Bedingungen `Feld / Operator / Wert` (UND) + Dokument-Text; erste passende gewinnt, eine Regel
+     **ohne Bedingung** gilt immer (Sonst-Fall, ans Ende).
+     - **`##text_all##` einbinden – wichtig:** Die Textbausteine der Formularfelder und die
+       **Erklärungen** erscheinen im Dokument **nur dort, wo ein `##text_*##`-Platzhalter im
+       Dokument-Text steht.** `##text_<speicherfeld>##` fügt den Baustein *eines* Feldes ein,
+       `##text_all##` **alle** in Formularfeld-Reihenfolge (so kann keiner vergessen werden;
+       Felder/Erklärungen mit eigenem Text beginnen darin als eigener Absatz). Enthält ein
+       Dokument-Text kein `##text_*##`, tauchen die Textbausteine/Erklärungen dort **nicht**
+       auf – der Text wird dann komplett von Hand geschrieben (z. B. mit einzelnen
+       `##data_*##`-Platzhaltern). Verbindung Antwort↔Text = das **Speicherfeld**.
    - **Benachrichtigungen:** die drei Notifications zuordnen.
 
 ## Verifikation (End-to-End)

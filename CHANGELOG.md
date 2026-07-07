@@ -6,6 +6,60 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.6.0] – 2026-07-07
+
+### Hinzugefügt
+- **Contao-Insert-Tags `{{…}}`** werden jetzt in **allen Textfeldern** eines Workflows
+  aufgelöst (Überschrift, Einleitungstext, Dokument-Texte, Textbausteine, PDF-Dateiname) –
+  z. B. `{{date::d.m.Y}}`. Ausgewertet werden nur die im Backend gepflegten Vorlagen, **nie**
+  die eingegebenen Antwortdaten (kein Einschleusen von Insert-Tags über das Formular).
+- **Neuer Formularfeld-Typ „Erklärung"**: ein reiner Textabsatz (kein Eingabefeld). Der Text
+  steht im *Dokument-Text* und erscheint als Fließtext im Formular **und** im Dokument – so
+  lässt sich flexibel zusätzlicher Text einpflegen. Im Dokument erscheint er dort, wo ein
+  `##text_*##`-Platzhalter im Dokument-Text steht (siehe `##text_all##`).
+- **Feld „Beschreibung"** je Formularfeld: ein Hinweistext, der **nur im Formular** unter der
+  Überschrift angezeigt wird (nur wenn nicht leer) und **nie** im Dokument erscheint.
+- **Option „Textbaustein im Formular anzeigen"** je Formularfeld: blendet die Vorschau des
+  Dokument-Texts („So erscheint dies im Dokument") im Formular bei Bedarf aus (Standard: an).
+- **„Speichern und schließen"** in den Dialogen der **Formularfelder** und **Dokument-Texte**:
+  Der eingebettete dcaWizard-Dialog bot bisher nur „Speichern" und musste per „×" geschlossen
+  werden; jetzt gibt es einen Knopf, der speichert und den Dialog direkt schließt.
+- **Spalte „Abteilung"** in der Liste „Ausstehende Antworten" der Übersicht – wie Name/Vorname
+  nur, wenn die Quelldatei eine passende Spalte enthält.
+
+### Geändert
+- **Umbenennungen (nur Beschriftungen, keine internen IDs/Tabellen):**
+  „Antwortfeld"→**„Formularfeld"**, „Beschriftung"→**„Überschrift"**, „PDF-Inhalt"→
+  **„Dokument-Einstellungen"** (Abschnitt) bzw. **„Dokument-Inhalt"** (Feld),
+  „PDF-Regeln"/„Brieftext"→**„Dokument-Texte"**/**„Dokument-Text"** (EN: form field / heading /
+  document settings / document content / document texts).
+- **Export-/Import-Format der Workflow-Konfiguration auf `v4`** angehoben (enthält jetzt
+  `description`, `showStatementInForm` und den Typ `explanation`). Ältere Konfigurationen
+  (v1–v3) lassen sich weiterhin importieren (Textbaustein-Vorschau wird dabei standardmäßig
+  aktiviert).
+
+### Behoben
+- **Nachname fehlte in der Unterschriftszeile.** Der Name wurde fest aus den Spalten
+  `Vorname` + `Name` gebildet – hieß die Nachnamen-Spalte anders (z. B. `Nachname`,
+  `Familienname`, `Surname`), fehlte der Nachname. Ein neuer, gemeinsam genutzter
+  `PersonNameResolver` erkennt Vor- und Nachnamen-Spalte jetzt anhand gängiger
+  Schreibweisen (dieselbe Logik wie die Namensspalten der Übersicht).
+- **Datum aus der Quelldatei falsch formatiert** (z. B. Geburtsdatum als `12/17/1955`).
+  Excel-Datumszellen wurden im (Datei-)Format ausgegeben; jetzt werden echte Datumswerte beim
+  Import einheitlich als `d.m.Y` (bzw. `d.m.Y H:i` mit Uhrzeit) gespeichert. Reine Uhrzeit-Zellen
+  bleiben unverändert. **Hinweis:** bereits beantwortete Einträge behalten ihren gespeicherten
+  Wert (schreibgeschützte Speicherfelder werden beim Re-Import nicht überschrieben).
+- **PDF-Schriftart der Unterschriftszeile:** „Ort, Datum" und „Unterschrift …" wurden im finalen
+  PDF teils in einer anderen (Serifen-)Schrift als der übrige Text gesetzt. Ursache: die
+  eingebaute Standardschrift von mPDF ist eine Serifenschrift, auf die verschachtelte
+  Tabellenzellen zurückfielen. Behoben durch eine serifenlose Standardschrift und explizite
+  Schriftfamilie im Kopf/Fuß und in der Unterschriftszeile.
+- **PDF-Schriftgröße der Unterschriftszeile:** Im finalen PDF wurde die gesamte
+  Unterschrifts-Tabelle (Ort/Datum + Unterschriftstext) kleiner als der Fließtext gesetzt, in
+  der Vorschau nicht. Ursache: das Unterschriftsbild hatte keine feste Breite, wodurch mPDF die
+  Tabelle als zu breit einstufte und ihre Schrift verkleinerte. Behoben durch eine feste
+  Bildbreite (wie beim Logo) und eine explizite Schriftgröße = Fließtextgröße.
+
 ## [2.5.1] – 2026-07-03
 
 ### Behoben

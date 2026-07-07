@@ -128,6 +128,7 @@ $l = $this->dash;
                 <th class="wf-sortable" data-key="email"><?= $l['col_email'] ?></th>
                 <?php if ($wf['hasName']): ?><th class="wf-sortable" data-key="name"><?= $l['col_name'] ?></th><?php endif; ?>
                 <?php if ($wf['hasVorname']): ?><th class="wf-sortable" data-key="vorname"><?= $l['col_vorname'] ?></th><?php endif; ?>
+                <?php if ($wf['hasAbteilung']): ?><th class="wf-sortable" data-key="abteilung"><?= $l['col_abteilung'] ?></th><?php endif; ?>
                 <th class="wf-sortable" data-key="status"><?= $l['col_status'] ?></th>
               </tr>
             </thead>
@@ -138,6 +139,7 @@ $l = $this->dash;
                 <td data-k="email"><?= $esc($p['email']) ?><?php if (!empty($p['sendError'])): ?> <span class="wf-badge" style="background:#b33;" title="<?= $esc($p['sendError']) ?>">Versand fehlgeschlagen</span><?php endif; ?></td>
                 <?php if ($wf['hasName']): ?><td data-k="name"><?= $esc($p['name']) ?></td><?php endif; ?>
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
+                <?php if ($wf['hasAbteilung']): ?><td data-k="abteilung"><?= $esc($p['abteilung']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>
               </tr>
             <?php endforeach; ?>

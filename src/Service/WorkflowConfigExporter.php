@@ -35,15 +35,17 @@ class WorkflowConfigExporter
 
         foreach ($workflow->getQuestions() as $question) {
             $questions[] = [
-                'label'        => (string) $question->label,
-                'type'         => (string) $question->type,
-                'storageField' => (string) $question->storageField,
-                'mandatory'    => $question->isMandatory(),
-                'prefill'      => $question->isPrefilled(),
-                'readOnly'     => $question->isReadOnly(),
-                'hideInForm'   => '1' === (string) $question->hideInForm,
-                'pdfStatement' => (string) $question->pdfStatement,
-                'options'      => $question->getOptions(),
+                'label'               => (string) $question->label,
+                'type'                => (string) $question->type,
+                'storageField'        => (string) $question->storageField,
+                'mandatory'           => $question->isMandatory(),
+                'prefill'             => $question->isPrefilled(),
+                'readOnly'            => $question->isReadOnly(),
+                'hideInForm'          => '1' === (string) $question->hideInForm,
+                'description'         => (string) $question->description,
+                'showStatementInForm' => $question->showsStatementInForm(),
+                'pdfStatement'        => (string) $question->pdfStatement,
+                'options'             => $question->getOptions(),
             ];
         }
 

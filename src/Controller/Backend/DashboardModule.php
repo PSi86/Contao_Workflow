@@ -9,6 +9,7 @@ use Contao\Message;
 use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\PersonNameResolver;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
@@ -22,13 +23,12 @@ class DashboardModule extends BackendModule
 {
     protected $strTemplate = 'be_workflow_dashboard';
 
-    // Candidate source-column names for the pending list, in priority order. Compared
-    // normalized (lower-cased, all non-alphanumerics stripped), so "First Name",
-    // "first_name", "E-Mail" etc. all match. The generic "name" is the last fallback so
-    // a dedicated "Nachname"/"Surname" wins over it.
-    private const FIRST_NAME_ALIASES = ['vorname', 'rufname', 'firstname', 'givenname', 'forename', 'christianname', 'prename'];
-    private const LAST_NAME_ALIASES = ['nachname', 'familienname', 'zuname', 'surname', 'lastname', 'familyname', 'name'];
+    // Candidate source-column names for the pending list, in priority order (the
+    // first/last-name aliases live in PersonNameResolver, shared with the PDF
+    // signature line). Compared normalized (lower-cased, all non-alphanumerics
+    // stripped), so "E-Mail-Adresse", "department" etc. all match.
     private const EMAIL_ALIASES = ['email', 'emailadresse', 'emailaddress', 'mail', 'mailadresse', 'mailaddress', 'epost'];
+    private const DEPARTMENT_ALIASES = ['abteilung', 'department', 'bereich', 'sparte', 'ressort', 'sektion'];
 
     protected function compile(): void
     {
@@ -43,6 +43,8 @@ class DashboardModule extends BackendModule
         $status = $container->get(WorkflowStatus::class);
         /** @var WorkflowValidator $validator */
         $validator = $container->get(WorkflowValidator::class);
+        /** @var PersonNameResolver $nameResolver */
+        $nameResolver = $container->get(PersonNameResolver::class);
         $router = $container->get('router');
         $csrf = $container->get('contao.csrf.token_manager');
         $rt = $csrf->getDefaultTokenValue();
@@ -57,7 +59,7 @@ class DashboardModule extends BackendModule
                 $steps = $workflow->getSteps();
                 $byStatus = $status->countByStatus($id);
 
-                $pending = $this->buildPending($workflow, $status, $hasName, $hasVorname);
+                $pending = $this->buildPending($workflow, $status, $nameResolver, $hasName, $hasVorname, $hasAbteilung);
 
                 // Per-step select buttons: every step except the final one.
                 $selectSteps = [];
@@ -90,6 +92,7 @@ class DashboardModule extends BackendModule
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
+                    'hasAbteilung'  => $hasAbteilung,
                     'selectSteps'   => $selectSteps,
                     'inviteCount'   => $byStatus[WorkflowStatus::STATUS_IMPORTED] ?? 0,
                     'reminderCount' => $byStatus[WorkflowStatus::STATUS_INVITED] ?? 0,
@@ -121,12 +124,13 @@ class DashboardModule extends BackendModule
     }
 
     /**
-     * @return array<int, array{id: int, email: string, statusIndex: int, status: string, name: string, vorname: string}>
+     * @return array<int, array{id: int, email: string, statusIndex: int, status: string, name: string, vorname: string, abteilung: string}>
      */
-    private function buildPending(WorkflowModel $workflow, WorkflowStatus $status, ?bool &$hasName, ?bool &$hasVorname): array
+    private function buildPending(WorkflowModel $workflow, WorkflowStatus $status, PersonNameResolver $nameResolver, ?bool &$hasName, ?bool &$hasVorname, ?bool &$hasAbteilung): array
     {
         $hasName = false;
         $hasVorname = false;
+        $hasAbteilung = false;
         $pending = [];
 
         $entries = EntryModel::findBy(
@@ -144,6 +148,7 @@ class DashboardModule extends BackendModule
         $firstNameKey = null;
         $lastNameKey = null;
         $emailKey = null;
+        $departmentKey = null;
         $keysResolved = false;
 
         foreach ($entries as $entry) {
@@ -151,14 +156,16 @@ class DashboardModule extends BackendModule
 
             if (!$keysResolved) {
                 $keys = array_keys($row);
-                $firstNameKey = $this->detectColumn($keys, self::FIRST_NAME_ALIASES);
-                $lastNameKey = $this->detectColumn($keys, self::LAST_NAME_ALIASES);
-                $emailKey = $this->detectColumn($keys, self::EMAIL_ALIASES);
+                $firstNameKey = $nameResolver->detectColumn($keys, PersonNameResolver::FIRST_NAME_ALIASES);
+                $lastNameKey = $nameResolver->detectColumn($keys, PersonNameResolver::LAST_NAME_ALIASES);
+                $emailKey = $nameResolver->detectColumn($keys, self::EMAIL_ALIASES);
+                $departmentKey = $nameResolver->detectColumn($keys, self::DEPARTMENT_ALIASES);
                 $keysResolved = true;
             }
 
             $vorname = null !== $firstNameKey ? (string) ($row[$firstNameKey] ?? '') : '';
             $name = null !== $lastNameKey ? (string) ($row[$lastNameKey] ?? '') : '';
+            $abteilung = null !== $departmentKey ? (string) ($row[$departmentKey] ?? '') : '';
             // The configured e-mail field is canonical; fall back to a detected column.
             $email = (string) $entry->email;
 
@@ -168,6 +175,7 @@ class DashboardModule extends BackendModule
 
             $hasName = $hasName || '' !== $name;
             $hasVorname = $hasVorname || '' !== $vorname;
+            $hasAbteilung = $hasAbteilung || '' !== $abteilung;
 
             $pending[] = [
                 'id'          => (int) $entry->id,
@@ -176,41 +184,11 @@ class DashboardModule extends BackendModule
                 'status'      => $status->getStepLabel($workflow, (int) $entry->status),
                 'name'        => $name,
                 'vorname'     => $vorname,
+                'abteilung'   => $abteilung,
                 'sendError'   => (string) $entry->sendError,
             ];
         }
 
         return $pending;
-    }
-
-    /**
-     * Returns the first source column whose normalized name matches one of the aliases
-     * (in alias priority order), or null if none matches. Normalization lower-cases the
-     * name and strips every non-alphanumeric character, so spelling/spacing/punctuation
-     * variants ("First Name", "first_name", "E-Mail-Adresse") map onto the same alias.
-     *
-     * @param array<int, string> $keys    available source column names
-     * @param array<int, string> $aliases normalized candidate names, most specific first
-     */
-    private function detectColumn(array $keys, array $aliases): ?string
-    {
-        $normalized = [];
-
-        foreach ($keys as $key) {
-            $normalized[$this->normalizeColumn((string) $key)] = (string) $key;
-        }
-
-        foreach ($aliases as $alias) {
-            if (isset($normalized[$alias])) {
-                return $normalized[$alias];
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeColumn(string $value): string
-    {
-        return (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($value, 'UTF-8'));
     }
 }

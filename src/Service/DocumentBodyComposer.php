@@ -126,6 +126,21 @@ class DocumentBodyComposer
         $title = (string) $workflow->title;
 
         foreach ($workflow->getQuestions() as $question) {
+            // "Erklärung": a static text block with no storage field – its resolved
+            // text is carried into the document (##text_all##) but gets no own
+            // ##text_<slug>## token.
+            if ($question->isExplanation()) {
+                $statement = $this->renderStatement($question, '', $data, $extra, $email, $title);
+
+                if ('' === $statement) {
+                    continue;
+                }
+
+                $all = '' === $all ? $statement : $all."\n\n".$statement;
+
+                continue;
+            }
+
             $storage = trim((string) $question->storageField);
 
             if ('' === $storage) {
@@ -201,6 +216,11 @@ class DocumentBodyComposer
      */
     public function renderStatement(QuestionModel $question, string $value, array $data, array $extra, string $email, string $title): string
     {
+        // "Erklärung": static text, no value – resolve its tokens and return it.
+        if ($question->isExplanation()) {
+            return trim($this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title));
+        }
+
         if ('' === trim($value)) {
             return '';
         }
