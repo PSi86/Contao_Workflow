@@ -187,11 +187,13 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                         'eval'      => ['mandatory' => true, 'decodeEntities' => true],
                     ],
                     // Document text ("Textbaustein") of the option; empty means
-                    // the visible label counts verbatim in the document.
+                    // the visible label counts verbatim in the document. Multi-line
+                    // (usually the longest of the three columns); its column is
+                    // widened via CSS (see #ctrl_options in workflow-backend.css).
                     'statement' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'],
-                        'inputType' => 'text',
-                        'eval'      => ['decodeEntities' => true],
+                        'inputType' => 'textarea',
+                        'eval'      => ['decodeEntities' => true, 'style' => 'height:44px'],
                     ],
                 ],
             ],

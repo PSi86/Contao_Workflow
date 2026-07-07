@@ -39,6 +39,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   aktiviert).
 
 ### Behoben
+- **Optionen-Wizard der Auswahlfelder (Dropdown/Radio/Checkboxen):** Die Spalte
+  „Dokument-Text" ist jetzt **mehrzeilig** und bekommt den Großteil der Dialogbreite,
+  während „Wert" und „Options-Text" schmaler werden – so lassen sich auch längere
+  Dokument-Texte bequem eingeben.
 - **Nachname fehlte in der Unterschriftszeile.** Der Name wurde fest aus den Spalten
   `Vorname` + `Name` gebildet – hieß die Nachnamen-Spalte anders (z. B. `Nachname`,
   `Familienname`, `Surname`), fehlte der Nachname. Ein neuer, gemeinsam genutzter
