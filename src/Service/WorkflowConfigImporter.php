@@ -29,7 +29,11 @@ class WorkflowConfigImporter
     // import), "number" type, workflow introText.
     // v4: per-question "description" (form-only) and "showStatementInForm" flag,
     // "explanation" question type (a static text paragraph).
-    public const VERSION = 4;
+    // v5: workflow form page (id + name), letterhead id and notification ids are
+    // exported so a re-import on the same site re-links to the existing element
+    // (id + name must match); an element that cannot be linked is recorded in
+    // tl_workflow.importIssues and flagged red in the edit mask.
+    public const VERSION = 5;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -45,7 +49,7 @@ class WorkflowConfigImporter
      *
      * @param array<string, mixed> $config a decoded configuration document
      *
-     * @return array{workflow: WorkflowModel, skippedMaster: string|null, skippedNotifications: array<int, string>}
+     * @return array{workflow: WorkflowModel, skippedMaster: string|null, skippedNotifications: array<int, string>, importIssues: array<int, string>}
      *
      * @throws \InvalidArgumentException on an unknown/unsupported document
      * @throws \RuntimeException         when the workflow title is already taken
@@ -69,28 +73,19 @@ class WorkflowConfigImporter
             ));
         }
 
-        $masterId = 0;
-        $skippedMaster = null;
+        // Letterhead, e-mail templates and form page are re-linked strictly (id + name
+        // must match an existing element) and otherwise created (letterhead/templates,
+        // on request) or left unlinked. Everything that cannot be linked is collected in
+        // $importIssues and flagged red in the edit mask.
+        [$masterId, $skippedMaster] = $this->resolveMaster($config['master'] ?? null, $createMaster);
 
-        if ($createMaster && \is_array($config['master'] ?? null)) {
-            $masterTitle = (string) ($config['master']['title'] ?? 'Briefpapier');
+        [$nc, $skippedNotifications] = $this->resolveNotifications($config['notifications'] ?? null, $createNotifications);
 
-            if ($this->masterTitleExists($masterTitle)) {
-                $skippedMaster = $masterTitle;
-            } else {
-                $masterId = $this->createMaster($config['master']);
-            }
-        }
+        $formPage = $this->resolveFormPageId((array) $config['workflow']);
 
-        $nc = ['invite' => 0, 'reminder' => 0, 'result' => 0];
-        $skippedNotifications = [];
+        $importIssues = $this->collectImportIssues($config, $formPage, $masterId, $nc);
 
-        if ($createNotifications && \is_array($config['notifications'] ?? null)) {
-            [$created, $skippedNotifications] = $this->createNotifications($config['notifications']);
-            $nc = array_merge($nc, $created);
-        }
-
-        $workflowId = $this->createWorkflow((array) $config['workflow'], $masterId, $nc, $sourceUuid);
+        $workflowId = $this->createWorkflow((array) $config['workflow'], $masterId, $nc, $formPage, $importIssues, $sourceUuid);
 
         // v1 compatibility: the former read-only workflow "inputFields" become
         // read-only text fields, rendered before the other questions.
@@ -113,6 +108,7 @@ class WorkflowConfigImporter
             'workflow'             => $workflow,
             'skippedMaster'        => $skippedMaster,
             'skippedNotifications' => $skippedNotifications,
+            'importIssues'         => $importIssues,
         ];
     }
 
@@ -163,21 +159,63 @@ class WorkflowConfigImporter
     }
 
     /**
-     * Creates the three workflow e-mail templates (invite/reminder/result) in the
-     * Notification Center, reusing an existing e-mail gateway (creating one only if
-     * none exists). A template whose title is already taken is skipped (never
-     * duplicated/overwritten). Returns the new notification ids keyed by
-     * invite|reminder|result and the titles of any skipped templates.
+     * Resolves the workflow's letterhead: re-links to an existing letterhead when the
+     * exported id AND title match one (regardless of the "create letterhead" option),
+     * otherwise – on request – creates a fresh one from the embedded config. A title
+     * that is taken by a *different* letterhead is neither hijacked nor duplicated: it
+     * is reported as skipped and the workflow stays unlinked (flagged red).
      *
-     * @param array<string, mixed> $notifications
+     * @param mixed $ref the exported master reference (array) or null
      *
-     * @return array{0: array<string, int>, 1: array<int, string>}
+     * @return array{0: int, 1: string|null} [masterId, skippedMasterTitle]
      */
-    private function createNotifications(array $notifications): array
+    private function resolveMaster($ref, bool $createMaster): array
     {
-        $gateway = $this->resolveGateway();
-        $ids = [];
+        if (!\is_array($ref)) {
+            return [0, null];
+        }
+
+        $refId = (int) ($ref['id'] ?? 0);
+        $refTitle = (string) ($ref['title'] ?? 'Briefpapier');
+
+        // Same site: re-link to the exact letterhead the workflow used before.
+        if ($this->referenceMatches('tl_workflow_master', $refId, $refTitle)) {
+            return [$refId, null];
+        }
+
+        if (!$createMaster) {
+            return [0, null];
+        }
+
+        if ($this->masterTitleExists($refTitle)) {
+            return [0, $refTitle];
+        }
+
+        return [$this->createMaster($ref), null];
+    }
+
+    /**
+     * Resolves the three workflow e-mail templates (invite/reminder/result). Each is
+     * re-linked to an existing notification when the exported id AND title match one
+     * (independently of the "create templates" option, so a same-site re-import keeps
+     * its notifications); otherwise – on request – a fresh template is created in the
+     * Notification Center (reusing an e-mail gateway, creating one only if none exists).
+     * A title taken by a different notification is skipped (never duplicated).
+     *
+     * @param mixed $notifications the exported notifications map (array) or null
+     *
+     * @return array{0: array<string, int>, 1: array<int, string>} [ids keyed by kind, skipped titles]
+     */
+    private function resolveNotifications($notifications, bool $createNotifications): array
+    {
+        $nc = ['invite' => 0, 'reminder' => 0, 'result' => 0];
         $skipped = [];
+
+        if (!\is_array($notifications)) {
+            return [$nc, $skipped];
+        }
+
+        $gateway = null;
 
         foreach (['invite', 'reminder', 'result'] as $kind) {
             if (!\is_array($notifications[$kind] ?? null)) {
@@ -185,7 +223,19 @@ class WorkflowConfigImporter
             }
 
             $tpl = $notifications[$kind];
+            $refId = (int) ($tpl['id'] ?? 0);
             $title = (string) ($tpl['title'] ?? ucfirst($kind));
+
+            // Same site: re-link to the exact notification the workflow used before.
+            if ($this->referenceMatches('tl_nc_notification', $refId, $title)) {
+                $nc[$kind] = $refId;
+
+                continue;
+            }
+
+            if (!$createNotifications) {
+                continue;
+            }
 
             // Re-checked per insert, so even identical titles within the same document
             // are not duplicated (the first one wins, the rest are skipped).
@@ -195,38 +245,130 @@ class WorkflowConfigImporter
                 continue;
             }
 
-            $this->connection->executeStatement(
-                "INSERT INTO tl_nc_notification (tstamp, title, type) VALUES (UNIX_TIMESTAMP(), ?, 'workflow')",
-                [$title],
-            );
-            $notificationId = (int) $this->connection->lastInsertId();
-
-            $this->connection->executeStatement(
-                'INSERT INTO tl_nc_message (pid, tstamp, sorting, title, gateway, email_template, published) '
-                ."VALUES (?, UNIX_TIMESTAMP(), 128, 'E-Mail', ?, 'mail_default', 1)",
-                [$notificationId, $gateway],
-            );
-            $messageId = (int) $this->connection->lastInsertId();
-
-            $this->connection->executeStatement(
-                'INSERT INTO tl_nc_language '
-                .'(pid, tstamp, language, fallback, recipients, email_sender_name, email_sender_address, '
-                .'email_subject, email_mode, email_text, attachment_tokens) '
-                ."VALUES (?, UNIX_TIMESTAMP(), 'de', 1, '##email##', ?, ?, ?, 'textOnly', ?, ?)",
-                [
-                    $messageId,
-                    (string) ($tpl['senderName'] ?? 'Workflow'),
-                    (string) ($tpl['senderAddress'] ?? 'noreply@example.com'),
-                    (string) ($tpl['subject'] ?? ''),
-                    (string) ($tpl['text'] ?? ''),
-                    (string) ($tpl['attachmentTokens'] ?? ('result' === $kind ? '##attachment##' : '')),
-                ],
-            );
-
-            $ids[$kind] = $notificationId;
+            $gateway ??= $this->resolveGateway();
+            $nc[$kind] = $this->createNotification($kind, (array) $tpl, $gateway);
         }
 
-        return [$ids, $skipped];
+        return [$nc, $skipped];
+    }
+
+    /**
+     * Creates one workflow e-mail template (a notification with an e-mail message and a
+     * German fallback language) and returns its new id.
+     *
+     * @param array<string, mixed> $tpl
+     */
+    private function createNotification(string $kind, array $tpl, int $gateway): int
+    {
+        $this->connection->executeStatement(
+            "INSERT INTO tl_nc_notification (tstamp, title, type) VALUES (UNIX_TIMESTAMP(), ?, 'workflow')",
+            [(string) ($tpl['title'] ?? ucfirst($kind))],
+        );
+        $notificationId = (int) $this->connection->lastInsertId();
+
+        $this->connection->executeStatement(
+            'INSERT INTO tl_nc_message (pid, tstamp, sorting, title, gateway, email_template, published) '
+            ."VALUES (?, UNIX_TIMESTAMP(), 128, 'E-Mail', ?, 'mail_default', 1)",
+            [$notificationId, $gateway],
+        );
+        $messageId = (int) $this->connection->lastInsertId();
+
+        $this->connection->executeStatement(
+            'INSERT INTO tl_nc_language '
+            .'(pid, tstamp, language, fallback, recipients, email_sender_name, email_sender_address, '
+            .'email_subject, email_mode, email_text, attachment_tokens) '
+            ."VALUES (?, UNIX_TIMESTAMP(), 'de', 1, '##email##', ?, ?, ?, 'textOnly', ?, ?)",
+            [
+                $messageId,
+                (string) ($tpl['senderName'] ?? 'Workflow'),
+                (string) ($tpl['senderAddress'] ?? 'noreply@example.com'),
+                (string) ($tpl['subject'] ?? ''),
+                (string) ($tpl['text'] ?? ''),
+                (string) ($tpl['attachmentTokens'] ?? ('result' === $kind ? '##attachment##' : '')),
+            ],
+        );
+
+        return $notificationId;
+    }
+
+    /**
+     * Resolves the workflow's form page id: keeps the exported page id only when a page
+     * with that id AND name exists (same site). A missing page is kept as a dangling id
+     * so nothing is silently lost; a page whose name differs is dropped to 0 so the
+     * workflow never points at an unrelated page. Either way it is recorded as an import
+     * issue and flagged red.
+     *
+     * @param array<string, mixed> $wf
+     */
+    private function resolveFormPageId(array $wf): int
+    {
+        $pageId = (int) ($wf['formPage'] ?? 0);
+
+        if ($pageId <= 0) {
+            return 0;
+        }
+
+        if ($this->referenceMatches('tl_page', $pageId, (string) ($wf['formPageName'] ?? ''))) {
+            return $pageId;
+        }
+
+        // Missing page → keep the id (dangling, turns red); existing page with another
+        // name → 0 (do not hijack a foreign page).
+        return $this->recordExists('tl_page', $pageId) ? 0 : $pageId;
+    }
+
+    /**
+     * Reference fields whose exported value could not be linked to an existing element
+     * on this site (form page, letterhead, notifications). Persisted in
+     * tl_workflow.importIssues and used to flag exactly those fields red in the edit
+     * mask – only import-caused gaps, not the empty fields of a manually built workflow.
+     *
+     * @param array<string, mixed> $config
+     * @param array<string, int>   $nc
+     *
+     * @return array<int, string>
+     */
+    private function collectImportIssues(array $config, int $formPage, int $masterId, array $nc): array
+    {
+        $issues = [];
+        $wf = (array) ($config['workflow'] ?? []);
+
+        // A form page was exported but could not be linked (id + name mismatch/missing).
+        if ((int) ($wf['formPage'] ?? 0) > 0 && !$this->referenceMatches('tl_page', $formPage, (string) ($wf['formPageName'] ?? ''))) {
+            $issues[] = 'formPage';
+        }
+
+        if (\is_array($config['master'] ?? null) && $masterId <= 0) {
+            $issues[] = 'master';
+        }
+
+        foreach (['invite' => 'ncInvite', 'reminder' => 'ncReminder', 'result' => 'ncResult'] as $kind => $field) {
+            if (\is_array($config['notifications'][$kind] ?? null) && ($nc[$kind] ?? 0) <= 0) {
+                $issues[] = $field;
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Whether a row with the given id exists in $table AND its title equals $title.
+     * $table is an internal constant (never user input), so it is safe to interpolate.
+     */
+    private function referenceMatches(string $table, int $id, string $title): bool
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        $found = $this->connection->fetchOne("SELECT title FROM $table WHERE id = ?", [$id]);
+
+        return false !== $found && (string) $found === $title;
+    }
+
+    private function recordExists(string $table, int $id): bool
+    {
+        return $id > 0 && false !== $this->connection->fetchOne("SELECT id FROM $table WHERE id = ?", [$id]);
     }
 
     private function workflowTitleExists(string $title): bool
@@ -273,8 +415,9 @@ class WorkflowConfigImporter
     /**
      * @param array<string, mixed> $wf
      * @param array<string, int>   $nc
+     * @param array<int, string>   $importIssues reference fields that could not be linked
      */
-    private function createWorkflow(array $wf, int $masterId, array $nc, ?string $sourceUuid): int
+    private function createWorkflow(array $wf, int $masterId, array $nc, int $formPage, array $importIssues, ?string $sourceUuid): int
     {
         $steps = array_values(array_filter(array_map('trim', (array) ($wf['steps'] ?? []))));
         $steps = $steps ?: ['Importiert', 'Eingeladen', 'Beantwortet'];
@@ -283,8 +426,8 @@ class WorkflowConfigImporter
             'INSERT INTO tl_workflow '
             .'(tstamp, title, published, steps, sourceFile, sourceSheet, headerRow, emailField, '
             .'requireSignature, formPage, master, pdfBodyType, pdfBodyTemplate, pdfTitle, introText, pdfSignatureDate, '
-            .'pdfSignatureLocation, pdfFileName, ncInvite, ncReminder, ncResult) '
-            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            .'pdfSignatureLocation, pdfFileName, ncInvite, ncReminder, ncResult, importIssues) '
+            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 (string) $wf['title'],
                 ($wf['published'] ?? true) ? '1' : '',
@@ -294,6 +437,7 @@ class WorkflowConfigImporter
                 max(1, (int) ($wf['headerRow'] ?? 1)),
                 (string) ($wf['emailField'] ?? ''),
                 ($wf['requireSignature'] ?? false) ? '1' : '',
+                $formPage,
                 $masterId,
                 (string) ($wf['pdfBodyType'] ?? 'letter'),
                 (string) ($wf['pdfBodyTemplate'] ?? ''),
@@ -305,6 +449,7 @@ class WorkflowConfigImporter
                 $nc['invite'] ?? 0,
                 $nc['reminder'] ?? 0,
                 $nc['result'] ?? 0,
+                $importIssues ? serialize($importIssues) : null,
             ],
         );
 

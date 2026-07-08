@@ -6,6 +6,58 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.7.0] – 2026-07-08
+
+### Hinzugefügt
+- **PDF-Dokumente werden beim Löschen eines Workflows mitgelöscht.** Bisher blieben die
+  erzeugten PDFs unter `var/workflow_pdfs/<id>/` nach dem Löschen eines Workflows als
+  „verwaiste" Dateien liegen. Jetzt entfernt das Löschen eines Workflows auch dessen
+  gesamtes PDF-Verzeichnis. Der **Lösch-Bestätigungsdialog** weist zusätzlich auf die
+  Anzahl der dabei unwiderruflich gelöschten PDF-Dokumente hin.
+- **Rot-Markierung ungültiger Verknüpfungen (Formularseite, Briefpapier, Benachrichtigungen).**
+  Zeigt eine dieser Verknüpfungen auf ein **nicht (mehr) vorhandenes** Element – weil es
+  gelöscht wurde („Unbekannte Option: <id>") **oder** weil ein Import es auf dieser
+  Installation nicht zuordnen konnte – wird das betroffene Feld **rot markiert** und oben
+  im Workflow ein Hinweis eingeblendet (analog zu unbekannten Datenfeldern). Nach
+  korrekter Zuordnung und Speichern verschwindet die Markierung.
+- **Gelöschtes Briefpapier ⇒ „nicht ausführbar".** Ein Workflow, dessen zugeordnetes
+  Briefpapier gelöscht wurde, wird jetzt als **nicht ausführbar** gemeldet (Import/Versand/
+  Export gesperrt) – vorher wäre still das Standard-Layout ohne Briefpapier-Variablen
+  verwendet worden. Ebenso blockiert eine **gelöschte** E-Mail-Benachrichtigung den Versand
+  (statt erst beim tatsächlichen Senden zu scheitern).
+
+### Geändert
+- **Export-/Import-Format der Workflow-Konfiguration auf `v5`** angehoben: Die
+  **Formularseite** (ID **und** Name), das **Briefpapier** (ID) und die
+  **E-Mail-Benachrichtigungen** (ID) werden jetzt exportiert. Beim Import werden diese
+  Verknüpfungen **nur** wiederhergestellt, wenn **ID und Name** des Elements auf der
+  Zielinstallation übereinstimmen (verhindert das versehentliche Verknüpfen mit einem
+  fremden Element derselben ID). Dadurch behält ein Re-Import auf **derselben**
+  Installation seine Formularseite, sein Briefpapier und seine Benachrichtigungen –
+  bisher gingen diese Zuordnungen dabei verloren. Ältere Konfigurationen (v1–v4) lassen
+  sich weiterhin importieren (ohne diese Verknüpfungen, die dann rot markiert werden).
+
+### Behoben
+- **Formularseite nach Import leer.** Die Formularseite war bisher gar nicht Teil des
+  Exports und wurde beim Import fest auf „keine" gesetzt – nach einem Re-Import waren alle
+  Formularseiten leer. Sie wird jetzt exportiert und (bei ID-/Namensgleichheit)
+  wiederhergestellt.
+- **Briefpapier/Benachrichtigungen nach Re-Import nicht verknüpft.** Existierte auf der
+  Zielinstallation bereits ein Briefpapier bzw. eine E-Mail-Vorlage mit demselben Namen
+  (z. B. weil nur die Workflows, nicht aber diese gemeinsam genutzten Elemente gelöscht
+  wurden), wurde die Zuordnung übersprungen und der Workflow blieb **ohne** Briefpapier/
+  Benachrichtigung. Jetzt wird bei ID-/Namensgleichheit auf das vorhandene Element
+  verknüpft.
+- **Edit-Mask-Hinweise erschienen über der Workflow-Liste.** Die Hinweise der Bearbeiten-Seite
+  (uneindeutige Spalten/Platzhalter, unvollständige Konfiguration, ungültige Verknüpfungen,
+  Datenschutz-Hinweis) konnten gelegentlich über der **Workflow-Liste** auftauchen (unklar,
+  auf welchen Workflow bezogen). Ursache waren Backend-AJAX-Requests der Picker
+  (Formularseite/Quelldatei) mit `act=edit`, die die Meldung setzten, aber nicht anzeigten;
+  AJAX-Sub-Requests sind jetzt ausgeschlossen.
+- **„Noch nicht ausführbar"-Meldung blieb nach dem Speichern stehen.** Nach dem Beheben eines
+  Problems (z. B. gültiges Briefpapier zugeordnet) verschwindet die Meldung jetzt **sofort**
+  statt erst nach einem Seiten-Refresh (die `onsubmit`-Prüfung liest den Datensatz jetzt frisch).
+
 ## [2.6.0] – 2026-07-08
 
 ### Hinzugefügt

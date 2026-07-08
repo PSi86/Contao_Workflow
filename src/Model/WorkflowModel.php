@@ -29,6 +29,7 @@ use Contao\StringUtil;
  * @property string $pdfBodyTemplate Body template name (template mode), e.g. pdf_body_verzicht.
  * @property int    $master        tl_workflow_master id (letterhead: template + logo + variables).
  * @property string $sourceHash    Checksum of the last imported source file.
+ * @property string $importIssues  Serialized list of reference fields a config import could not link.
  * @property int    $ncInvite      Notification id for the invitation mail.
  * @property int    $ncReminder    Notification id for the reminder mail.
  * @property int    $ncResult      Notification id for the result mail (with PDF).

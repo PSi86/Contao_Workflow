@@ -11,10 +11,14 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
  * Serialises a configured workflow into a portable, site-independent configuration
- * document (the counterpart of {@see WorkflowConfigImporter}). Everything that is
- * site-specific is deliberately left out: the source file (UUID), the form page id and
- * the master logo. The letterhead variables and the e-mail templates (subjects/texts)
- * are embedded so the target installation can recreate them on import.
+ * document (the counterpart of {@see WorkflowConfigImporter}). The source file (UUID)
+ * and the master logo (site-specific binaries) are deliberately left out. The form page,
+ * the letterhead (master) and the e-mail templates are exported by BOTH id and name, so
+ * a re-import on the SAME site re-links to the existing element (id + name must match),
+ * while a different site simply fails to link it and flags the field – it is never
+ * silently linked to an unrelated element that happens to share the id. The letterhead
+ * variables and the e-mail templates (subjects/texts) are embedded so a target
+ * installation that does not have them yet can recreate them on import.
  */
 class WorkflowConfigExporter
 {
@@ -71,6 +75,10 @@ class WorkflowConfigExporter
                 'headerRow'            => max(1, (int) $workflow->headerRow),
                 'emailField'           => (string) $workflow->emailField,
                 'requireSignature'     => $workflow->isSignatureRequired(),
+                // Site-specific page id plus its name; on import both must match an
+                // existing page, otherwise the form page stays unlinked and flagged.
+                'formPage'             => (int) $workflow->formPage,
+                'formPageName'         => $this->readPageName((int) $workflow->formPage),
                 'pdfBodyType'          => (string) ($workflow->pdfBodyType ?: 'letter'),
                 'pdfBodyTemplate'      => (string) $workflow->pdfBodyTemplate,
                 'pdfTitle'             => (string) $workflow->pdfTitle,
@@ -115,12 +123,27 @@ class WorkflowConfigExporter
             $pdfData[] = ['key' => $key, 'value' => $value];
         }
 
-        // Logo is intentionally omitted (site-specific binary).
+        // Logo is intentionally omitted (site-specific binary). The id is exported so
+        // a re-import on the same site can re-link to this exact letterhead (id + title).
         return [
+            'id'             => $masterId,
             'title'          => (string) $master->title,
             'masterTemplate' => $master->getMasterTemplate(),
             'pdfData'        => $pdfData,
         ];
+    }
+
+    /**
+     * Page name (tl_page.title) of the workflow's form page, for the id + name match
+     * on import. Empty when no/invalid page is configured.
+     */
+    private function readPageName(int $pageId): string
+    {
+        if ($pageId <= 0) {
+            return '';
+        }
+
+        return (string) $this->connection->fetchOne('SELECT title FROM tl_page WHERE id = ?', [$pageId]);
     }
 
     /**
@@ -172,6 +195,9 @@ class WorkflowConfigExporter
         }
 
         return [
+            // id is exported so a re-import on the same site re-links to this exact
+            // notification (id + title); the content is embedded for a fresh site.
+            'id'               => $notificationId,
             'title'            => (string) $row['title'],
             'subject'          => (string) $row['subject'],
             'text'             => (string) $row['text'],

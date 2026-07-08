@@ -90,4 +90,29 @@ class PdfStorage
     {
         return '' !== $relativePath && $this->filesystem->exists($this->getAbsolutePath($relativePath));
     }
+
+    /**
+     * Number of generated PDF files stored for a workflow (0 if the directory
+     * does not exist yet). Used to warn before deleting a workflow.
+     */
+    public function countWorkflowPdfs(int $workflowId): int
+    {
+        $dir = $this->getWorkflowDir($workflowId);
+
+        if (!is_dir($dir)) {
+            return 0;
+        }
+
+        return \count(glob($dir.'/*.pdf') ?: []);
+    }
+
+    /**
+     * Removes a workflow's entire PDF directory (all generated documents).
+     * Called when the workflow itself is deleted, so no orphaned files are
+     * left behind on disk. Safe to call when the directory never existed.
+     */
+    public function deleteWorkflowDir(int $workflowId): void
+    {
+        $this->filesystem->remove($this->getWorkflowDir($workflowId));
+    }
 }

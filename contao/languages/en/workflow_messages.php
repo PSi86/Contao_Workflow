@@ -54,4 +54,5 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'email_col_missing'  => 'The e-mail column “%s” is missing from the source file.',
     'storage_missing'    => 'The storage field “%s” (form field “%s”) is missing from the source file.',
     'rule_unknown_field' => 'The document text “%s” uses the unknown field “%s”.',
+    'master_missing'     => 'The assigned letterhead no longer exists (it was deleted) – please assign a valid letterhead.',
 ];
