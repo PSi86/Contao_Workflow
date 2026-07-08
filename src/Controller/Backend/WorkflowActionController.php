@@ -323,6 +323,7 @@ class WorkflowActionController
             ));
 
             $this->reportSkipped($result['skippedMaster'], $result['skippedNotifications']);
+            $this->reportImportIssues($result['importIssues'] ?? []);
         } catch (\Throwable $e) {
             Message::addError('Import der Konfiguration fehlgeschlagen: '.$e->getMessage());
         }
@@ -378,6 +379,38 @@ class WorkflowActionController
                 $titles,
             ));
         }
+    }
+
+    /**
+     * Reports the site-specific references (form page, letterhead, notifications) that
+     * could not be linked on this installation, because their id/name do not match an
+     * existing element (e.g. importing onto a different site, or after the target
+     * elements were deleted). Those fields are outlined red in the workflow edit mask.
+     *
+     * @param array<int, string> $importIssues field names among formPage/master/nc*
+     */
+    private function reportImportIssues(array $importIssues): void
+    {
+        if ([] === $importIssues) {
+            return;
+        }
+
+        $labels = [
+            'formPage'   => 'Formularseite',
+            'master'     => 'Briefpapier',
+            'ncInvite'   => 'Einladungs-Benachrichtigung',
+            'ncReminder' => 'Erinnerungs-Benachrichtigung',
+            'ncResult'   => 'Ergebnis-Benachrichtigung',
+        ];
+
+        $names = array_map(static fn (string $f): string => $labels[$f] ?? $f, $importIssues);
+
+        Message::addInfo(sprintf(
+            'Folgende Einstellungen konnten nicht automatisch verknüpft werden und sind im Workflow '
+            .'rot markiert: %s. Verknüpfungen werden nur übernommen, wenn ID und Name des Elements auf '
+            .'dieser Installation übereinstimmen. Bitte die betroffenen Felder im Workflow prüfen und zuordnen.',
+            implode(', ', $names),
+        ));
     }
 
     private function configFilename(WorkflowModel $workflow): string

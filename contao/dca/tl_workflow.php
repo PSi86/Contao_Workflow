@@ -6,6 +6,7 @@ use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\WorkflowDeleteListener;
 
 $GLOBALS['TL_DCA']['tl_workflow'] = [
     'config' => [
@@ -72,9 +73,11 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'icon' => 'copy.svg',
             ],
             'delete' => [
-                'href'       => 'act=delete',
-                'icon'       => 'delete.svg',
-                'attributes' => 'onclick="if(!confirm(\''.($GLOBALS['TL_LANG']['MSC']['deleteConfirm'] ?? 'Delete?').'\'))return false;Backend.getScrollOffset()"',
+                'href'            => 'act=delete',
+                'icon'            => 'delete.svg',
+                // Custom confirmation: also warns that the workflow's generated PDF
+                // documents (with their count) are deleted along with it.
+                'button_callback' => [WorkflowDeleteListener::class, 'renderDeleteButton'],
             ],
             'show' => [
                 'href' => 'act=show',
@@ -307,6 +310,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'sourceHash' => [
             'eval' => ['doNotCopy' => true],
             'sql'  => "varchar(64) NOT NULL default ''",
+        ],
+        // Internal: reference fields (form page, letterhead, notifications) that a
+        // configuration import could not link on this site. Serialized list of field
+        // names; drives the red outline + notice in the edit mask (WorkflowIntegrityListener)
+        // and is pruned on save. Not copied – a copy re-derives its own state.
+        'importIssues' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => 'blob NULL',
         ],
         'ncInvite' => [
             'exclude'    => true,

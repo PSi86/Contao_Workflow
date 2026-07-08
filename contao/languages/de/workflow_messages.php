@@ -54,4 +54,5 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'email_col_missing'  => 'Die E-Mail-Spalte „%s“ fehlt in der Quelldatei.',
     'storage_missing'    => 'Das Speicherfeld „%s“ (Formularfeld „%s“) fehlt in der Quelldatei.',
     'rule_unknown_field' => 'Der Dokument-Text „%s“ verwendet das unbekannte Feld „%s“.',
+    'master_missing'     => 'Das zugeordnete Briefpapier existiert nicht mehr (wurde gelöscht) – bitte ein gültiges Briefpapier zuordnen.',
 ];

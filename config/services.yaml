@@ -55,3 +55,8 @@ services:
     # name and resolved via System::importStatic() – must be public.
     Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener:
         public: true
+
+    # DCA button_callback for the workflow delete operation (PDF-aware confirmation),
+    # referenced by class name and resolved via System::importStatic() – must be public.
+    Psimandl\WorkflowBundle\EventListener\DataContainer\WorkflowDeleteListener:
+        public: true

@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
+use Contao\Environment;
 use Contao\FilesModel;
 use Contao\Input;
 use Contao\Message;
@@ -42,16 +43,25 @@ class WorkflowIntegrityListener
     /**
      * True only while the edit form is being RENDERED (GET on act=edit/editAll).
      * These notices/red outlines belong on the edit mask of one specific workflow –
-     * nowhere else. Two ways they used to leak as orphaned flash messages onto the
+     * nowhere else. Ways they used to leak as orphaned flash messages onto the
      * list/overview (unclear which workflow they referred to):
      *   - other actions (copy/delete/toggle/show) run config.onload with $dc->id set
      *     and then redirect elsewhere;
-     *   - a save POST (esp. "save & close") runs onload, then redirects to the list.
-     * Both are excluded here (not the listed acts / not a form submit); after a plain
-     * save Contao reloads the edit form via GET, so the notices reappear there.
+     *   - a save POST (esp. "save & close") runs onload, then redirects to the list;
+     *   - backend AJAX sub-requests of the edit mask (pageTree/fileTree pickers,
+     *     "chosen", dcaWizard, …) carry act=edit but return a partial response that
+     *     never renders the message area, so a flash added there surfaces on the NEXT
+     *     full page (typically the workflow list) – the intermittent, "unclear which
+     *     workflow" case.
+     * All are excluded here; after a plain save Contao reloads the edit form via GET,
+     * so the notices reappear there.
      */
     private function isEditMask(): bool
     {
+        if (Environment::get('isAjaxRequest')) {
+            return false;
+        }
+
         return \in_array((string) Input::get('act'), ['edit', 'editAll'], true)
             && '' === (string) Input::post('FORM_SUBMIT');
     }
@@ -81,16 +91,25 @@ class WorkflowIntegrityListener
             $items .= '<li>'.StringUtil::specialchars($problem).'</li>';
         }
 
-        Message::addInfo(
-            'Dieser Workflow ist noch nicht vollständig konfiguriert und kann nicht ausgeführt werden:<ul>'
-            .$items
-            .'</ul>Die rot umrandeten Felder beziehen sich auf die (noch fehlende) Quelldatei. '
-            .'Speichern ist möglich; Import, Versand und Export bleiben gesperrt, bis eine gültige Quelldatei geladen ist.',
-        );
+        $orphaned = $this->validator->orphanedFields($workflow);
 
-        foreach ($this->validator->orphanedFields($workflow) as $field) {
+        $notice = 'Dieser Workflow ist noch nicht vollständig konfiguriert und kann nicht ausgeführt werden:<ul>'
+            .$items.'</ul>';
+
+        // Only claim the red fields are source-related when there actually are red
+        // source fields (a dangling letterhead, say, is red for a different reason).
+        if ([] !== $orphaned) {
+            $notice .= 'Die rot umrandeten Felder beziehen sich auf die (noch fehlende) Quelldatei. ';
+        }
+
+        $notice .= 'Speichern ist möglich; Import, Versand und Export bleiben gesperrt, bis die genannten Punkte behoben sind.';
+
+        Message::addInfo($notice);
+
+        foreach ($orphaned as $field) {
             $eval = &$GLOBALS['TL_DCA']['tl_workflow']['fields'][$field]['eval'];
             $eval['tl_class'] = trim(((string) ($eval['tl_class'] ?? '')).' tw-invalid');
+            unset($eval);
         }
 
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
@@ -105,12 +124,91 @@ class WorkflowIntegrityListener
 
         $workflow = WorkflowModel::findByPk((int) $dc->id);
 
-        if (null !== $workflow && !$this->validator->isRunnable($workflow)) {
+        if (null === $workflow) {
+            return;
+        }
+
+        // onsubmit runs after the save, but findByPk may return a registry-cached copy
+        // loaded (with the pre-save values) earlier in this request – refresh so the
+        // just-saved values (e.g. a newly assigned letterhead) are taken into account.
+        $workflow->refresh();
+
+        if (!$this->validator->isRunnable($workflow)) {
             // Contao\Message has no addWarning(); addInfo is the right notice level.
             Message::addInfo(
                 'Hinweis: Der Workflow wurde gespeichert, ist aber noch nicht ausführbar. '
-                .'Bis eine gültige Quelldatei geladen ist, sind Import, Versand und Export gesperrt.',
+                .'Bis die offenen Punkte behoben sind, sind Import, Versand und Export gesperrt.',
             );
+        }
+    }
+
+    /**
+     * Red-outlines every reference field (form page, letterhead, notifications) whose
+     * target is missing, with a notice to re-select it. Covers two cases with the same
+     * remedy: a linked element that was DELETED afterwards (the select then shows
+     * "Unbekannte Option: <id>"), and a configuration import that could not link an
+     * element on this site (id + name mismatch). Independent of the source-file checks
+     * in flagIncomplete().
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
+    public function flagReferenceIssues(DataContainer $dc): void
+    {
+        if (!$dc->id || !$this->isEditMask()) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null === $workflow) {
+            return;
+        }
+
+        $fields = $this->validator->invalidReferences($workflow);
+
+        if ([] === $fields) {
+            return;
+        }
+
+        $labels = [];
+
+        foreach ($fields as $field) {
+            $eval = &$GLOBALS['TL_DCA']['tl_workflow']['fields'][$field]['eval'];
+            $eval['tl_class'] = trim(((string) ($eval['tl_class'] ?? '')).' tw-invalid');
+            unset($eval);
+
+            $labels[] = $GLOBALS['TL_LANG']['tl_workflow'][$field][0] ?? $field;
+        }
+
+        Message::addError(sprintf(
+            'Folgende Verknüpfungen sind ungültig (das zugeordnete Element wurde gelöscht oder ist auf '
+            .'dieser Installation nicht vorhanden) und sind rot markiert: %s. Bitte die betroffenen Felder '
+            .'neu zuordnen und speichern. (Beim Import werden Verknüpfungen nur übernommen, wenn ID und '
+            .'Name des Elements übereinstimmen.)',
+            StringUtil::specialchars(implode(', ', $labels)),
+        ));
+
+        $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+    }
+
+    /**
+     * Prunes the import-issue list once the user has (re-)assigned the missing
+     * references and saved, so the red outline disappears for the fields that now
+     * resolve.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onsubmit')]
+    public function pruneImportReferenceIssues(DataContainer $dc): void
+    {
+        if (!$dc->id) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null !== $workflow) {
+            // Refresh so a reference fixed in this very save is seen as resolved and
+            // pruned (findByPk may hand back a pre-save registry copy).
+            $workflow->refresh();
+            $this->validator->pruneImportReferenceIssues($workflow);
         }
     }
 
