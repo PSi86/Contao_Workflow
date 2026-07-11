@@ -210,7 +210,7 @@ class WorkflowActionController
                 'requestToken'     => '',
                 'error'            => '',
                 'heading'          => $this->bodyComposer->resolveHeading($workflow, $data, $extra, $email),
-                'intro'            => $this->bodyComposer->resolveIntro($workflow, $data, $extra, $email),
+                'intro'            => $this->bodyComposer->resolveIntroHtml($workflow, $data, $extra, $email),
                 'email'            => $email,
                 'questions'        => $this->formView->buildQuestionViews($workflow->getQuestions(), $workflow, $entry),
                 'answers'          => [],

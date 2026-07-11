@@ -179,8 +179,16 @@ class NotificationDispatcher
         );
 
         // Same statement tokens as in the PDF, so a result mail can quote the
-        // participant's choices verbatim (##text_all## / ##text_<column>##).
-        $tokens = [...$tokens, ...$this->bodyComposer->statementTokens($workflow, $data, $vars, $email)];
+        // participant's choices verbatim (##text_all## / ##text_<column>##). The
+        // inline formatting markers ([b]/[i]/[u]) are stripped to plain text here –
+        // a mail token has no defined HTML context, so it stays cleanly readable.
+        $statements = $this->bodyComposer->statementTokens($workflow, $data, $vars, $email);
+
+        foreach ($statements as $name => $value) {
+            $statements[$name] = $this->placeholderResolver->stripFormatting($value);
+        }
+
+        $tokens = [...$tokens, ...$statements];
 
         $tokens['link'] = $link;
 

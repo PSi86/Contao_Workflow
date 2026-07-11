@@ -6,6 +6,53 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.8.0] – 2026-07-11
+
+### Hinzugefügt
+- **Contao-Insert-Tags (`{{…}}`) im Platzhalter-Assistenten – ausgelöst durch „{".**
+  Im Feld **PDF-Dateiname** (und ebenso in Überschrift, Einleitung, Dokument-Texten und
+  Dokument-Textbausteinen) blendet die Eingabe von `{` jetzt eine Auswahl gebräuchlicher
+  Contao-Insert-Tags ein – vor allem Datums-Tags wie `{{date::Y}}` (Jahr), `{{date::d.m.Y}}`
+  oder `{{date::Y-m-d}}`. Ein PDF-Dateiname wie `Verzicht_##data_name##_{{date::Y}}` ergibt
+  damit z. B. `Verzicht_Mustermann_2026.pdf`. Insert-Tags wurden in diesen Feldern schon
+  immer aufgelöst; neu ist die **Vorschlagsliste** dafür. Beliebige weitere Insert-Tags
+  lassen sich weiterhin von Hand eintippen.
+- **Textauszeichnung (fett / kursiv / unterstrichen) in Dokument-Texten und Textbausteinen.**
+  In den Feldern **Dokument-Text** (Regel), **Dokument-Text (Textbaustein)** je Formularfeld
+  und **Dokument-Text** je Option – sowie im **Einleitungstext** und in der
+  **Formularfeld-Beschreibung** – lässt sich Text jetzt mit einer schlanken, an die
+  Platzhalter-Syntax angelehnten Auszeichnung formatieren:
+  - `[b]…[/b]` → **fett**
+  - `[i]…[/i]` → *kursiv*
+  - `[u]…[/u]` → <u>unterstrichen</u>
+
+  Die Marker fügen sich neben `##Platzhalter##` und `{{Insert-Tags}}` ein und werden **erst
+  nach dem Escapen** in eine feste Whitelist (`<strong>`/`<em>`/`<u>`) umgewandelt – beliebiges
+  HTML ist damit ausgeschlossen. Wirksam:
+  - im **PDF** (echtes Fett/Kursiv/Unterstrichen),
+  - im **Formular-Hinweis „So erscheint dies im Dokument"** (zeigt die Formatierung live, wie im PDF),
+  - in **E-Mails** werden die Marker zu sauberem Text **entfernt** (kein sichtbares `[b]`).
+
+  Nur **Admin-Texte** werden formatiert; Werte aus der Quelltabelle (`##data_*##`) bleiben
+  unverändert – eine in importierten Daten enthaltene `[b]`-Zeichenfolge wird nicht als
+  Formatierung interpretiert. Die **Überschrift** unterstützt bewusst keine Auszeichnung.
+
+### Behoben
+- **`##…##`-Platzhalter im Beschreibungsfeld eines Formularfelds funktionierten nicht.**
+  Die optionale **Beschreibung** eines Formularfelds (Hinweis unter der Beschriftung im
+  Formular) gab Platzhalter wie `##data_hoehe_der_uelp##` oder `##system_year##` bisher
+  **wörtlich** aus. Sie werden jetzt – wie in Überschrift und Einleitung – aufgelöst
+  (inklusive Contao-Insert-Tags), sodass die Beschreibung z. B. den aktuellen Wert aus der
+  Quelltabelle anzeigen kann. Das Feld erhält zudem den Platzhalter-Assistenten.
+- **Währungs-/Zahlenspalten aus Excel wurden im US-Format übernommen.** Eine als
+  **„Währung"** formatierte Excel-Zelle (Wert `3000`) wurde bisher als `3,000.00 €`
+  (US-Format) importiert. Solche Zahlen-/Währungszellen werden jetzt **deutsch lokalisiert**
+  übernommen: `3.000,00 €` (Tausenderpunkt, Dezimalkomma, Währungssymbol aus der Zelle).
+  Nachkommastellen und Tausendertrennung folgen dem Zellformat; das Symbol (`€`, `$`, …)
+  wird aus dem Zahlenformat übernommen. Zellen im Format **„Standard"** bleiben unverändert
+  (`3000` bleibt `3000`); Datums-, Prozent-, Bruch- und wissenschaftliche Formate sind nicht
+  betroffen.
+
 ## [2.7.0] – 2026-07-08
 
 ### Hinzugefügt

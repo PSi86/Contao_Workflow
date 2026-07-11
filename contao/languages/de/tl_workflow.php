@@ -22,7 +22,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Unterschrift benötig
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['Dokument-Inhalt', 'Einfacher Brief: Die Dokument-Texte werden über die Regeln gepflegt (je nach Antwort). Spezielle Vorlage: eine Datei, die alles selbst regelt – dann gibt es keine Dokument-Texte.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'] = ['letter' => 'Einfacher Brief (Dokument-Texte über Regeln)', 'template' => 'Spezielle Vorlage (Datei)'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfTitle']        = ['Überschrift', 'Überschrift, die im Formular und im Dokument angezeigt wird. Platzhalter (##data_vorname##, ##system_year##) und {{Insert-Tags}} erlaubt.'];
-$GLOBALS['TL_LANG']['tl_workflow']['introText']       = ['Einleitungstext', 'Optionaler Text, der im Formular und im Dokument nach der Überschrift angezeigt wird. Platzhalter und {{Insert-Tags}} erlaubt.'];
+$GLOBALS['TL_LANG']['tl_workflow']['introText']       = ['Einleitungstext', 'Optionaler Text, der im Formular und im Dokument nach der Überschrift angezeigt wird. Platzhalter und {{Insert-Tags}} erlaubt. Formatierung: [b]fett[/b], [i]kursiv[/i], [u]unterstrichen[/u].'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body-Vorlage', 'Body-Vorlage (Datei „pdf_body_*"). Die Vorlage enthält ihre eigene Logik – Dokument-Texte entfallen.'];
 $GLOBALS['TL_LANG']['tl_workflow']['master']        = ['Briefpapier', 'Briefpapier (Kopf/Fuß, Logo, Variablen). Wird unter „Briefpapier" gepflegt.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureDate'] = ['Datum für Unterschriftszeile', 'Datenfeld, dessen Wert als Datum in der Unterschriftszeile des PDFs gedruckt wird (z. B. ein „Aktuelle Zeit"-Antwortfeld). Leer = kein Datum.'];

@@ -29,6 +29,25 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
  */
 class PlaceholderHelperListener
 {
+    /**
+     * Curated Contao insert tags offered in the placeholder fields (typing "{"
+     * surfaces them). Insert tags already resolve in every placeholder field via
+     * PlaceholderResolver::fill()/renderPdfText(); this list makes the common,
+     * deterministic ones (dates, useful in a PDF file name) discoverable. Any other
+     * insert tag can still be typed manually. name = the tag without the "{{ }}".
+     *
+     * @var array<int, array{name: string, label: string}>
+     */
+    private const INSERT_TAGS = [
+        ['name' => 'date::d.m.Y', 'label' => 'Datum (TT.MM.JJJJ)'],
+        ['name' => 'date::Y', 'label' => 'Jahr (JJJJ)'],
+        ['name' => 'date::m', 'label' => 'Monat (MM)'],
+        ['name' => 'date::d', 'label' => 'Tag (TT)'],
+        ['name' => 'date::Y-m-d', 'label' => 'Datum (ISO, JJJJ-MM-TT)'],
+        ['name' => 'date::d.m.Y H:i', 'label' => 'Datum und Uhrzeit'],
+        ['name' => 'date', 'label' => 'Datum (Standardformat)'],
+    ];
+
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly PlaceholderResolver $placeholders,
@@ -55,8 +74,9 @@ class PlaceholderHelperListener
     public function enableForQuestion(DataContainer $dc): void
     {
         // Statements may use ##answer## plus the regular tokens, but no ##text_*##
-        // (statements do not nest).
-        $this->applyTo('tl_workflow_question', ['pdfStatement'], $this->resolveQuestionWorkflow($dc), false);
+        // (statements do not nest); the description is a form-only hint that resolves
+        // the same tokens (see DocumentBodyComposer::resolveFormText()).
+        $this->applyTo('tl_workflow_question', ['pdfStatement', 'description'], $this->resolveQuestionWorkflow($dc), false);
     }
 
     /**
@@ -72,6 +92,9 @@ class PlaceholderHelperListener
         }
 
         $json = json_encode($this->buildTokens($workflow, $withStatements), JSON_THROW_ON_ERROR);
+        // Contao insert tags ("{{…}}", triggered by typing "{") – offered in every
+        // placeholder field, so e.g. a PDF file name can use {{date::Y}}.
+        $insertTags = json_encode(self::INSERT_TAGS, JSON_THROW_ON_ERROR);
 
         foreach ($fields as $field) {
             if (!isset($GLOBALS['TL_DCA'][$table]['fields'][$field])) {
@@ -80,6 +103,7 @@ class PlaceholderHelperListener
 
             $eval = &$GLOBALS['TL_DCA'][$table]['fields'][$field]['eval'];
             $eval['data-wf-autosuggest'] = $json;
+            $eval['data-wf-insert-tags'] = $insertTags;
             // Keep browser/password-manager autocompletion from covering the helper.
             $eval['autocomplete'] = false;
             $eval['data-1p-ignore'] = 'true';

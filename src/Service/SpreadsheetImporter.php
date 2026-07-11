@@ -170,7 +170,86 @@ class SpreadsheetImporter
             return $date->format($hasTime ? 'd.m.Y H:i' : 'd.m.Y');
         }
 
+        // A numeric cell with an explicit currency/number format ("Währung", "Zahl").
+        // Excel stores the format code with US separators, so getFormattedValue() would
+        // print "3,000.00 €"; render it with German conventions ("3.000,00 €") instead.
+        if (is_numeric($raw) && !Date::isDateTime($cell)) {
+            $localized = $this->localizeNumber((float) $raw, $cell);
+
+            if (null !== $localized) {
+                return $localized;
+            }
+        }
+
         return trim((string) $cell->getFormattedValue());
+    }
+
+    /**
+     * German representation of a numeric cell that carries an explicit currency/number
+     * format. PhpSpreadsheet renders the file's format code literally (US-style
+     * "3,000.00 €"); this rebuilds the value with German separators (grouping ".",
+     * decimal ",") while keeping the cell's own settings – number of decimals, whether
+     * the format groups thousands and the currency symbol.
+     *
+     * Returns null for values that must keep PhpSpreadsheet's formatted output: the
+     * "General" format (a plain number such as "3000" stays "3000"), and percentage,
+     * scientific or fraction formats we deliberately do not touch.
+     */
+    private function localizeNumber(float $value, Cell $cell): ?string
+    {
+        $mask = (string) $cell->getStyle()->getNumberFormat()->getFormatCode();
+
+        // No explicit format = a plain number; leave "3000" as "3000".
+        if ('' === $mask || 'General' === strtoupper($mask)) {
+            return null;
+        }
+
+        // Percent (scales by 100), scientific ("0.00E+00") and fraction formats need
+        // their own handling – keep PhpSpreadsheet's formatted value for them. The
+        // scientific check looks for "E+"/"E-" so it does not trip on a letter in a
+        // currency mask (e.g. the locale marker "[$€-de-DE]").
+        if (str_contains($mask, '%') || preg_match('/E[+-]/', $mask) || str_contains($mask, '?/')) {
+            return null;
+        }
+
+        // The positive section (before the first ";") defines decimals and grouping.
+        $positive = explode(';', $mask)[0];
+
+        $decimals = 0;
+        if (preg_match('/\.([0#]+)/', $positive, $m)) {
+            $decimals = \strlen($m[1]);
+        }
+
+        // Group thousands only when the mask does (a "," inside the integer part).
+        $integerPart = explode('.', $positive)[0];
+        $thousandsSep = str_contains($integerPart, ',') ? '.' : '';
+
+        $number = number_format($value, $decimals, ',', $thousandsSep);
+        $symbol = $this->currencySymbol($mask);
+
+        return '' !== $symbol ? $number.' '.$symbol : $number;
+    }
+
+    /**
+     * The currency symbol carried by an Excel number-format code, or an empty string
+     * for a plain number format. Handles a locale currency marker ("[$€-407]"), a bare
+     * currency sign anywhere in the mask ("€", "$", …) and a quoted ISO code ("EUR").
+     */
+    private function currencySymbol(string $mask): string
+    {
+        if (preg_match('/\[\$([^\]\-]+)/u', $mask, $m)) {
+            return trim($m[1]);
+        }
+
+        if (preg_match('/[€$£¥₣]/u', $mask, $m)) {
+            return $m[0];
+        }
+
+        if (preg_match('/"\s*([A-Za-z]{3})\s*"/', $mask, $m)) {
+            return strtoupper($m[1]);
+        }
+
+        return '';
     }
 
     /**

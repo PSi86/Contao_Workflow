@@ -1,11 +1,14 @@
 /* Placeholder helper for the workflow settings: a small autocomplete that lists
    the available ##tokens## for the field and filters them as you type. The token
-   list is provided per field as JSON in the data-wf-autosuggest attribute.
+   list is provided per field as JSON in the data-wf-autosuggest attribute; an
+   optional data-wf-insert-tags attribute adds Contao insert tags ("{{…}}"),
+   triggered by typing "{".
 
-   Unlike a whitespace-based trigger, the helper recognises a ##…## token fragment
-   directly at the caret even when it is glued to surrounding text (e.g. the PDF
-   file-name pattern "Verzicht_##data_name##"), so it also pops up while editing an
-   existing placeholder – not only when starting a fresh one. */
+   Unlike a whitespace-based trigger, the helper recognises a ##…## token (or a
+   {{…}} insert tag) fragment directly at the caret even when it is glued to
+   surrounding text (e.g. the PDF file-name pattern "Verzicht_##data_name##"), so it
+   also pops up while editing an existing placeholder – not only when starting a
+   fresh one. */
 (function () {
     'use strict';
 
@@ -19,12 +22,19 @@
     var OPEN = /#{1,2}[A-Za-z0-9_]*#{0,2}$/;
     // Remainder of the token AFTER the caret: name characters up to the closing "##".
     var TAIL = /^[A-Za-z0-9_]*##/;
+    // Insert-tag fragment before the caret: "{" or "{{" followed by tag characters
+    // (anything but a brace). Anchored at the end of the text.
+    var OPEN_TAG = /\{\{?[^{}]*$/;
+    // Remainder of an insert tag AFTER the caret: tag characters up to the "}}".
+    var TAIL_TAG = /^[^{}]*\}\}/;
 
-    function Autosuggest(el, tokens) {
+    function Autosuggest(el, tokens, insertTags) {
         this.el = el;
-        this.tokens = tokens.map(function (t) {
+        this.tokens = (tokens || []).map(function (t) {
             return { name: '##' + t.name + '##', label: t.label || '' };
-        });
+        }).concat((insertTags || []).map(function (t) {
+            return { name: '{{' + t.name + '}}', label: t.label || '' };
+        }));
         this.names = this.tokens.map(function (t) { return t.name; });
         this.items = [];
         this.visible = [];     // token indexes currently shown
@@ -94,12 +104,30 @@
         });
     };
 
-    // Returns the token fragment around the caret, or null if none.
+    // Returns the token/insert-tag fragment around the caret, or null if none.
     Autosuggest.prototype.fragment = function () {
         var pos = this.el.selectionStart;
         if (pos === null || pos === undefined) { return null; }
 
-        var openMatch = this.el.value.slice(0, pos).match(OPEN);
+        var before = this.el.value.slice(0, pos);
+        var after = this.el.value.slice(pos);
+
+        // Contao insert-tag fragment ("{{ … ") at the caret. Its filter starts with
+        // "{", so only the {{…}} entries match it (## tokens can never).
+        var tagMatch = before.match(OPEN_TAG);
+        if (tagMatch) {
+            var openTag = tagMatch[0];
+            var closeTag = '';
+            // Inside an insert tag, absorb the "}}" (with any tag characters up to it)
+            // so a mid-tag edit replaces the whole tag; adjacent tags are not swallowed
+            // (TAIL_TAG stops at the first "}}").
+            var tailTag = after.match(TAIL_TAG);
+            if (tailTag) { closeTag = tailTag[0]; }
+
+            return { filter: openTag, start: pos - openTag.length, end: pos + closeTag.length };
+        }
+
+        var openMatch = before.match(OPEN);
         if (!openMatch) { return null; }
 
         var open = openMatch[0];
@@ -109,7 +137,7 @@
         // token, while never swallowing the "_" separator between two glued tokens.
         var close = '';
         if (!/#$/.test(open)) {
-            var tail = this.el.value.slice(pos).match(TAIL);
+            var tail = after.match(TAIL);
             if (tail && this.names.indexOf(open + tail[0]) !== -1) {
                 close = tail[0];
             }
@@ -254,10 +282,19 @@
                 return;
             }
 
-            if (!tokens || !tokens.length) { return; }
+            var insertTags = [];
+            if (el.hasAttribute('data-wf-insert-tags')) {
+                try {
+                    insertTags = JSON.parse(el.getAttribute('data-wf-insert-tags')) || [];
+                } catch (e) {
+                    insertTags = [];
+                }
+            }
+
+            if ((!tokens || !tokens.length) && !insertTags.length) { return; }
 
             el.dataset.wfPhReady = '1';
-            new Autosuggest(el, tokens);
+            new Autosuggest(el, tokens || [], insertTags);
         });
     }
 

@@ -44,12 +44,15 @@ class DocumentBodyComposer
         if ('template' === (string) $workflow->pdfBodyType && '' !== (string) $workflow->pdfBodyTemplate) {
             /** @var FrontendTemplate $bodyTpl */
             $bodyTpl = $this->framework->createInstance(FrontendTemplate::class, [(string) $workflow->pdfBodyTemplate]);
+            // The body template controls its own escaping, so hand it plain text: the
+            // inline formatting markers ([b]/[i]/[u]) are stripped (a custom template
+            // formats via its own HTML). Only letter mode renders the markers.
             $bodyTpl->setData([
                 'data'       => $data,
                 'extra'      => $extra,
-                'statements' => $statements,
+                'statements' => array_map(fn (string $s): string => $this->placeholderResolver->stripFormatting($s), $statements),
                 'heading'    => $this->resolveHeading($workflow, $data, $extra, $email),
-                'intro'      => $this->resolveIntro($workflow, $data, $extra, $email),
+                'intro'      => $this->placeholderResolver->stripFormatting($this->resolveIntro($workflow, $data, $extra, $email)),
             ]);
 
             return $bodyTpl->parse();
@@ -65,8 +68,11 @@ class DocumentBodyComposer
         $esc = fn (string $value): string => $this->esc($value);
         $title = (string) $workflow->title;
 
+        // Heading stays plain (no formatting markers). Intro and the rule body carry
+        // the inline formatting ([b]/[i]/[u]); renderPdfText() applies it to the body
+        // and the Textbaustein tokens, formatBlock() applies it to the intro.
         $renderedTitle = $esc($this->resolveHeading($workflow, $data, $extra, $email));
-        $renderedIntro = nl2br($esc($this->resolveIntro($workflow, $data, $extra, $email)));
+        $renderedIntro = $this->formatBlock($this->resolveIntro($workflow, $data, $extra, $email));
         $renderedBody = nl2br($this->placeholderResolver->renderPdfText($body, $data, $extra, $email, $title, $esc, $statements));
 
         return ('' !== $renderedTitle ? '<h1>'.$renderedTitle.'</h1>' : '')
@@ -97,6 +103,58 @@ class DocumentBodyComposer
     public function resolveIntro(WorkflowModel $workflow, array $data, array $extra, string $email): string
     {
         return trim($this->placeholderResolver->fill((string) $workflow->introText, $data, $extra, $email, (string) $workflow->title));
+    }
+
+    /**
+     * Resolves a free text shown only in the front-end form (a form-field's
+     * description) and returns it as safe HTML (a block: escaped, inline formatting
+     * applied, newlines to <br>). The regular ##data_*##/##letterhead_*##/##system_*##
+     * tokens and Contao insert tags are resolved just like in the heading/intro;
+     * ##answer## and ##text_*## stay literal (a description precedes the answer and
+     * does not nest statements).
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function resolveFormText(string $text, WorkflowModel $workflow, array $data, array $extra, string $email): string
+    {
+        if ('' === trim($text)) {
+            return '';
+        }
+
+        return $this->formatBlock(trim($this->placeholderResolver->fill($text, $data, $extra, $email, (string) $workflow->title)));
+    }
+
+    /**
+     * The intro paragraph as safe HTML for the front-end form (same rendering as the
+     * PDF: escaped, inline formatting applied, newlines to <br>). Used by the form
+     * controller and the back-end form preview so both mirror the document.
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function resolveIntroHtml(WorkflowModel $workflow, array $data, array $extra, string $email): string
+    {
+        return $this->formatBlock($this->resolveIntro($workflow, $data, $extra, $email));
+    }
+
+    /**
+     * Turns already-resolved text (tokens replaced, raw) into safe INLINE HTML:
+     * html-escaped, then [b]/[i]/[u] converted to <strong>/<em>/<u>. For statement
+     * snippets that stay on one line (the ##answer## template, option statements).
+     */
+    public function formatInline(string $resolvedText): string
+    {
+        return $this->placeholderResolver->applyFormatting($this->esc($resolvedText));
+    }
+
+    /**
+     * Like formatInline() but for a text block: additionally converts newlines to
+     * <br> (intro, form-field description, "Erklärung" paragraph).
+     */
+    public function formatBlock(string $resolvedText): string
+    {
+        return nl2br($this->formatInline($resolvedText));
     }
 
     /**

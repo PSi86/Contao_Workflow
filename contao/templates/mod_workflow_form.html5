@@ -24,7 +24,8 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
   <?php endif; ?>
 
   <?php if ($this->intro): ?>
-    <p class="tw-intro"><?= nl2br($esc($this->intro)) ?></p>
+    <?php // Safe HTML (escaped + [b]/[i]/[u] formatting + <br>), built by DocumentBodyComposer. ?>
+    <p class="tw-intro"><?= $this->intro ?></p>
   <?php endif; ?>
 
   <?php if ($this->error): ?>
@@ -51,7 +52,8 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
         <?php // "Erklärung": static text block (no input), shown as a paragraph. ?>
         <div class="tw-field tw-field--explanation">
           <?php if ('' !== (string) $q['text']): ?>
-            <div class="tw-explanation-text"><?= nl2br($esc($q['text'])) ?></div>
+            <?php // Safe HTML (escaped + [b]/[i]/[u] formatting + <br>), built server-side. ?>
+            <div class="tw-explanation-text"><?= $q['text'] ?></div>
           <?php endif; ?>
         </div>
         <?php continue; ?>
@@ -82,9 +84,10 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
       <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
         <<?= $labelTag ?><?= $forAttr ?>><?= $esc($q['label']).$star ?></<?= $labelTag ?>>
 
-        <?php // Optional description, shown in the form only (never in the document). ?>
+        <?php // Optional description, shown in the form only (never in the document).
+              // Safe HTML (escaped + [b]/[i]/[u] formatting + <br>), built server-side. ?>
         <?php if ('' !== (string) ($q['description'] ?? '')): ?>
-          <p class="tw-field-desc"><?= nl2br($esc($q['description'])) ?></p>
+          <p class="tw-field-desc"><?= $q['description'] ?></p>
         <?php endif; ?>
 
         <?php if ('currentTime' === $q['type']): ?>
@@ -122,7 +125,9 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
                 // editable fields the JS reveals/updates the hint live. ?>
           <p class="tw-statement" data-statement-hint<?= $isStatic && '' !== $q['statement'] ? '' : ' hidden' ?>>
             <span class="tw-statement-intro">So erscheint dies im Dokument:</span>
-            <span class="tw-statement-text" data-statement-text><?= $esc($q['statement']) ?></span>
+            <?php // Safe HTML: server-rendered static statement (formatInline); the live
+                  // hint is filled by workflow-form.js via innerHTML. ?>
+            <span class="tw-statement-text" data-statement-text><?= $q['statement'] ?></span>
           </p>
         <?php endif; ?>
       </<?= $tag ?>>
