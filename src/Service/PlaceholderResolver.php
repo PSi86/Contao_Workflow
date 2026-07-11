@@ -38,6 +38,20 @@ class PlaceholderResolver
         'ß' => 'ss',
     ];
 
+    /**
+     * Inline formatting markers (BBCode style) supported in the document texts and
+     * Textbausteine, mapped to the whitelisted HTML tags they produce. The same
+     * marker/tag idea as ##tokens##/{{insert-tags}}: a delimited marker that is
+     * transformed – but square brackets survive htmlspecialchars unchanged, so they
+     * can be converted AFTER escaping (only these exact markers become real tags,
+     * everything else the user typed stays escaped).
+     */
+    private const FORMATTING_TAGS = [
+        'b' => 'strong',
+        'i' => 'em',
+        'u' => 'u',
+    ];
+
     public function __construct(private readonly InsertTagParser $insertTagParser)
     {
     }
@@ -151,11 +165,13 @@ class PlaceholderResolver
     {
         // Escape the admin template first, then resolve Contao insert tags ({{...}} –
         // their syntax survives htmlspecialchars) so an insert tag's output is not
-        // re-escaped, then substitute the ##tokens## with their (escaped) values. User
-        // data only enters through the token map and is therefore never parsed as an
-        // insert tag.
+        // re-escaped, then apply the inline formatting markers ([b]/[i]/[u], which also
+        // survive escaping) and finally substitute the ##tokens## with their (escaped,
+        // and for Textbausteine also formatted) values. User data only enters through
+        // the token map and is therefore never parsed as an insert tag; only the admin
+        // template and the Textbaustein tokens carry formatting, never source columns.
         return strtr(
-            $this->parseInsertTags($esc($text)),
+            $this->applyFormatting($this->parseInsertTags($esc($text))),
             $this->pdfTokenMap($data, $vars, $email, $workflowTitle, $esc, $extraTokens),
         );
     }
@@ -191,6 +207,43 @@ class PlaceholderResolver
         return $this->insertTagParser->replaceInline($text);
     }
 
+    /**
+     * Converts the inline formatting markers ([b]/[i]/[u], case-insensitive) of an
+     * ALREADY html-escaped string into the whitelisted tags <strong>/<em>/<u>.
+     * Because the text is escaped first, only these exact markers become real tags –
+     * any other "<...>" the user typed stays escaped (same safety model as the
+     * insert-tag pass). Use this on admin-authored HTML output only.
+     */
+    public function applyFormatting(string $escaped): string
+    {
+        if (!str_contains($escaped, '[')) {
+            return $escaped;
+        }
+
+        return preg_replace_callback(
+            '#\[(/?)([biu])\]#i',
+            static function (array $m): string {
+                $tag = self::FORMATTING_TAGS[strtolower($m[2])];
+
+                return '<'.$m[1].$tag.'>';
+            },
+            $escaped,
+        ) ?? $escaped;
+    }
+
+    /**
+     * Removes the inline formatting markers for plain-text contexts (mails, template
+     * mode), leaving the readable text without stray "[b]" markup.
+     */
+    public function stripFormatting(string $text): string
+    {
+        if (!str_contains($text, '[')) {
+            return $text;
+        }
+
+        return preg_replace('#\[/?[biu]\]#i', '', $text) ?? $text;
+    }
+
     public function transliterate(string $value): string
     {
         return strtr($value, self::TRANSLITERATION);
@@ -219,12 +272,18 @@ class PlaceholderResolver
     {
         $map = [];
 
+        // Source columns / letterhead variables are plain data: escaped only, never
+        // formatted (a "[b]" that happens to be in imported data stays literal).
         foreach ($this->canonicalTokens($data, $vars, $email, $workflowTitle) as $name => $value) {
             $map['##'.$name.'##'] = $esc($value);
         }
 
+        // Extra tokens are the admin-authored Textbausteine (##text_*##): escaped and
+        // then run through the inline formatting so [b]/[i]/[u] become real tags. In
+        // the raw context (fill()) no extra tokens are passed, so this only affects the
+        // HTML render (pdfTokenMap/renderPdfText).
         foreach ($extraTokens as $name => $value) {
-            $map['##'.$name.'##'] = $esc((string) $value);
+            $map['##'.$name.'##'] = $this->applyFormatting($esc((string) $value));
         }
 
         return $map;

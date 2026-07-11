@@ -22,7 +22,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['requireSignature'] = ['Signature required', 
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyType']     = ['Document content', 'Simple letter: the body texts are maintained via the rules (per answer). Specific template: a file that handles everything itself – then there are no document texts.'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'] = ['letter' => 'Simple letter (document texts via rules)', 'template' => 'Specific template (file)'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfTitle']        = ['Heading', 'Heading shown in the form and in the document. Placeholders (##data_vorname##, ##system_year##) and {{insert tags}} allowed.'];
-$GLOBALS['TL_LANG']['tl_workflow']['introText']       = ['Intro text', 'Optional text shown after the heading in the form and in the document. Placeholders and {{insert tags}} allowed.'];
+$GLOBALS['TL_LANG']['tl_workflow']['introText']       = ['Intro text', 'Optional text shown after the heading in the form and in the document. Placeholders and {{insert tags}} allowed. Formatting: [b]bold[/b], [i]italic[/i], [u]underline[/u].'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTemplate'] = ['Body template', 'Body template (file "pdf_body_*"). The template contains its own logic – document texts do not apply.'];
 $GLOBALS['TL_LANG']['tl_workflow']['master']        = ['Stationery', 'Stationery (header/footer, logo, variables). Maintained under "Stationery".'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureDate'] = ['Signature date field', 'Data field whose value is printed as the date in the PDF signature line (e.g. a "Current time" answer field). Empty = no date.'];

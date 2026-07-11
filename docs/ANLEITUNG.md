@@ -148,7 +148,9 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 6. **Inhalt (Formular & Dokument):** die **Überschrift** und der optionale
    **Einleitungstext** erscheinen **identisch im Formular und im PDF** (oben, vor den
    Feldern bzw. dem Dokument-Text). Platzhalter wie `##data_vorname##` oder `##letterhead_verein##`
-   sind erlaubt. So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
+   und `{{Insert-Tags}}` sind erlaubt; der Einleitungstext unterstützt zusätzlich die
+   **Textauszeichnung** `[b]fett[/b]` / `[i]kursiv[/i]` / `[u]unterstrichen[/u]` (die Überschrift nicht).
+   So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
 7. **Unterschrift benötigt:** ankreuzen, wenn der Trainer im Formular unterschreiben
    muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option erscheinen
    **darunter** zusätzlich **Datum** und **Ort für die Unterschriftszeile** – je ein **Datenfeld** (z. B. ein
@@ -162,9 +164,10 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
     - **Briefkopf-Vorlage** (Master) auswählen – sie bringt **Logo + Variablen + Layout**
       mit (vorausgewählt, falls nur einer existiert). Logo/Variablen werden **nicht**
       hier, sondern unter „Briefkopf-Vorlagen" gepflegt (Abschnitt 2b).
-    - **PDF-Dateiname:** Muster mit Platzhaltern (z. B. `Verzicht_##data_name##_##data_vorname##`);
-      wird zu einem sicheren Dateinamen bereinigt, bei Namensgleichheit folgt ein kurzer Token.
-      Leer = Eintrags-Token.
+    - **PDF-Dateiname:** Muster mit Platzhaltern und `{{Insert-Tags}}` (z. B.
+      `Verzicht_##data_name##_##data_vorname##` oder `Verzicht_##data_name##_{{date::Y}}`); die
+      Eingabe von `##` bzw. `{` blendet eine Vorschlagsliste ein. Wird zu einem sicheren
+      Dateinamen bereinigt, bei Namensgleichheit folgt ein kurzer Token. Leer = Eintrags-Token.
     - **Dokument-Inhalt** wählen:
       - **Einfacher Brief** (online, ohne Datei): die **Dokument-Texte** stammen aus dem gleichnamigen Abschnitt
         **Dokument-Texte** (Abschnitt 3 b‑2) — so können sie je nach Antwort variieren.
@@ -177,7 +180,10 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         `##text_<speicherfeld>##` / `##text_all##` für die **Dokument-Texte der
         Formularfelder** (Abschnitt 3 b‑3), dazu `##email##`. Zusätzlich funktionieren in allen Textfeldern des Workflows
         (Überschrift, Einleitung, Dokument-Text/Textbaustein, Dateiname) auch
-        **Contao-Insert-Tags** `{{…}}` (z. B. `{{date::d.m.Y}}`).
+        **Contao-Insert-Tags** `{{…}}` (z. B. `{{date::d.m.Y}}`). In den Dokument-Texten
+        (Regel, je Feld, je Option), im Einleitungstext und in der Feld-Beschreibung
+        formatieren zudem `[b]fett[/b]`, `[i]kursiv[/i]` und `[u]unterstrichen[/u]` den Text
+        (im PDF und in der Formular-Vorschau; in E-Mails werden die Marker entfernt).
       - **Spezielle Vorlage** (detailliertes Layout): **Body-Vorlage** aus der **Auswahlliste**
         wählen (alle `pdf_body_*`-Vorlagen erscheinen automatisch). Die Vorlage **enthält ihre
         eigene Logik** → **die Dokument-Texte entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
@@ -194,7 +200,8 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 übernommen und gilt für Formular **und** `##text_all##` im PDF). Pro Feld:
 - **Überschrift** (die Frage im Formular; die Feld-Überschrift, vormals „Beschriftung"),
 - **Beschreibung** (optional): ein **nur im Formular** angezeigter Hinweis unterhalb der
-  Überschrift (erscheint nur, wenn ausgefüllt); im **Dokument** taucht er **nie** auf,
+  Überschrift (erscheint nur, wenn ausgefüllt); im **Dokument** taucht er **nie** auf –
+  Platzhalter, `{{Insert-Tags}}` und die Textauszeichnung `[b]`/`[i]`/`[u]` werden darin aufgelöst,
 - **Typ:** Freitext (ein-/mehrzeilig), **Zahl**, Datum, Dropdown, Radio-Buttons,
   Checkboxen (Mehrfachauswahl), **Aktuelle Zeit** oder **Erklärung** (statischer Text ohne Eingabefeld),
 - **Speicherfeld:** die **Quellspalte**, in die der Wert geschrieben wird –
@@ -222,6 +229,8 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
   - **Auswahl-Typen** (Dropdown, Radio, Checkboxen) pflegen den Dokument-Text
     **je Option** (dritte Spalte der Optionen-Tabelle). Leer = der sichtbare
     **Options-Text gilt wörtlich** als Dokument-Text.
+  - **Textauszeichnung:** `[b]fett[/b]`, `[i]kursiv[/i]` und `[u]unterstrichen[/u]` formatieren
+    den Dokument-Text – im PDF und in der Live-Vorschau im Formular.
 - **Textbaustein im Formular anzeigen** (Standard: **an**): schaltet die Live-Vorschau
   „So erscheint dies im Dokument" des Dokument-Texts im Formular ein oder aus.
 - **Erklärung**: ein **statischer Text-Absatz** – **kein** Eingabefeld und **ohne**

@@ -80,7 +80,7 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $data = $entry->getData();
         $extra = $workflow->getMasterVars();
         $template->set('heading', $this->bodyComposer->resolveHeading($workflow, $data, $extra, (string) $entry->email));
-        $template->set('intro', $this->bodyComposer->resolveIntro($workflow, $data, $extra, (string) $entry->email));
+        $template->set('intro', $this->bodyComposer->resolveIntroHtml($workflow, $data, $extra, (string) $entry->email));
 
         if ((int) $entry->status >= WorkflowStatus::STATUS_RESPONDED) {
             $template->set('state', 'done');

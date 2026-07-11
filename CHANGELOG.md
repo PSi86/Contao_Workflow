@@ -17,6 +17,25 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   damit z. B. `Verzicht_Mustermann_2026.pdf`. Insert-Tags wurden in diesen Feldern schon
   immer aufgelöst; neu ist die **Vorschlagsliste** dafür. Beliebige weitere Insert-Tags
   lassen sich weiterhin von Hand eintippen.
+- **Textauszeichnung (fett / kursiv / unterstrichen) in Dokument-Texten und Textbausteinen.**
+  In den Feldern **Dokument-Text** (Regel), **Dokument-Text (Textbaustein)** je Formularfeld
+  und **Dokument-Text** je Option – sowie im **Einleitungstext** und in der
+  **Formularfeld-Beschreibung** – lässt sich Text jetzt mit einer schlanken, an die
+  Platzhalter-Syntax angelehnten Auszeichnung formatieren:
+  - `[b]…[/b]` → **fett**
+  - `[i]…[/i]` → *kursiv*
+  - `[u]…[/u]` → <u>unterstrichen</u>
+
+  Die Marker fügen sich neben `##Platzhalter##` und `{{Insert-Tags}}` ein und werden **erst
+  nach dem Escapen** in eine feste Whitelist (`<strong>`/`<em>`/`<u>`) umgewandelt – beliebiges
+  HTML ist damit ausgeschlossen. Wirksam:
+  - im **PDF** (echtes Fett/Kursiv/Unterstrichen),
+  - im **Formular-Hinweis „So erscheint dies im Dokument"** (zeigt die Formatierung live, wie im PDF),
+  - in **E-Mails** werden die Marker zu sauberem Text **entfernt** (kein sichtbares `[b]`).
+
+  Nur **Admin-Texte** werden formatiert; Werte aus der Quelltabelle (`##data_*##`) bleiben
+  unverändert – eine in importierten Daten enthaltene `[b]`-Zeichenfolge wird nicht als
+  Formatierung interpretiert. Die **Überschrift** unterstützt bewusst keine Auszeichnung.
 
 ### Behoben
 - **`##…##`-Platzhalter im Beschreibungsfeld eines Formularfelds funktionierten nicht.**

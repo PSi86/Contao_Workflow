@@ -48,7 +48,7 @@ class WorkflowFormView
                     'type'        => 'explanation',
                     'label'       => (string) $question->label,
                     'description' => $this->bodyComposer->resolveFormText($question->getDescription(), $workflow, $data, $extra, $email),
-                    'text'        => $this->bodyComposer->renderStatement($question, '', $data, $extra, $email, (string) $workflow->title),
+                    'text'        => $this->bodyComposer->formatBlock($this->bodyComposer->renderStatement($question, '', $data, $extra, $email, (string) $workflow->title)),
                 ];
 
                 continue;
@@ -63,7 +63,9 @@ class WorkflowFormView
             $options = [];
 
             foreach ($question->getOptions() as $option) {
-                $option['statement'] = $parts['options'][$option['value']] ?? $option['label'];
+                // The option's document text ("Textbaustein") as safe HTML (data-statement,
+                // rendered by the live hint); the visible label stays plain (template escapes it).
+                $option['statement'] = $this->bodyComposer->formatInline($parts['options'][$option['value']] ?? $option['label']);
                 $options[] = $option;
             }
 
@@ -90,9 +92,11 @@ class WorkflowFormView
                 // is set to preview it in the form – without an explicit statement the
                 // visible label/option text counts verbatim anyway.
                 'hasStatement'      => $question->hasExplicitStatement() && $question->showsStatementInForm(),
-                'statementTemplate' => $parts['template'],
+                // Safe HTML: the ##answer## template (live-substituted by the browser) and
+                // the server-rendered static statement carry inline formatting ([b]/[i]/[u]).
+                'statementTemplate' => $this->bodyComposer->formatInline($parts['template']),
                 'statement'         => '' !== $staticValue
-                    ? $this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title)
+                    ? $this->bodyComposer->formatInline($this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title))
                     : '',
             ];
         }

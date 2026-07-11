@@ -83,9 +83,13 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    Die *gesamte* Konfiguration liegt auf einer Seite, in Abschnitte gegliedert
    (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
    - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
-   - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte
+   - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte. Beim Import werden
+     Datums- sowie Währungs-/Zahlenzellen **deutsch lokalisiert** übernommen (z. B. `17.12.1955`,
+     eine „Währung“-Zelle `3000` → `3.000,00 €`); Zellen im Format „Standard“ bleiben unverändert
+     (`3000` bleibt `3000`).
    - **Inhalt (Formular & Dokument):** **Überschrift** und optionaler **Einleitungstext** –
-     erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt).
+     erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt;
+     der Einleitungstext zusätzlich mit **Textauszeichnung** `[b]`/`[i]`/`[u]`, die Überschrift ohne).
    - **Formular & Formularfelder:** *Unterschrift benötigt* (mit Auswahl der
      Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
      eingebetteten **Formularfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
@@ -93,7 +97,8 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      **Aktuelle Zeit**, **Erklärung**), Speicherfeld (Quellspalte), *Pflichtfeld*,
      *Mit Wert aus den Daten vorbelegen* (editierbar vorausgefüllt) und *Schreibgeschützt*
      (reines Anzeige-Feld). Optional eine **Beschreibung** (erscheint **nur im Formular**
-     unter der Überschrift, nie im Dokument). Dazu der **Dokument-Text (Textbaustein)**:
+     unter der Überschrift, nie im Dokument; Platzhalter, `{{Insert-Tags}}` und **Textauszeichnung**
+     `[b]`/`[i]`/`[u]` werden aufgelöst). Dazu der **Dokument-Text (Textbaustein)**:
      bei Wert-Typen ein Satz mit `##answer##`, bei Optionstypen je Option (Wert +
      Options-Text + Dokument-Text; leer = Options-Text gilt wörtlich). Das Formular zeigt
      den Dokument-Text live unter dem Feld („So erscheint dies im Dokument"); mit
@@ -103,8 +108,10 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      **„Erklärung"** ist ein reiner Textabsatz (kein Eingabefeld): der Text steht im
      *Dokument-Text* und erscheint als Fließtext im Formular **und** im Dokument.
      Ja/Nein = Radio mit zwei Optionen (z. B. „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
-   - **Dokument-Einstellungen:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern,
-     z. B. `Verzicht_##data_name##_##data_vorname##`) + **Dokument-Inhalt**. **Einfacher Brief**
+   - **Dokument-Einstellungen:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern und
+     `{{Insert-Tags}}`, z. B. `Verzicht_##data_name##_##data_vorname##` oder
+     `Verzicht_##data_name##_{{date::Y}}`; die Eingabe von `##` bzw. `{` blendet eine
+     Vorschlagsliste ein) + **Dokument-Inhalt**. **Einfacher Brief**
      → die Texte stehen in den **Dokument-Texten**. **Spezielle Vorlage** → eine Datei
      `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** Dokument-Texte).
    - **Dokument-Texte** (nur bei *Einfacher Brief*): die Texte als Liste. Jede Regel =
@@ -118,6 +125,12 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
        Dokument-Text kein `##text_*##`, tauchen die Textbausteine/Erklärungen dort **nicht**
        auf – der Text wird dann komplett von Hand geschrieben (z. B. mit einzelnen
        `##data_*##`-Platzhaltern). Verbindung Antwort↔Text = das **Speicherfeld**.
+     - **Textauszeichnung:** In den **Dokument-Texten** (Regel, je Feld, je Option), im
+       Einleitungstext und in der Formularfeld-Beschreibung formatieren `[b]fett[/b]`,
+       `[i]kursiv[/i]` und `[u]unterstrichen[/u]` den Text – im **PDF** und in der
+       **Formular-Vorschau**. In E-Mails werden die Marker zu reinem Text entfernt; die
+       Überschrift bleibt ohne Auszeichnung. Nur Vorlagentexte werden formatiert,
+       importierte Daten nicht.
    - **Benachrichtigungen:** die drei Notifications zuordnen.
 
 ## Verifikation (End-to-End)

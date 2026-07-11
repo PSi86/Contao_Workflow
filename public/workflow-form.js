@@ -12,9 +12,21 @@
  * template), value questions use the ##answer## template – mirroring the
  * server-side DocumentBodyComposer. Read-only/auto-filled fields keep their
  * server-rendered hint (no data-tw-question attribute).
+ *
+ * The statement template and the option statements are SAFE HTML (server-escaped,
+ * with the whitelisted [b]/[i]/[u] formatting turned into <strong>/<em>/<u>). They
+ * are written via innerHTML so the formatting shows; the live answer value the user
+ * types is HTML-escaped before it is inserted into that HTML.
  */
 (function () {
     'use strict';
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
 
     function formatDate(value) {
         // HTML date inputs yield Y-m-d; the document prints d.m.Y.
@@ -59,14 +71,17 @@
         var result = '';
 
         if (field.querySelector('[data-statement]')) {
+            // Choice question: the option statements are already safe HTML.
             var parts = selectedStatements(field);
 
             if (parts.length) {
                 result = template !== null
                     ? template.split('##answer##').join(parts.join(', '))
-                    : parts.join('\n');
+                    : parts.join('<br>');
             }
         } else if (template !== null) {
+            // Value question: the typed value is user input – escape it before it
+            // enters the safe-HTML template (the template already holds <strong> etc.).
             var input = field.querySelector('input:not([type=hidden]), textarea');
             var value = input ? input.value.trim() : '';
 
@@ -74,11 +89,11 @@
                 if (input && input.type === 'date') {
                     value = formatDate(value);
                 }
-                result = template.split('##answer##').join(value);
+                result = template.split('##answer##').join(escapeHtml(value));
             }
         }
 
-        text.textContent = result;
+        text.innerHTML = result;
         hint.hidden = result === '';
     }
 
