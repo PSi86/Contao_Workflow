@@ -100,6 +100,25 @@ class DocumentBodyComposer
     }
 
     /**
+     * Resolves a free text shown only in the front-end form (a form-field's
+     * description). The regular ##data_*##/##letterhead_*##/##system_*## tokens and
+     * Contao insert tags are resolved just like in the heading/intro; ##answer## and
+     * ##text_*## stay literal (a description precedes the answer and does not nest
+     * statements).
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function resolveFormText(string $text, WorkflowModel $workflow, array $data, array $extra, string $email): string
+    {
+        if ('' === trim($text)) {
+            return '';
+        }
+
+        return trim($this->placeholderResolver->fill($text, $data, $extra, $email, (string) $workflow->title));
+    }
+
+    /**
      * Statement ("Textbaustein") tokens for an entry's data, raw/plain text:
      * ##text_<storage-slug>## per question and ##text_all## (all statements in
      * question order). The statement of a question is the text the participant

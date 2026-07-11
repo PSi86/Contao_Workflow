@@ -47,7 +47,7 @@ class WorkflowFormView
                     'id'          => (int) $question->id,
                     'type'        => 'explanation',
                     'label'       => (string) $question->label,
-                    'description' => $question->getDescription(),
+                    'description' => $this->bodyComposer->resolveFormText($question->getDescription(), $workflow, $data, $extra, $email),
                     'text'        => $this->bodyComposer->renderStatement($question, '', $data, $extra, $email, (string) $workflow->title),
                 ];
 
@@ -79,7 +79,7 @@ class WorkflowFormView
                 'id'                => (int) $question->id,
                 'label'             => (string) $question->label,
                 'type'              => (string) $question->type,
-                'description'       => $question->getDescription(),
+                'description'       => $this->bodyComposer->resolveFormText($question->getDescription(), $workflow, $data, $extra, $email),
                 'mandatory'         => !$readOnly && $question->isMandatory(),
                 'multiple'          => $question->isMultiple(),
                 'readOnly'          => $readOnly,
