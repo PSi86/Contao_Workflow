@@ -5,6 +5,8 @@ services:
         bind:
             $projectDir: '%kernel.project_dir%'
             $csrfTokenName: '%contao.csrf_token_name%'
+            # IMAP DSN of the bounce mailbox; empty/unset turns the bounce collector off.
+            $bounceImapDsn: '%env(default::WORKFLOW_BOUNCE_IMAP_DSN)%'
 
     Psimandl\WorkflowBundle\:
         resource: ../src/

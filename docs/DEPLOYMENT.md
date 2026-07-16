@@ -124,6 +124,35 @@ Bounce-/Logging-Webhooks (z. B. **Amazon SES, Postmark, Mailgun, Brevo**):
 - Anbieter-Limits/Warmup beachten (z. B. SES-Sandbox: 1 Mail/s, nur verifizierte
   Empfänger, bis zur Freischaltung).
 
+### 3c. Bounce-Postfach einrichten (unzustellbare Adressen erkennen)
+Ein „**250 OK**" beim Absenden heißt nur „angenommen", **nicht** „zugestellt". Lehnt der
+Empfänger-Server die Mail später ab (z. B. `550 User unknown`), schickt er eine
+**Unzustellbarkeitsmeldung (Bounce/DSN)** als eigene E-Mail an die Absenderadresse zurück.
+Diese Meldung erzeugt in Contao **kein** Ereignis – sie liegt nur im Postfach. Das Bundle
+holt sie per **IMAP** ab (Cronjob alle 15 Minuten), erkennt harte Bounces und markiert die
+betroffene Person im Dashboard als **„Unzustellbar (Bounce)"**.
+
+1. **Postfach = Absenderadresse.** Die Bounces landen bei der Absenderadresse aus dem
+   Notification Center (z. B. `noreply@deine-domain.de`). Lege für sie in KAS ein echtes
+   **Postfach** an (kein reiner Weiterleitungs-Alias), damit die Bounces abholbar sind.
+2. **`WORKFLOW_BOUNCE_IMAP_DSN`** in `<projekt>/.env.local` setzen:
+   ```
+   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40deine-domain.de:PASSWORT@wXXXXXXX.kasserver.com:993?ssl=true
+   ```
+   - Server = `<KAS-Login>.kasserver.com`, IMAP-Port **993** (SSL).
+   - `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort URL-kodieren.
+   - **Leer/nicht gesetzt = Funktion aus** (kein Fehler, es passiert einfach nichts).
+3. **Spamfilter für dieses Postfach deaktivieren.** Bounces haben `MAIL FROM:<>` (leerer
+   Absender); manche Filter stufen genau das als verdächtig ein und würden die Bounce-Mails
+   aussortieren, bevor das Bundle sie sieht.
+4. **Unterordner `Processed`.** Verarbeitete Mails werden nach `INBOX/Processed` verschoben
+   (Idempotenz – nichts wird doppelt ausgewertet). Der Ordner wird bei Bedarf automatisch
+   angelegt; du kannst ihn auch selbst im Webmail erstellen.
+
+> Der Abruf läuft über Contaos regulären Cron (Abschnitt 2) – kein zusätzlicher Cronjob
+> nötig. Ist kein Bounce-Postfach konfiguriert, bleibt alles beim Alten; ein Versand gilt
+> dann weiterhin als „versendet, keine Fehlermeldung".
+
 ---
 
 ## 4. SPF / DKIM / DMARC bei all-inkl (Schritt für Schritt)

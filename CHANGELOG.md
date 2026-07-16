@@ -7,6 +7,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Bounce-Erkennung: unzustellbare Adressen aufspüren (opt-in per IMAP).** Ein „250 OK"
+  beim Absenden bedeutet nur „angenommen", nicht „zugestellt" – lehnt der Empfänger-Server
+  später ab (`550 User unknown`), kommt das als eigene Unzustellbarkeitsmeldung (Bounce/DSN)
+  zurück, die bisher unbemerkt blieb. Ein neuer Cronjob (alle 15 Minuten) liest das
+  konfigurierte Bounce-Postfach per IMAP aus, erkennt **harte** Bounces und markiert die
+  betroffene Person im Dashboard als „Unzustellbar (Bounce)". Aktivierung über
+  `WORKFLOW_BOUNCE_IMAP_DSN` in `.env.local` (siehe DEPLOYMENT.md, Abschnitt 3c); ohne
+  Konfiguration bleibt die Funktion aus. Temporäre Probleme (Greylisting, Postfach voll)
+  werden nur protokolliert, nicht als Fehler gewertet.
 - **Dashboard-Warnung „Versand hängt in der Queue".** Sind E-Mails seit über 15 Minuten zum
   Versand eingereiht, ohne dass ein Ergebnis vorliegt, zeigt die Workflow-Übersicht jetzt
   oben eine deutliche Warnung – typischerweise das Zeichen, dass der Cron bzw. der Worker
