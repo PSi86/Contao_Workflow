@@ -118,6 +118,19 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'eval' => ['doNotCopy' => true],
             'sql'  => "int(10) unsigned NOT NULL default 0",
         ],
+        // A permanent delivery failure (hard bounce) was received for this address. Set by
+        // BounceCollector; excludes the entry from further invitation/reminder runs until the
+        // address is corrected (EntryListener resets these on an e-mail change). Deliberately
+        // separate from sendError: a transport error is retryable, an invalid address needs a
+        // human. bounceInfo carries the recipient + diagnostic code for the dashboard.
+        'bounceHard' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "char(1) NOT NULL default ''",
+        ],
+        'bounceInfo' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(255) NOT NULL default ''",
+        ],
         // The in-flight parcel id and its kind used to live here (one slot per entry).
         // They now live in the durable tl_workflow_send table so a mail can be correlated
         // to its (asynchronous) send result and to a later bounce; see

@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\StringUtil;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Service\TokenGenerator;
 
 /**
@@ -14,8 +15,10 @@ use Psimandl\WorkflowBundle\Service\TokenGenerator;
  */
 class EntryListener
 {
-    public function __construct(private readonly TokenGenerator $tokenGenerator)
-    {
+    public function __construct(
+        private readonly TokenGenerator $tokenGenerator,
+        private readonly Connection $connection,
+    ) {
     }
 
     /**
@@ -45,6 +48,25 @@ class EntryListener
         $data = StringUtil::deserialize($value, true);
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+    }
+
+    /**
+     * Clears the hard-bounce suppression when the e-mail address is changed. Without this a
+     * corrected address would stay locked out of every future invitation/reminder run.
+     */
+    #[AsCallback(table: 'tl_workflow_entry', target: 'fields.email.save')]
+    public function resetBounceOnEmailChange(mixed $value, DataContainer $dc): mixed
+    {
+        $id = (int) ($dc->id ?? 0);
+
+        if ($id > 0 && (string) $value !== (string) ($dc->activeRecord->email ?? '')) {
+            $this->connection->executeStatement(
+                "UPDATE tl_workflow_entry SET bounceHard = '', bounceInfo = '' WHERE id = ?",
+                [$id],
+            );
+        }
+
+        return $value;
     }
 
     /**

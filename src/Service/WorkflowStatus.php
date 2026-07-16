@@ -115,6 +115,28 @@ class WorkflowStatus
     }
 
     /**
+     * Entries with a confirmed hard bounce (invalid address). Shown in their own dashboard
+     * box, separate from retryable transport errors, and excluded from further mail runs.
+     *
+     * @return array<int, array{email: string, info: string}>
+     */
+    public function getHardBounces(int $workflowId): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT email, bounceInfo FROM tl_workflow_entry WHERE pid = ? AND bounceHard = '1' ORDER BY email",
+            [$workflowId],
+        );
+
+        return array_map(
+            static fn (array $row): array => [
+                'email' => (string) $row['email'],
+                'info'  => (string) $row['bounceInfo'],
+            ],
+            $rows,
+        );
+    }
+
+    /**
      * Entries whose last mail send failed (any status), so the back end can flag them.
      *
      * @return array<int, array{email: string, error: string, at: int}>

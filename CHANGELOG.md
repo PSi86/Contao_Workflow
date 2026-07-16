@@ -7,6 +7,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Ungültige Adressen werden nicht erneut angeschrieben.** Eine per hartem Bounce als
+  dauerhaft unzustellbar erkannte Adresse wird aus künftigen Einladungs- und
+  Erinnerungsläufen ausgeschlossen – kein wiederholter Versand an tote Adressen (und damit
+  kein weiterer Bounce/Reputationsschaden). Solche Einträge stehen im Dashboard in einer
+  eigenen Box **„Ungültige Adressen"**, getrennt von den (wiederholbaren) Versandfehlern:
+  ein Transportproblem löst sich ggf. von selbst, eine nicht existierende Adresse braucht
+  einen Menschen. Wird die E-Mail-Adresse des Eintrags korrigiert, hebt sich die Sperre
+  automatisch auf.
 - **Bounce-Erkennung: unzustellbare Adressen aufspüren (opt-in per IMAP).** Ein „250 OK"
   beim Absenden bedeutet nur „angenommen", nicht „zugestellt" – lehnt der Empfänger-Server
   später ab (`550 User unknown`), kommt das als eigene Unzustellbarkeitsmeldung (Bounce/DSN)

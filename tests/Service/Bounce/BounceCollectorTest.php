@@ -45,10 +45,10 @@ final class BounceCollectorTest extends TestCase
 
         $this->connection->executeStatement(<<<'SQL'
             CREATE TABLE tl_workflow_entry (
-                id          INTEGER PRIMARY KEY,
-                sendError   TEXT NOT NULL DEFAULT '',
-                sendErrorAt INTEGER NOT NULL DEFAULT 0,
-                tstamp      INTEGER NOT NULL DEFAULT 0
+                id         INTEGER PRIMARY KEY,
+                bounceHard TEXT NOT NULL DEFAULT '',
+                bounceInfo TEXT NOT NULL DEFAULT '',
+                tstamp     INTEGER NOT NULL DEFAULT 0
             )
             SQL);
 
@@ -68,8 +68,8 @@ final class BounceCollectorTest extends TestCase
         self::assertStringContainsString('User unknown', (string) $send['bounceCode']);
 
         $entry = $this->connection->fetchAssociative('SELECT * FROM tl_workflow_entry WHERE id = 1');
-        self::assertStringContainsString('Unzustellbar', (string) $entry['sendError']);
-        self::assertStringContainsString(self::HARD_RECIPIENT, (string) $entry['sendError']);
+        self::assertSame('1', (string) $entry['bounceHard'], 'the entry is flagged as an invalid address');
+        self::assertStringContainsString(self::HARD_RECIPIENT, (string) $entry['bounceInfo']);
     }
 
     public function testSoftBounceLeavesTheStateUnchanged(): void

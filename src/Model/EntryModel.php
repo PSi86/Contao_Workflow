@@ -39,12 +39,17 @@ class EntryModel extends Model
     }
 
     /**
+     * Entries of a workflow at a given status, used to pick invitation/reminder recipients.
+     * Addresses with a confirmed hard bounce are excluded so a dead address is never mailed
+     * again (which would only produce another bounce). Correcting the address clears the flag
+     * (see EntryListener), which brings the entry back into these runs.
+     *
      * @return Collection<EntryModel>|array<EntryModel>|null
      */
     public static function findByWorkflowAndStatus(int $workflowId, int $status)
     {
         return static::findBy(
-            ['pid=?', 'status=?'],
+            ['pid=?', 'status=?', "bounceHard=''"],
             [$workflowId, $status],
         );
     }

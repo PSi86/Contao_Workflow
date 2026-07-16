@@ -75,6 +75,24 @@ $l = $this->dash;
         </details>
       <?php endif; ?>
 
+      <?php if (!empty($wf['hardBounces'])): ?>
+        <details open class="wf-hard-bounces" style="margin-bottom:1em;">
+          <summary class="tl_error" style="cursor:pointer;font-weight:bold;"><?= $esc(sprintf($l['hard_bounces'], \count($wf['hardBounces']))) ?></summary>
+          <table class="tl_listing" style="margin-top:.6em;">
+            <thead><tr><th><?= $l['col_email'] ?></th><th><?= $l['col_reason'] ?></th></tr></thead>
+            <tbody>
+            <?php foreach ($wf['hardBounces'] as $b): ?>
+              <tr>
+                <td><?= $esc($b['email']) ?></td>
+                <td><?= $esc($b['info']) ?></td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+          <p class="tl_info" style="margin:.4em 0 0;"><?= $l['hard_bounces_hint'] ?></p>
+        </details>
+      <?php endif; ?>
+
       <div style="display:flex;gap:2em;flex-wrap:wrap;margin-bottom:1em;">
         <div><strong style="font-size:1.6em;"><?= (int) $wf['completed'] ?></strong><br><?= $l['completed'] ?></div>
         <div><strong style="font-size:1.6em;"><?= (int) $wf['open'] ?></strong><br><?= $l['open'] ?></div>

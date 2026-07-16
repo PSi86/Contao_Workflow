@@ -136,11 +136,12 @@ class BounceCollector
             [$code, $now, $now, (int) $send['id']],
         );
 
-        // Denormalized flag so the bounce shows up on the dashboard immediately. AP6 moves
-        // this into a dedicated "invalid address" field/box, separate from transport errors.
+        // Flag the entry as an invalid address: it is excluded from further invitation and
+        // reminder runs (see EntryModel::findByWorkflowAndStatus) and shown in its own
+        // dashboard box, separate from retryable transport errors (sendError).
         $this->connection->executeStatement(
-            'UPDATE tl_workflow_entry SET sendError = ?, sendErrorAt = ?, tstamp = ? WHERE id = ?',
-            [$this->shorten('Unzustellbar (Bounce): '.$report->recipient.' – '.$code), $now, $now, (int) $send['entryId']],
+            "UPDATE tl_workflow_entry SET bounceHard = '1', bounceInfo = ?, tstamp = ? WHERE id = ?",
+            [$this->shorten($report->recipient.' – '.$code), $now, (int) $send['entryId']],
         );
     }
 

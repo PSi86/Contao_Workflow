@@ -89,6 +89,7 @@ class DashboardModule extends BackendModule
                     'total'         => $status->countTotal($id),
                     'breakdown'     => $status->getBreakdown($workflow),
                     'sendErrors'    => $status->getSendErrors($id),
+                    'hardBounces'   => $status->getHardBounces($id),
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
