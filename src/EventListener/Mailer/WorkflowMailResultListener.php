@@ -59,20 +59,22 @@ class WorkflowMailResultListener
         if ($receipt->wasDelivered()) {
             $this->onDelivered($entryId, $kind, $statusValue);
         } else {
+            // Leave the correlation in place: with no explicit retry_strategy configured,
+            // Symfony retries a failed send (Messenger default: 3 attempts). A later retry
+            // reuses the same parcel id, so the entry must still be findable when the
+            // SentMessageEvent finally arrives. Clearing it here would strand that receipt
+            // and leave the entry stuck at "imported" with a send error even though the
+            // mail went out — causing a duplicate invitation on the next run.
             $this->onFailed($entryId, $kind, $receipt->getException());
         }
-
-        // Correlation consumed.
-        $this->connection->executeStatement(
-            "UPDATE tl_workflow_entry SET sendParcelId = '', sendKind = '' WHERE id = ?",
-            [$entryId],
-        );
     }
 
     private function onDelivered(int $entryId, string $kind, int $statusValue): void
     {
-        // A successful send always clears a previously recorded failure.
-        $set = ["sendError = ''", 'sendErrorAt = 0'];
+        // A successful send always clears a previously recorded failure. The correlation is
+        // only consumed here, on success, so a retried send (see onFailed) can still be
+        // mapped back to this entry when it finally goes through.
+        $set = ["sendError = ''", 'sendErrorAt = 0', "sendParcelId = ''", "sendKind = ''"];
         $params = [];
 
         if (WorkflowMailContext::KIND_INVITE === $kind && WorkflowStatus::STATUS_IMPORTED === $statusValue) {

@@ -6,6 +6,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Doppelte Einladung nach fehlgeschlagenem Erstversand.** Schlug der erste
+  SMTP-Zustellversuch fehl (z. B. am 3-Verbindungen-Limit von all-inkl) und gelang erst
+  der automatische Wiederholversuch von Symfony Messenger, blieb der Eintrag fälschlich
+  auf „importiert" mit Versandfehler stehen – der nächste „Einladungen senden"-Lauf
+  verschickte dann eine **zweite Einladung**. Die Zuordnung zwischen E-Mail und Eintrag
+  wird jetzt erst bei **erfolgreicher** Zustellung aufgelöst, sodass ein Wiederholversuch
+  weiterhin dem richtigen Eintrag zugeordnet wird.
+
 ## [2.8.0] – 2026-07-11
 
 ### Hinzugefügt

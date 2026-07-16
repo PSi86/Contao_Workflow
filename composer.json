@@ -29,9 +29,17 @@
         "terminal42/dcawizard": "^3.0",
         "terminal42/notification_center": "^2.0"
     },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
     "autoload": {
         "psr-4": {
             "Psimandl\\WorkflowBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Psimandl\\WorkflowBundle\\Tests\\": "tests/"
         }
     },
     "config": {
@@ -45,6 +53,6 @@
         "contao-manager-plugin": "Psimandl\\WorkflowBundle\\ContaoManager\\Plugin"
     },
     "archive": {
-        "exclude": ["/vendor", "/composer.lock", "/.gitignore", "/.phpunit.result.cache", "/dist"]
+        "exclude": ["/vendor", "/composer.lock", "/.gitignore", "/.phpunit.result.cache", "/.phpunit.cache", "/dist", "/tests", "/phpunit.xml.dist", "/docs/dev"]
     }
 }
