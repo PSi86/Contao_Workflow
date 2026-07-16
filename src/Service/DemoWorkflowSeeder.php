@@ -271,7 +271,8 @@ class DemoWorkflowSeeder
                     'subject'          => 'Einladung (Demo): ##workflow_title##',
                     'text'             => "Hallo,\n\n(Demo) bitte füllen Sie das folgende Formular aus:\n##link##\n\nVielen Dank.",
                     'senderName'       => 'Workflow (Demo)',
-                    'senderAddress'    => 'noreply@example.com',
+                    // No senderAddress: WorkflowConfigImporter derives noreply@<site-domain>,
+                    // or leaves it empty (system admin address) — never a dead placeholder.
                     'attachmentTokens' => '',
                 ],
                 'reminder' => [
@@ -279,7 +280,8 @@ class DemoWorkflowSeeder
                     'subject'          => 'Erinnerung (Demo): ##workflow_title##',
                     'text'             => "Hallo,\n\n(Demo) bitte denken Sie an das Formular:\n##link##\n\nVielen Dank.",
                     'senderName'       => 'Workflow (Demo)',
-                    'senderAddress'    => 'noreply@example.com',
+                    // No senderAddress: WorkflowConfigImporter derives noreply@<site-domain>,
+                    // or leaves it empty (system admin address) — never a dead placeholder.
                     'attachmentTokens' => '',
                 ],
                 'result' => [
@@ -287,7 +289,8 @@ class DemoWorkflowSeeder
                     'subject'          => 'Ihre Bestätigung (Demo): ##workflow_title##',
                     'text'             => "Hallo,\n\n(Demo) vielen Dank. Ihre Entscheidung: ##data_entscheidung##.\nIhr Dokument finden Sie im Anhang.",
                     'senderName'       => 'Workflow (Demo)',
-                    'senderAddress'    => 'noreply@example.com',
+                    // No senderAddress: WorkflowConfigImporter derives noreply@<site-domain>,
+                    // or leaves it empty (system admin address) — never a dead placeholder.
                     'attachmentTokens' => '##attachment##',
                 ],
             ],

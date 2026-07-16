@@ -7,6 +7,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Warnung bei problematischer Absenderdomain.** Beim Bearbeiten eines Workflows warnt das
+  Backend jetzt, wenn die Absenderadresse der zugeordneten E-Mail-Vorlagen eine
+  Beispiel-/Platzhalterdomain nutzt (z. B. `example.com`), keinen MX-Eintrag im DNS hat
+  (Tippfehler wie `.de` statt `.com`) oder nicht zur Website-Domain passt. Genau das ist die
+  häufigste Ursache dafür, dass Mails unbemerkt unzustellbar sind und Bounces lautlos
+  verschwinden, obwohl der Versand gesund aussieht. Der Demo-Workflow setzt außerdem keine
+  tote `example.com`-Adresse mehr, sondern leitet den Absender aus der Domain der Website ab
+  (oder lässt ihn leer, sodass die System-Absenderadresse greift).
 - **Ungültige Adressen werden nicht erneut angeschrieben.** Eine per hartem Bounce als
   dauerhaft unzustellbar erkannte Adresse wird aus künftigen Einladungs- und
   Erinnerungsläufen ausgeschlossen – kein wiederholter Versand an tote Adressen (und damit

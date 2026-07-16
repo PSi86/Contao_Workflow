@@ -281,7 +281,7 @@ class WorkflowConfigImporter
             [
                 $messageId,
                 (string) ($tpl['senderName'] ?? 'Workflow'),
-                (string) ($tpl['senderAddress'] ?? 'noreply@example.com'),
+                (string) ($tpl['senderAddress'] ?? $this->defaultSenderAddress()),
                 (string) ($tpl['subject'] ?? ''),
                 (string) ($tpl['text'] ?? ''),
                 (string) ($tpl['attachmentTokens'] ?? ('result' === $kind ? '##attachment##' : '')),
@@ -289,6 +289,21 @@ class WorkflowConfigImporter
         );
 
         return $notificationId;
+    }
+
+    /**
+     * Default e-mail sender for a materialized notification when the config does not specify
+     * one: derived from the site's root domain (noreply@<dns>). Empty when no root has a
+     * fixed domain — the Notification Center then falls back to the system admin address,
+     * which beats shipping an undeliverable placeholder like noreply@example.com.
+     */
+    private function defaultSenderAddress(): string
+    {
+        $dns = (string) ($this->connection->fetchOne(
+            "SELECT dns FROM tl_page WHERE type = 'root' AND dns <> '' ORDER BY sorting LIMIT 1",
+        ) ?: '');
+
+        return '' !== $dns ? 'noreply@'.$dns : '';
     }
 
     /**

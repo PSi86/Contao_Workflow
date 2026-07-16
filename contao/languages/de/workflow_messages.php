@@ -59,4 +59,7 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'storage_missing'    => 'Das Speicherfeld „%s“ (Formularfeld „%s“) fehlt in der Quelldatei.',
     'rule_unknown_field' => 'Der Dokument-Text „%s“ verwendet das unbekannte Feld „%s“.',
     'master_missing'     => 'Das zugeordnete Briefpapier existiert nicht mehr (wurde gelöscht) – bitte ein gültiges Briefpapier zuordnen.',
+    'sender_placeholder'    => 'Absenderadresse „%s“ verwendet eine Beispiel-/Platzhalterdomain („%s“). An solche Adressen werden Mails nicht zugestellt, und Unzustellbarkeitsmeldungen (Bounces) verschwinden unbemerkt. Bitte im Notification Center eine echte Absenderadresse eurer Domain setzen.',
+    'sender_no_mx'          => 'Absenderadresse „%s“: Die Domain „%s“ hat keinen MX-Eintrag im DNS. Mit diesem Absender sind die Mails unzustellbar, und Unzustellbarkeitsmeldungen (Bounces) verschwinden unbemerkt. Bitte eine echte, versandfähige Absenderadresse setzen (im Notification Center).',
+    'sender_domain_mismatch'=> 'Die Absenderdomain „%s“ weicht von der Website-Domain (%s) ab. Bitte die SPF-/DKIM-/DMARC-Ausrichtung prüfen, sonst landen die Mails leicht im Spam.',
 ];

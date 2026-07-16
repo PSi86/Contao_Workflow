@@ -59,4 +59,7 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'storage_missing'    => 'The storage field “%s” (form field “%s”) is missing from the source file.',
     'rule_unknown_field' => 'The document text “%s” uses the unknown field “%s”.',
     'master_missing'     => 'The assigned letterhead no longer exists (it was deleted) – please assign a valid letterhead.',
+    'sender_placeholder'    => 'Sender address “%s” uses an example/placeholder domain (“%s”). Mail to such addresses is not delivered and bounce messages vanish unnoticed. Please set a real sender address on your own domain (in the Notification Center).',
+    'sender_no_mx'          => 'Sender address “%s”: the domain “%s” has no MX record in DNS. Mail from this sender is undeliverable and bounce messages vanish unnoticed. Please set a real, sendable sender address (in the Notification Center).',
+    'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
 ];
