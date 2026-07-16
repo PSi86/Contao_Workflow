@@ -14,7 +14,9 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   Versand überschrieben und nach dem Ergebnis gelöscht wurde. Das ist die Grundlage für die
   kommende Bounce-Erkennung und die Queue-Überwachung. Eine Datenbank-Migration legt die
   Tabelle an, übernimmt noch laufende Zuordnungen und entfernt die alten Spalten;
-  `sendError` / `sendErrorAt` bleiben als Anzeigefelder am Eintrag erhalten.
+  `sendError` / `sendErrorAt` bleiben als Anzeigefelder am Eintrag erhalten. Ein täglicher
+  Cron räumt abgeschlossene Protokollzeilen (versendet / fehlgeschlagen / unzustellbar) nach
+  90 Tagen auf; noch eingereihte Zeilen bleiben erhalten (Signal für einen hängenden Versand).
 
 ### Behoben
 - **Doppelte Einladung nach fehlgeschlagenem Erstversand.** Schlug der erste
