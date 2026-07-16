@@ -6,6 +6,18 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.4] – 2026-07-17
+
+### Hinzugefügt
+- **Spalte „Zustellung" in der Liste „Ausstehende Antworten".** Zustellprobleme erscheinen
+  jetzt direkt in dieser Liste (mit Name/Abteilung zur Zuordnung), als eigenes, **sortierbares**
+  Badge – **ohne** den Workflow-Status zu überschreiben: **amber „Versandfehler"** (Transport,
+  wiederholbar) bzw. **rot „Unzustellbar"** (harter Bounce, ungültige Adresse); der genaue
+  Grund steht im Tooltip. Ein harter Bounce hat Vorrang vor einem Transportfehler. Die
+  separaten Übersichtsboxen „Versandfehler" und „Ungültige Adressen" bleiben erhalten (u. a.
+  für Bounces der Ergebnis-Mail an bereits beantwortete Einträge, die nicht in dieser Liste
+  stehen).
+
 ## [2.9.3] – 2026-07-16
 
 ### Behoben

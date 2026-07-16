@@ -190,7 +190,12 @@ class DashboardModule extends BackendModule
                 'name'        => $name,
                 'vorname'     => $vorname,
                 'abteilung'   => $abteilung,
+                // Delivery problems shown in their own "Zustellung" column, in addition to
+                // (never replacing) the workflow status. A hard bounce (invalid address)
+                // takes precedence over a retryable transport error.
                 'sendError'   => (string) $entry->sendError,
+                'bounceHard'  => '1' === (string) $entry->bounceHard,
+                'bounceInfo'  => (string) $entry->bounceInfo,
             ];
         }
 

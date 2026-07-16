@@ -152,17 +152,19 @@ $l = $this->dash;
                 <?php if ($wf['hasVorname']): ?><th class="wf-sortable" data-key="vorname"><?= $l['col_vorname'] ?></th><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><th class="wf-sortable" data-key="abteilung"><?= $l['col_abteilung'] ?></th><?php endif; ?>
                 <th class="wf-sortable" data-key="status"><?= $l['col_status'] ?></th>
+                <th class="wf-sortable" data-key="delivery"><?= $l['col_delivery'] ?></th>
               </tr>
             </thead>
             <tbody>
             <?php foreach ($wf['pending'] as $p): ?>
               <tr data-status="<?= (int) $p['statusIndex'] ?>">
                 <td class="wf-cb"><input type="checkbox" class="wf-row" value="<?= (int) $p['id'] ?>" data-status="<?= (int) $p['statusIndex'] ?>" data-email="<?= $esc($p['email']) ?>" data-name="<?= $esc(trim($p['vorname'].' '.$p['name'])) ?>"></td>
-                <td data-k="email"><?= $esc($p['email']) ?><?php if (!empty($p['sendError'])): ?> <span class="wf-badge" style="background:#b33;" title="<?= $esc($p['sendError']) ?>">Versand fehlgeschlagen</span><?php endif; ?></td>
+                <td data-k="email"><?= $esc($p['email']) ?></td>
                 <?php if ($wf['hasName']): ?><td data-k="name"><?= $esc($p['name']) ?></td><?php endif; ?>
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><td data-k="abteilung"><?= $esc($p['abteilung']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>
+                <td data-k="delivery"><?php if (!empty($p['bounceHard'])): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif (!empty($p['sendError'])): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php endif; ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>
