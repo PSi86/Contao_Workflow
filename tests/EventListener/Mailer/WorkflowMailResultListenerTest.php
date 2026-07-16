@@ -14,21 +14,27 @@ use Terminal42\NotificationCenterBundle\Event\AsynchronousReceiptEvent;
 use Terminal42\NotificationCenterBundle\Receipt\AsynchronousReceipt;
 
 /**
- * Regression cover for AP1: the parcel correlation must only be cleared once a send has
- * actually succeeded. A failed send is retried by Symfony Messenger with the *same* parcel
- * id, so clearing on failure strands the later SentMessageEvent and leaves the entry stuck
- * at "imported" with a send error even though the mail went out.
+ * Cover for the durable send log (AP2) and the correlation regression it grew out of (AP1):
  *
- * The listener talks to the database exclusively through a Doctrine DBAL connection, so the
- * tests run it against an in-memory SQLite database. That exercises the real SQL and, more
- * importantly, the stateful interaction between the two receipts, which a mocked connection
- * could not capture.
+ *  - A failed send keeps its tl_workflow_send row (state "failed"), so a Symfony Messenger
+ *    retry that reuses the same parcel id is still mapped back to the entry when the
+ *    SentMessageEvent finally arrives — instead of the entry being stranded at "imported"
+ *    with a send error and re-invited on the next run.
+ *  - A delivered invitation moves the row to "sent" and advances the entry to "invited";
+ *    the row is never deleted, so a later bounce can be correlated to it by parcel id.
+ *
+ * These tests exercise the asynchronous path (the production path: the row already exists
+ * when the receipt arrives), which uses portable SQL and therefore runs against in-memory
+ * SQLite. The synchronous fallback and the dispatcher upsert use MariaDB-specific
+ * "ON DUPLICATE KEY UPDATE" and are verified end-to-end against the real database.
  */
 final class WorkflowMailResultListenerTest extends TestCase
 {
     private const PARCEL_ID = 'ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00';
 
     private Connection $connection;
+
+    private WorkflowMailContext $context;
 
     protected function setUp(): void
     {
@@ -39,74 +45,101 @@ final class WorkflowMailResultListenerTest extends TestCase
 
         $this->connection->executeStatement(<<<'SQL'
             CREATE TABLE tl_workflow_entry (
-                id           INTEGER PRIMARY KEY,
-                status       INTEGER NOT NULL DEFAULT 0,
-                sendParcelId TEXT    NOT NULL DEFAULT '',
-                sendKind     TEXT    NOT NULL DEFAULT '',
-                sendError    TEXT    NOT NULL DEFAULT '',
-                sendErrorAt  INTEGER NOT NULL DEFAULT 0,
-                sentAt       INTEGER NOT NULL DEFAULT 0,
-                tstamp       INTEGER NOT NULL DEFAULT 0
+                id          INTEGER PRIMARY KEY,
+                status      INTEGER NOT NULL DEFAULT 0,
+                sendError   TEXT    NOT NULL DEFAULT '',
+                sendErrorAt INTEGER NOT NULL DEFAULT 0,
+                sentAt      INTEGER NOT NULL DEFAULT 0,
+                tstamp      INTEGER NOT NULL DEFAULT 0
             )
             SQL);
+
+        $this->connection->executeStatement(<<<'SQL'
+            CREATE TABLE tl_workflow_send (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                tstamp     INTEGER NOT NULL DEFAULT 0,
+                parcelId   TEXT    NOT NULL DEFAULT '',
+                entryId    INTEGER NOT NULL DEFAULT 0,
+                workflowId INTEGER NOT NULL DEFAULT 0,
+                kind       TEXT    NOT NULL DEFAULT '',
+                recipient  TEXT    NOT NULL DEFAULT '',
+                state      TEXT    NOT NULL DEFAULT '',
+                queuedAt   INTEGER NOT NULL DEFAULT 0,
+                sentAt     INTEGER NOT NULL DEFAULT 0,
+                bouncedAt  INTEGER NOT NULL DEFAULT 0,
+                error      TEXT,
+                bounceCode TEXT    NOT NULL DEFAULT '',
+                UNIQUE (parcelId)
+            )
+            SQL);
+
+        $this->context = new WorkflowMailContext();
     }
 
-    public function testRetriedSendAfterAFailureStillAdvancesTheEntry(): void
+    public function testRetriedSendAfterAFailureIsStillMappedToTheEntry(): void
     {
-        $this->givenImportedInvitation();
+        $this->givenQueuedInvitation();
 
         // First worker attempt fails (e.g. the All-Inkl three-connection SMTP cap).
         $this->fireFailed(self::PARCEL_ID, 'Connection could not be established with host');
 
-        $afterFailure = $this->entry();
-        self::assertSame(WorkflowStatus::STATUS_IMPORTED, (int) $afterFailure['status'], 'a failed send must not advance the step');
-        self::assertNotSame('', (string) $afterFailure['sendError'], 'the failure must be recorded');
-        self::assertSame(self::PARCEL_ID, (string) $afterFailure['sendParcelId'], 'correlation must survive a failure so the retry can be mapped back');
-        self::assertSame(WorkflowMailContext::KIND_INVITE, (string) $afterFailure['sendKind']);
+        $send = $this->send();
+        self::assertNotFalse($send, 'the send row must survive a failure so a retry can be mapped back');
+        self::assertSame('failed', (string) $send['state'], 'the send row records the failure');
+        self::assertNotSame('', (string) $send['error'], 'the transport error is stored');
+
+        $entry = $this->entry();
+        self::assertSame(WorkflowStatus::STATUS_IMPORTED, (int) $entry['status'], 'a failed send must not advance the step');
+        self::assertNotSame('', (string) $entry['sendError'], 'the failure is flagged on the entry');
 
         // Symfony Messenger retries with the same parcel id and the retry succeeds.
         $this->fireDelivered(self::PARCEL_ID);
 
-        $afterDelivery = $this->entry();
-        self::assertSame(WorkflowStatus::STATUS_INVITED, (int) $afterDelivery['status'], 'the successful retry must advance to "invited"');
-        self::assertSame('', (string) $afterDelivery['sendError'], 'the earlier error must be cleared on success');
-        self::assertSame(0, (int) $afterDelivery['sendErrorAt']);
-        self::assertGreaterThan(0, (int) $afterDelivery['sentAt'], 'a delivered invitation records the send time');
-        self::assertSame('', (string) $afterDelivery['sendParcelId'], 'correlation is consumed only on success');
-        self::assertSame('', (string) $afterDelivery['sendKind']);
-    }
-
-    public function testASuccessfulInvitationConsumesTheCorrelation(): void
-    {
-        $this->givenImportedInvitation();
-
-        $this->fireDelivered(self::PARCEL_ID);
+        $send = $this->send();
+        self::assertSame('sent', (string) $send['state']);
+        self::assertGreaterThan(0, (int) $send['sentAt']);
+        self::assertNull($send['error'], 'the error is cleared once the send succeeds');
 
         $entry = $this->entry();
-        self::assertSame(WorkflowStatus::STATUS_INVITED, (int) $entry['status']);
-        self::assertSame('', (string) $entry['sendParcelId']);
-        self::assertSame('', (string) $entry['sendKind']);
+        self::assertSame(WorkflowStatus::STATUS_INVITED, (int) $entry['status'], 'the successful retry advances to "invited"');
+        self::assertSame('', (string) $entry['sendError'], 'the earlier error is cleared on success');
+        self::assertSame(0, (int) $entry['sendErrorAt']);
+        self::assertGreaterThan(0, (int) $entry['sentAt']);
     }
 
-    public function testALateDuplicateReceiptForAConsumedCorrelationIsIgnored(): void
+    public function testDeliveredInvitationMarksTheSendRowSentAndAdvancesTheEntry(): void
     {
-        $this->givenImportedInvitation();
+        $this->givenQueuedInvitation();
+
         $this->fireDelivered(self::PARCEL_ID);
 
-        // A duplicate/late receipt arrives for the same parcel id; nothing correlates to it
-        // any more, so the entry must be left exactly as it was (no second advance).
-        $this->fireDelivered(self::PARCEL_ID);
-
+        self::assertSame('sent', (string) $this->send()['state']);
         self::assertSame(WorkflowStatus::STATUS_INVITED, (int) $this->entry()['status']);
     }
 
-    private function givenImportedInvitation(): void
+    public function testReceiptForAnUnknownParcelWithoutContextIsIgnored(): void
+    {
+        // No send row, no active context: nothing to correlate to.
+        $this->fireDelivered(self::PARCEL_ID);
+
+        self::assertFalse($this->send(), 'no row is invented for an uncorrelated receipt');
+    }
+
+    private function givenQueuedInvitation(): void
     {
         $this->connection->insert('tl_workflow_entry', [
             'id' => 1,
             'status' => WorkflowStatus::STATUS_IMPORTED,
-            'sendParcelId' => self::PARCEL_ID,
-            'sendKind' => WorkflowMailContext::KIND_INVITE,
+        ]);
+
+        $this->connection->insert('tl_workflow_send', [
+            'parcelId' => self::PARCEL_ID,
+            'entryId' => 1,
+            'workflowId' => 7,
+            'kind' => WorkflowMailContext::KIND_INVITE,
+            'recipient' => 'person@example.org',
+            'state' => 'queued',
+            'queuedAt' => time(),
         ]);
     }
 
@@ -128,7 +161,7 @@ final class WorkflowMailResultListenerTest extends TestCase
 
     private function listener(): WorkflowMailResultListener
     {
-        return new WorkflowMailResultListener($this->connection, new WorkflowMailContext());
+        return new WorkflowMailResultListener($this->connection, $this->context);
     }
 
     /**
@@ -137,5 +170,13 @@ final class WorkflowMailResultListenerTest extends TestCase
     private function entry(): array
     {
         return $this->connection->fetchAssociative('SELECT * FROM tl_workflow_entry WHERE id = 1') ?: [];
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    private function send(): array|false
+    {
+        return $this->connection->fetchAssociative('SELECT * FROM tl_workflow_send WHERE parcelId = ?', [self::PARCEL_ID]);
     }
 }

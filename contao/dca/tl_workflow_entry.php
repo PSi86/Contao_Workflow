@@ -118,16 +118,10 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'eval' => ['doNotCopy' => true],
             'sql'  => "int(10) unsigned NOT NULL default 0",
         ],
-        // Internal: Notification Center parcel id of the in-flight mail and its kind
-        // (invite|reminder|result). Set on dispatch, used to map the real (asynchronous)
-        // send result back to this entry, then cleared.
-        'sendParcelId' => [
-            'eval' => ['doNotCopy' => true],
-            'sql'  => "varchar(64) NOT NULL default ''",
-        ],
-        'sendKind' => [
-            'eval' => ['doNotCopy' => true],
-            'sql'  => "varchar(16) NOT NULL default ''",
-        ],
+        // The in-flight parcel id and its kind used to live here (one slot per entry).
+        // They now live in the durable tl_workflow_send table so a mail can be correlated
+        // to its (asynchronous) send result and to a later bounce; see
+        // WorkflowSendTableMigration. sendError / sendErrorAt / sentAt stay here as
+        // denormalized display fields for the dashboard, fed from tl_workflow_send.
     ],
 ];

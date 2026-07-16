@@ -11,17 +11,24 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Terminal42\NotificationCenterBundle\Event\AsynchronousReceiptEvent;
 
 /**
- * Updates a workflow entry based on the *actual* mail send result instead of optimistically
- * at dispatch time. The Notification Center reports the real (often asynchronous) result via
+ * Records the *actual* mail send result instead of the optimistic dispatch-time guess. The
+ * Notification Center reports the real (often asynchronous) result via
  * {@see AsynchronousReceiptEvent}, carrying the parcel id that {@see NotificationDispatcher}
- * stored on the entry at dispatch. For the rare synchronous transport the event fires within
- * the send call before that id is persisted, so the live {@see WorkflowMailContext} is used
- * as a fallback.
+ * stored in the durable tl_workflow_send table at dispatch.
  *
- *  - On success: a recorded send error is cleared. An invitation advances the entry from
- *    "imported" to "invited"; a reminder records the send time; a result mail changes nothing.
- *  - On failure: the workflow step is left untouched (a failed send is never counted as done)
- *    and the error is stored so the back end dashboard can flag the entry.
+ * Two things are updated for each receipt:
+ *
+ *  - The durable tl_workflow_send row is moved along its state machine (queued → sent /
+ *    failed). The row is never deleted, so a bounce (DSN) arriving much later can still be
+ *    correlated to it by parcel id.
+ *  - The denormalized display fields on the entry: a successful invitation advances the
+ *    entry from "imported" to "invited"; a reminder records the send time; a failure stores
+ *    the error so the back end dashboard can flag the entry.
+ *
+ * For the rare synchronous transport the receipt event fires within the send call, before
+ * the tl_workflow_send row is inserted, so the live {@see WorkflowMailContext} is used as a
+ * fallback and the row is created here; {@see NotificationDispatcher::rememberParcel()} then
+ * upserts it idempotently without resetting the state written here.
  */
 class WorkflowMailResultListener
 {
@@ -37,44 +44,79 @@ class WorkflowMailResultListener
         $receipt = $event->receipt;
         $identifier = $receipt->getIdentifier();
 
-        // Async: the entry stored this parcel id at dispatch. Sync: the event fires within
-        // the send call before persisting, so fall back to the still-active context.
+        // Async: the "queued" row was inserted at dispatch, before the worker ran. Sync: the
+        // event fires within the send call before that insert, so fall back to the context.
         $row = $this->connection->fetchAssociative(
-            'SELECT id, status, sendKind FROM tl_workflow_entry WHERE sendParcelId = ? LIMIT 1',
+            'SELECT entryId, kind FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
             [$identifier],
         );
 
         if (false !== $row) {
-            $entryId = (int) $row['id'];
-            $kind = (string) $row['sendKind'];
-            $statusValue = (int) $row['status'];
+            $entryId = (int) $row['entryId'];
+            $kind = (string) $row['kind'];
+            $rowExists = true;
         } elseif ($this->context->isActive()) {
             $entryId = (int) $this->context->getEntryId();
             $kind = (string) $this->context->getKind();
-            $statusValue = (int) $this->connection->fetchOne('SELECT status FROM tl_workflow_entry WHERE id = ?', [$entryId]);
+            $rowExists = false;
         } else {
             return;
         }
 
         if ($receipt->wasDelivered()) {
-            $this->onDelivered($entryId, $kind, $statusValue);
+            $this->writeSendResult($identifier, $rowExists, 'sent', null);
+            $this->markEntryDelivered($entryId, $kind);
         } else {
-            // Leave the correlation in place: with no explicit retry_strategy configured,
-            // Symfony retries a failed send (Messenger default: 3 attempts). A later retry
-            // reuses the same parcel id, so the entry must still be findable when the
-            // SentMessageEvent finally arrives. Clearing it here would strand that receipt
-            // and leave the entry stuck at "imported" with a send error even though the
-            // mail went out — causing a duplicate invitation on the next run.
-            $this->onFailed($entryId, $kind, $receipt->getException());
+            $message = $this->shorten($receipt->getException()?->getMessage() ?? 'Unbekannter Fehler');
+            $this->writeSendResult($identifier, $rowExists, 'failed', $message);
+            $this->markEntryFailed($entryId, $kind, $message);
         }
     }
 
-    private function onDelivered(int $entryId, string $kind, int $statusValue): void
+    private function writeSendResult(string $parcelId, bool $rowExists, string $state, ?string $error): void
     {
-        // A successful send always clears a previously recorded failure. The correlation is
-        // only consumed here, on success, so a retried send (see onFailed) can still be
-        // mapped back to this entry when it finally goes through.
-        $set = ["sendError = ''", 'sendErrorAt = 0', "sendParcelId = ''", "sendKind = ''"];
+        $now = time();
+        $sentAt = 'sent' === $state ? $now : 0;
+
+        if ($rowExists) {
+            // Never delete the row: a later bounce is correlated to it by parcel id.
+            $this->connection->executeStatement(
+                'UPDATE tl_workflow_send SET state = ?, sentAt = ?, error = ?, tstamp = ? WHERE parcelId = ?',
+                [$state, $sentAt, $error, $now, $parcelId],
+            );
+
+            return;
+        }
+
+        // Synchronous fallback: create the row from the still-active context so a later
+        // bounce can be correlated. The subsequent rememberParcel() upsert preserves this
+        // state. The tight active-context window is what keeps a foreign notification sent
+        // in the same request from being mis-attributed here.
+        $this->connection->executeStatement(
+            'INSERT INTO tl_workflow_send (tstamp, parcelId, entryId, workflowId, kind, recipient, state, queuedAt, sentAt, error)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE state = VALUES(state), sentAt = VALUES(sentAt), error = VALUES(error), tstamp = VALUES(tstamp)',
+            [
+                $now,
+                $parcelId,
+                (int) $this->context->getEntryId(),
+                (int) $this->context->getWorkflowId(),
+                (string) $this->context->getKind(),
+                (string) $this->context->getRecipient(),
+                $state,
+                $now,
+                $sentAt,
+                $error,
+            ],
+        );
+    }
+
+    private function markEntryDelivered(int $entryId, string $kind): void
+    {
+        $statusValue = (int) $this->connection->fetchOne('SELECT status FROM tl_workflow_entry WHERE id = ?', [$entryId]);
+
+        // A successful send always clears a previously recorded failure.
+        $set = ["sendError = ''", 'sendErrorAt = 0'];
         $params = [];
 
         if (WorkflowMailContext::KIND_INVITE === $kind && WorkflowStatus::STATUS_IMPORTED === $statusValue) {
@@ -97,13 +139,11 @@ class WorkflowMailResultListener
         );
     }
 
-    private function onFailed(int $entryId, string $kind, ?\Throwable $error): void
+    private function markEntryFailed(int $entryId, string $kind, string $message): void
     {
-        $message = null !== $error ? $error->getMessage() : 'Unbekannter Fehler';
-
         $this->connection->executeStatement(
             'UPDATE tl_workflow_entry SET sendError = ?, sendErrorAt = ?, tstamp = ? WHERE id = ?',
-            [$this->kindLabel($kind).': '.$this->shorten($message), time(), time(), $entryId],
+            [$this->kindLabel($kind).': '.$message, time(), time(), $entryId],
         );
     }
 

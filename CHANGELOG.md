@@ -6,6 +6,16 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Geändert
+- **Interne Versandprotokollierung in eigene Tabelle `tl_workflow_send`.** Der Zustand jeder
+  einzeln versendeten Mail (Einladung / Erinnerung / Ergebnis) wird jetzt dauerhaft pro
+  Notification-Center-Parcel-ID protokolliert – eingereiht → versendet → fehlgeschlagen –
+  statt in einem einzigen Slot je Eintrag (`sendParcelId` / `sendKind`), der bei jedem neuen
+  Versand überschrieben und nach dem Ergebnis gelöscht wurde. Das ist die Grundlage für die
+  kommende Bounce-Erkennung und die Queue-Überwachung. Eine Datenbank-Migration legt die
+  Tabelle an, übernimmt noch laufende Zuordnungen und entfernt die alten Spalten;
+  `sendError` / `sendErrorAt` bleiben als Anzeigefelder am Eintrag erhalten.
+
 ### Behoben
 - **Doppelte Einladung nach fehlgeschlagenem Erstversand.** Schlug der erste
   SMTP-Zustellversuch fehl (z. B. am 3-Verbindungen-Limit von all-inkl) und gelang erst

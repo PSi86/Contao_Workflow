@@ -24,8 +24,6 @@ use Contao\StringUtil;
  * @property int    $respondedAt
  * @property string $sendError     Last mail send failure (kind + message); empty when OK.
  * @property int    $sendErrorAt
- * @property string $sendParcelId  NC parcel id of the in-flight mail (correlation), then cleared.
- * @property string $sendKind      Kind of the in-flight mail: invite|reminder|result.
  */
 class EntryModel extends Model
 {
