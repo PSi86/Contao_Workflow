@@ -6,6 +6,21 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.1] – 2026-07-16
+
+### Hinzugefügt
+- **CLI-Kommando `workflow:bounce:collect`** zum sofortigen Abrufen bzw. zur Diagnose des
+  Bounce-Postfachs, ohne bis zu 15 Minuten auf den Cron zu warten. Es zeigt Schritt für
+  Schritt, ob die DSN erkannt wird, ob die IMAP-Verbindung steht, wie viele Nachrichten im
+  Postfach liegen und ob ein Bounce einem Eintrag zugeordnet werden kann. `--dry-run`
+  verändert nichts, `--dsn=…` testet die Verbindung unabhängig von `.env.local`.
+
+### Dokumentation
+- DEPLOYMENT §3c: Hinweis, dass die Contao Managed Edition bei vorhandener `.env.local.php`
+  die `.env.local` **nicht** direkt liest (Neukompilieren mit `dotenv:dump prod`, über den
+  Contao-Manager setzen oder `.env.local.php` löschen), plus Prüf- und Testbefehle
+  (`debug:dotenv`, `workflow:bounce:collect --dry-run`).
+
 ## [2.9.0] – 2026-07-16
 
 Zuverlässiges Zustand-Tracking der versendeten Mails inklusive Erkennung asynchroner

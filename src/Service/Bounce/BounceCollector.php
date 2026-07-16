@@ -44,9 +44,28 @@ class BounceCollector
 
     public function __invoke(): void
     {
-        $dsn = trim((string) $this->bounceImapDsn);
+        $this->collect(trim((string) $this->bounceImapDsn));
+    }
+
+    /**
+     * Reads the bounce mailbox and applies the bounces. Shared by the cron ({@see __invoke()})
+     * and the workflow:bounce:collect command. The optional reporter surfaces each step on the
+     * console for diagnosis; $dryRun inspects the mailbox without moving mails or writing to
+     * the database. Never throws — every failure is logged (and, if given, reported).
+     *
+     * @param (\Closure(string, string): void)|null $report ($level in info|comment|error, $message)
+     */
+    public function collect(string $dsn, bool $dryRun = false, ?\Closure $report = null): void
+    {
+        $note = static function (string $level, string $message) use ($report): void {
+            if (null !== $report) {
+                $report($level, $message);
+            }
+        };
 
         if ('' === $dsn) {
+            $note('comment', 'Kein Bounce-Postfach konfiguriert (WORKFLOW_BOUNCE_IMAP_DSN ist leer).');
+
             return; // Not configured: the bounce feature is off.
         }
 
@@ -54,6 +73,7 @@ class BounceCollector
             $config = $this->configFromDsn($dsn);
         } catch (\Throwable $e) {
             $this->logger->warning('Workflow bounce collector: invalid WORKFLOW_BOUNCE_IMAP_DSN ('.$e->getMessage().').');
+            $note('error', 'Ungültige DSN: '.$e->getMessage());
 
             return;
         }
@@ -61,34 +81,77 @@ class BounceCollector
         try {
             $client = (new ClientManager())->make($config);
             $client->connect();
+            $note('info', 'Verbunden mit '.$config['host'].':'.$config['port'].' (Verschlüsselung: '.($config['encryption'] ?: 'keine').').');
 
             $inbox = $client->getFolder('INBOX');
 
             if (null === $inbox) {
                 $this->logger->warning('Workflow bounce collector: INBOX not found.');
+                $note('error', 'INBOX nicht gefunden.');
                 $client->disconnect();
 
                 return;
             }
 
-            $this->ensureProcessedFolder($client);
+            if (!$dryRun) {
+                $this->ensureProcessedFolder($client);
+            }
 
             $messages = $inbox->messages()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->get();
+            $note('info', \count($messages).' Nachricht(en) in der INBOX'.($dryRun ? ' (Testlauf – es wird nichts verändert)' : '').'.');
 
             foreach ($messages as $message) {
                 try {
                     // Correlate first; a hard bounce is idempotent, so even if the move below
                     // fails and the message is seen again next run, no harm is done.
-                    $this->handleRaw($this->rawMessage($message));
-                    $message->move(self::PROCESSED_FOLDER, true);
+                    $reports = $this->parser->parse($this->rawMessage($message));
+
+                    if ([] === $reports) {
+                        $note('comment', 'Übersprungen: keine Unzustellbarkeitsmeldung (kein DSN).');
+
+                        if (!$dryRun) {
+                            $message->move(self::PROCESSED_FOLDER, true);
+                        }
+
+                        continue;
+                    }
+
+                    foreach ($reports as $bounce) {
+                        $note('info', \sprintf(
+                            '%s — %s, Status %s, Parcel %s%s',
+                            $bounce->recipient,
+                            $bounce->action,
+                            $bounce->status,
+                            $bounce->parcelId ?? '—',
+                            $bounce->isHardBounce() ? ' [HARD]' : ($bounce->isSoftBounce() ? ' [soft]' : ''),
+                        ));
+
+                        if ($dryRun) {
+                            if ($bounce->isHardBounce()) {
+                                $send = $this->locateSend($bounce);
+                                $note($send ? 'info' : 'error', '  → '.($send ? 'würde Eintrag '.$send['entryId'].' als unzustellbar markieren' : 'keine passende Versandzeile gefunden – nicht zuordenbar'));
+                            }
+
+                            continue;
+                        }
+
+                        $this->applyReport($bounce);
+                    }
+
+                    if (!$dryRun) {
+                        $message->move(self::PROCESSED_FOLDER, true);
+                    }
                 } catch (\Throwable $e) {
                     $this->logger->warning('Workflow bounce collector: could not process a message ('.$e->getMessage().').');
+                    $note('error', 'Fehler bei einer Nachricht: '.$e->getMessage());
                 }
             }
 
             $client->disconnect();
+            $note('info', 'Fertig.');
         } catch (\Throwable $e) {
             $this->logger->warning('Workflow bounce collector: IMAP error ('.$e->getMessage().').');
+            $note('error', 'IMAP-Fehler: '.$e->getMessage());
         }
     }
 
@@ -99,17 +162,22 @@ class BounceCollector
     public function handleRaw(string $raw): void
     {
         foreach ($this->parser->parse($raw) as $report) {
-            if ($report->isHardBounce()) {
-                $this->recordHardBounce($report);
-            } elseif ($report->isSoftBounce()) {
-                // A temporary problem (greylisting, mailbox full, delayed retry): the final
-                // outcome is still open, so the state is left untouched — only logged.
-                $this->logger->info(\sprintf(
-                    'Workflow bounce collector: soft bounce for %s (status %s), state left unchanged.',
-                    $report->recipient,
-                    $report->status,
-                ));
-            }
+            $this->applyReport($report);
+        }
+    }
+
+    private function applyReport(BounceReport $report): void
+    {
+        if ($report->isHardBounce()) {
+            $this->recordHardBounce($report);
+        } elseif ($report->isSoftBounce()) {
+            // A temporary problem (greylisting, mailbox full, delayed retry): the final
+            // outcome is still open, so the state is left untouched — only logged.
+            $this->logger->info(\sprintf(
+                'Workflow bounce collector: soft bounce for %s (status %s), state left unchanged.',
+                $report->recipient,
+                $report->status,
+            ));
         }
     }
 

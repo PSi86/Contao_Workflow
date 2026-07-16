@@ -153,6 +153,28 @@ betroffene Person im Dashboard als **„Unzustellbar (Bounce)"**.
 > nötig. Ist kein Bounce-Postfach konfiguriert, bleibt alles beim Alten; ein Versand gilt
 > dann weiterhin als „versendet, keine Fehlermeldung".
 
+> **⚠ Managed Edition: `.env.local` wird evtl. nicht direkt gelesen.** Existiert eine
+> kompilierte `<projekt>/.env.local.php` (der Contao-Manager legt sie an), hat sie **Vorrang**,
+> und Änderungen in `.env.local` werden ignoriert. Nach dem Eintragen von
+> `WORKFLOW_BOUNCE_IMAP_DSN` daher **eine** der Varianten:
+> - die Variable über die **Contao-Manager-Oberfläche** setzen (schreibt beides), **oder**
+> - neu kompilieren: `vendor/bin/contao-console dotenv:dump prod`, **oder**
+> - die Datei `.env.local.php` löschen (dann liest Contao `.env` + `.env.local` direkt).
+>
+> Prüfen, ob die Variable ankommt: `vendor/bin/contao-console debug:dotenv` (listet alle
+> Werte). Danach den **prod-Cache neu bauen**.
+
+**Konfiguration prüfen / Abruf sofort testen** (statt bis zu 15 Minuten auf den Cron zu
+warten):
+```
+vendor/bin/contao-console workflow:bounce:collect --dry-run
+```
+Das zeigt Schritt für Schritt: ob die DSN erkannt wird, ob die IMAP-Verbindung steht, wie
+viele Nachrichten im Postfach liegen und ob ein Bounce einem Eintrag zugeordnet werden kann –
+**ohne** etwas zu verändern. Ohne `--dry-run` verarbeitet es die Bounces sofort (verschiebt
+sie nach `INBOX/Processed`, markiert die Einträge). Mit `--dsn=imap://…` lässt sich die
+IMAP-Verbindung unabhängig von `.env.local` testen.
+
 ---
 
 ## 4. SPF / DKIM / DMARC bei all-inkl (Schritt für Schritt)
