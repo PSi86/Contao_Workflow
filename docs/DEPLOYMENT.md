@@ -59,6 +59,40 @@ contao-console messenger:consume contao_prio_high contao_prio_normal contao_prio
   --time-limit=3600 --memory-limit=256M
 ```
 
+### 2c. Nur einen Worker gleichzeitig — autoscale deckeln (wichtig bei all-inkl)
+all-inkl erlaubt **max. 3 gleichzeitige SMTP-Verbindungen** (Abschnitt 3a). Wie viele
+Versand-Prozesse parallel laufen, hängt davon ab, **wie** die Queue abgearbeitet wird:
+
+- **URL-Cron auf `/_contao/cron` (Abschnitt 2a, empfohlen auf Shared Hosting):**
+  Hier springt Contaos **Web-Worker** ein — pro Web-Request **ein** sequenzieller
+  `messenger:consume` von wenigen Sekunden. Der autoscale-Supervisor läuft in diesem
+  Pfad **nicht** (er ist an den CLI-Scope gebunden). Zu beachten: der Web-Worker kann
+  bei vielen *gleichzeitigen* Seitenaufrufen mehrfach parallel anspringen.
+- **CLI-Cron / VPS-Supervisor (`contao:cron` bzw. `contao:supervise-workers`):**
+  Hier greift die **autoscale-Konfiguration** der Worker. Contaos Default skaliert
+  **einen Worker je 5 wartende Nachrichten, bis zu 10 parallel** — bei einem 300er-Schwung
+  also bis zu **10 gleichzeitige `messenger:consume`-Prozesse** und damit deutlich mehr,
+  als all-inkl an SMTP-Verbindungen zulässt.
+
+**Empfehlung** (greift für den CLI-/Supervisor-Pfad; auf reinem Shared Hosting schadet sie
+nie): autoscale abschalten, sodass **genau ein** Worker läuft. In
+`<projekt>/config/config.yaml`:
+
+```yaml
+# config/config.yaml — all-inkl: max. 3 gleichzeitige SMTP-Verbindungen
+contao:
+    messenger:
+        workers:
+            -
+                transports: [contao_prio_high]
+                options: ['--time-limit=55', '--sleep=5']
+                autoscale: { enabled: false }
+```
+
+Bei abgeschaltetem autoscale startet der Supervisor **immer genau einen** Worker
+(`contao:supervise-workers`, „Always start one worker"). Betreibe auf all-inkl außerdem
+**keinen** zusätzlichen Dauer-Worker parallel zum Cron.
+
 ---
 
 ## 3. SMTP konfigurieren
@@ -175,7 +209,7 @@ Wenn die Reports über einige Tage sauber sind (SPF/DKIM bestehen), schrittweise
 |---|---|
 | „Eingereiht", aber keine Mail / Status bleibt `0` | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). Der Status wechselt erst nach echtem Versand. |
 | Mails landen im Spam | SPF/DKIM/DMARC fehlen oder Absender-Domain ≠ signierte Domain (Abschnitt 3a/4). |
-| Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben. |
+| Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben; autoscale deckeln (Abschnitt 2c). |
 | Einzelne Personen ohne Mail | Transport `contao_failure` prüfen (Abschnitt 6). |
 | PDF fehlt im Anhang | NC-Notification „Ergebnis": unter „Anhänge über Tokens" muss `##attachment##` stehen. |
 

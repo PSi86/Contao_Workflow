@@ -15,6 +15,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   wird jetzt erst bei **erfolgreicher** Zustellung aufgelöst, sodass ein Wiederholversuch
   weiterhin dem richtigen Eintrag zugeordnet wird.
 
+### Dokumentation
+- **DEPLOYMENT: Worker-Parallelität auf all-inkl begrenzen (autoscale).** Neuer Abschnitt 2c
+  erläutert, wann Contaos autoscale-Worker greifen (CLI-Cron bzw. `contao:supervise-workers`,
+  Default bis zu 10 parallele Prozesse) und wann stattdessen der sequenzielle Web-Worker
+  drainiert (URL-Cron `/_contao/cron`), und empfiehlt für all-inkl (max. 3 gleichzeitige
+  SMTP-Verbindungen) das Abschalten von autoscale (`autoscale: { enabled: false }`), sodass
+  genau ein Worker läuft.
+
 ## [2.8.0] – 2026-07-11
 
 ### Hinzugefügt
