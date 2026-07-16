@@ -6,6 +6,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Dokumentation
+- DEPLOYMENT §3a: Hinweis auf Contaos Mailer-DSN-Generator im Handbuch (baut die `MAILER_DSN`
+  inkl. korrekter URL-Kodierung zusammen).
+
 ## [2.9.4] – 2026-07-17
 
 ### Hinzugefügt

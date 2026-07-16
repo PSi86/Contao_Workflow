@@ -111,6 +111,10 @@ parallel betreiben.**
    ```
    - Server = `<KAS-Login>.kasserver.com`, Port **587 (STARTTLS)** oder 465 (SSL).
    - `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort ebenfalls URL-kodieren.
+   - **Tipp:** Contaos Handbuch enthält einen **Mailer-DSN-Generator**, der die DSN inklusive
+     korrekter URL-Kodierung (`@` → `%40`, Sonderzeichen im Passwort) für dich zusammenbaut –
+     das erspart Tippfehler beim Kodieren:
+     <https://docs.contao.org/5.x/manual/de/system/einstellungen/#mailer-dsn>
 3. **Absenderadresse im Notification Center** auf `noreply@deine-domain.de` setzen
    (bei allen drei Notifications, Feld „Absender") — **nicht** die Demo-Adresse
    `example.com`. Sonst stimmt die DKIM/SPF-Ausrichtung nicht und die Mail gilt als unzulässig.
