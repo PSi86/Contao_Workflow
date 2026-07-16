@@ -164,7 +164,7 @@ $l = $this->dash;
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><td data-k="abteilung"><?= $esc($p['abteilung']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>
-                <td data-k="delivery"><?php if (!empty($p['bounceHard'])): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif (!empty($p['sendError'])): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php endif; ?></td>
+                <td data-k="delivery"><?php if ('bounce' === $p['delivery']): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif ('error' === $p['delivery']): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php elseif ('sent' === $p['delivery']): ?><span class="wf-badge wf-badge--sent" title="<?= $esc($l['delivery_sent_hint']) ?>"><?= $l['delivery_sent'] ?></span><?php endif; ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>

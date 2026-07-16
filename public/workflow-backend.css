@@ -134,6 +134,7 @@
 
 /* Delivery indicators in the pending list's "Zustellung" column. Amber = retryable
    transport error; red = permanent hard bounce (invalid address, needs a human). */
+.wf-badge--sent { background: #2e7d32; }
 .wf-badge--warn { background: #cc7a00; }
 .wf-badge--bounce { background: #c0392b; }
 .wf-table td[data-k="delivery"] .wf-badge { margin-left: 0; }

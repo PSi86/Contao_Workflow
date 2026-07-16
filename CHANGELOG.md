@@ -6,6 +6,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.5] – 2026-07-17
+
+### Geändert
+- **Spalte „Zustellung" zeigt jetzt auch den Erfolgsfall.** Statt bei fehlerfreiem Versand
+  leer zu bleiben, erscheint ein grünes Badge **„Versendet"**. Leer bleibt die Spalte nur
+  noch, solange **noch keine Mail versucht** wurde. „Versendet" ist bewusst ehrlich
+  beschriftet – *angenommen, nicht garantiert zugestellt*: Ein später eintreffender Bounce
+  kippt die Zeile automatisch auf „Unzustellbar" (der Tooltip erklärt das).
+
 ### Dokumentation
 - DEPLOYMENT §3a: Hinweis auf Contaos Mailer-DSN-Generator im Handbuch (baut die `MAILER_DSN`
   inkl. korrekter URL-Kodierung zusammen).

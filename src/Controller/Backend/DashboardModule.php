@@ -182,6 +182,24 @@ class DashboardModule extends BackendModule
             $hasVorname = $hasVorname || '' !== $vorname;
             $hasAbteilung = $hasAbteilung || '' !== $abteilung;
 
+            $sendError = (string) $entry->sendError;
+
+            // Delivery state shown in its own "Zustellung" column, in addition to (never
+            // replacing) the workflow status. Empty only while no mail has been attempted;
+            // otherwise always something. Precedence: a hard bounce (permanent) beats a
+            // retryable transport error, which beats a plain "sent, no error so far".
+            // "sent" is derived from the status: it only advances past "imported" once an
+            // invitation was actually sent.
+            $delivery = '';
+
+            if ('1' === (string) $entry->bounceHard) {
+                $delivery = 'bounce';
+            } elseif ('' !== $sendError) {
+                $delivery = 'error';
+            } elseif ((int) $entry->status >= WorkflowStatus::STATUS_INVITED) {
+                $delivery = 'sent';
+            }
+
             $pending[] = [
                 'id'          => (int) $entry->id,
                 'email'       => $email,
@@ -190,11 +208,8 @@ class DashboardModule extends BackendModule
                 'name'        => $name,
                 'vorname'     => $vorname,
                 'abteilung'   => $abteilung,
-                // Delivery problems shown in their own "Zustellung" column, in addition to
-                // (never replacing) the workflow status. A hard bounce (invalid address)
-                // takes precedence over a retryable transport error.
-                'sendError'   => (string) $entry->sendError,
-                'bounceHard'  => '1' === (string) $entry->bounceHard,
+                'delivery'    => $delivery,
+                'sendError'   => $sendError,
                 'bounceInfo'  => (string) $entry->bounceInfo,
             ];
         }
