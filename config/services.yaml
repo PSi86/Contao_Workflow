@@ -12,6 +12,8 @@ services:
             - ../src/ContaoWorkflowBundle.php
             - ../src/ContaoManager/
             - ../src/Model/
+            # Plain value object, never resolved from the container.
+            - ../src/Service/Bounce/BounceReport.php
             # Instantiated by Contao as a BE_MOD callback, not via the container.
             - ../src/Controller/Backend/DashboardModule.php
 
