@@ -6,6 +6,12 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Dashboard-Warnung „Versand hängt in der Queue".** Sind E-Mails seit über 15 Minuten zum
+  Versand eingereiht, ohne dass ein Ergebnis vorliegt, zeigt die Workflow-Übersicht jetzt
+  oben eine deutliche Warnung – typischerweise das Zeichen, dass der Cron bzw. der Worker
+  nicht läuft. Vorher war dieser Zustand unsichtbar (Eintrag blieb „ausstehend", ohne Fehler).
+
 ### Geändert
 - **Interne Versandprotokollierung in eigene Tabelle `tl_workflow_send`.** Der Zustand jeder
   einzeln versendeten Mail (Einladung / Erinnerung / Ergebnis) wird jetzt dauerhaft pro

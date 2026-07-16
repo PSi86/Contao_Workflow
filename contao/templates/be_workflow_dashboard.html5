@@ -11,6 +11,10 @@ $l = $this->dash;
 
 <h2 class="sub_headline"><?= $l['heading'] ?></h2>
 
+<?php if ((int) $this->stuckQueue > 0): ?>
+  <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc(sprintf($l['stuck_queue'], (int) $this->stuckQueue)) ?></p>
+<?php endif; ?>
+
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
   <summary style="cursor:pointer;font-weight:bold;">Workflow-Konfiguration importieren</summary>
   <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" style="margin-top:1em;">

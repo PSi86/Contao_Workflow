@@ -9,6 +9,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'unpublished'      => '(nicht veröffentlicht)',
     'not_runnable'     => '⚠ nicht ausführbar',
     'not_runnable_msg' => 'Dieser Workflow kann nicht ausgeführt werden:',
+    'stuck_queue'      => '⚠ %d E-Mail(s) sind seit über 15 Minuten zum Versand eingereiht, aber noch ohne Ergebnis. Läuft der Cron bzw. der Worker? Siehe DEPLOYMENT.md, Abschnitt 2 (Worker/Cron in Produktion einrichten).',
     'no_import'        => '⚠ Der Workflow ist konfiguriert, aber es wurde noch <strong>kein Import ausgeführt</strong> – es liegen noch keine Antworten vor. Bitte zuerst „Import ausführen“.',
     'completed'        => 'eingegangen',
     'open'             => 'offen',

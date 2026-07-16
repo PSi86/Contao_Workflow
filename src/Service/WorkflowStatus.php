@@ -102,6 +102,19 @@ class WorkflowStatus
     }
 
     /**
+     * Number of mails still sitting in the queue (never picked up by a worker) for longer
+     * than the given age. A non-zero count almost always means the cron/worker is not
+     * running — the queued mails will neither go out nor turn into a send error on their own.
+     */
+    public function countStuckQueued(int $olderThanSeconds = 900): int
+    {
+        return (int) $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM tl_workflow_send WHERE state = 'queued' AND queuedAt > 0 AND queuedAt < ?",
+            [time() - $olderThanSeconds],
+        );
+    }
+
+    /**
      * Entries whose last mail send failed (any status), so the back end can flag them.
      *
      * @return array<int, array{email: string, error: string, at: int}>

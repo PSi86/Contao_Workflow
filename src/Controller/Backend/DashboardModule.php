@@ -115,6 +115,10 @@ class DashboardModule extends BackendModule
         // not wrapped with the message output, so render it here explicitly.
         $this->Template->messages = Message::generate();
 
+        // Infrastructure alarm: mails that have been queued for a while without any result
+        // (the cron/worker is most likely not running). This spans all workflows.
+        $this->Template->stuckQueue = $status->countStuckQueued();
+
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
         $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
