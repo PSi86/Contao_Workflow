@@ -6,6 +6,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.0] – 2026-07-16
+
+Zuverlässiges Zustand-Tracking der versendeten Mails inklusive Erkennung asynchroner
+Unzustellbarkeit (Bounces/DSN), die bisher unbemerkt blieb.
+
 ### Hinzugefügt
 - **Warnung bei problematischer Absenderdomain.** Beim Bearbeiten eines Workflows warnt das
   Backend jetzt, wenn die Absenderadresse der zugeordneten E-Mail-Vorlagen eine
