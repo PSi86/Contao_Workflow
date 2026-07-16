@@ -109,7 +109,10 @@ class BounceCollector
                 $this->ensureProcessedFolder($client);
             }
 
-            $messages = $inbox->messages()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->get();
+            // whereAll() forces "UID SEARCH ALL": without an explicit criterion webklex sends
+            // an empty search, which strict IMAP servers (All-Inkl/Dovecot) reject with
+            // "BAD ... Missing search parameters".
+            $messages = $inbox->messages()->whereAll()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->get();
             $total = \count($messages);
             $note('info', $total.' Nachricht(en) in der INBOX'.($dryRun ? ' (Testlauf – es wird nichts verändert)' : '').'.');
 

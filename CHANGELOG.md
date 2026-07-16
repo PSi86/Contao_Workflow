@@ -6,6 +6,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.3] – 2026-07-16
+
+### Behoben
+- **Bounce-Abruf gegen strikte IMAP-Server (All-Inkl/Dovecot).** Die Postfach-Abfrage
+  sendete ohne explizites Suchkriterium ein leeres `UID SEARCH`, das solche Server mit
+  „BAD … Missing search parameters" ablehnen (bei Mailpit u. a. funktionierte es zufällig).
+  Die Abfrage setzt jetzt explizit `ALL` (`UID SEARCH ALL`).
+
 ## [2.9.2] – 2026-07-16
 
 ### Hinzugefügt
