@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Service\Bounce;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
+use Contao\CoreBundle\Monolog\ContaoContext;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Webklex\PHPIMAP\ClientManager;
@@ -65,6 +66,9 @@ class BounceCollector
 
         if ('' === $dsn) {
             $note('comment', 'Kein Bounce-Postfach konfiguriert (WORKFLOW_BOUNCE_IMAP_DSN ist leer).');
+            // Visible in the back end system log so a mis-delivered .env value is diagnosable
+            // (GENERAL, not ERROR: an intentionally unconfigured site should not log errors).
+            $this->systemLog('Bounce-Postfach nicht konfiguriert: WORKFLOW_BOUNCE_IMAP_DSN ist leer oder kam nicht in der Anwendung an.', ContaoContext::GENERAL);
 
             return; // Not configured: the bounce feature is off.
         }
@@ -74,9 +78,16 @@ class BounceCollector
         } catch (\Throwable $e) {
             $this->logger->warning('Workflow bounce collector: invalid WORKFLOW_BOUNCE_IMAP_DSN ('.$e->getMessage().').');
             $note('error', 'Ungültige DSN: '.$e->getMessage());
+            $this->systemLog('Bounce-Collector: ungültige DSN – '.$e->getMessage(), ContaoContext::ERROR);
 
             return;
         }
+
+        $total = 0;
+        $hard = 0;
+        $soft = 0;
+        $unmatched = 0;
+        $skipped = 0;
 
         try {
             $client = (new ClientManager())->make($config);
@@ -88,6 +99,7 @@ class BounceCollector
             if (null === $inbox) {
                 $this->logger->warning('Workflow bounce collector: INBOX not found.');
                 $note('error', 'INBOX nicht gefunden.');
+                $this->systemLog('Bounce-Collector: INBOX nicht gefunden.', ContaoContext::ERROR);
                 $client->disconnect();
 
                 return;
@@ -98,7 +110,8 @@ class BounceCollector
             }
 
             $messages = $inbox->messages()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->get();
-            $note('info', \count($messages).' Nachricht(en) in der INBOX'.($dryRun ? ' (Testlauf – es wird nichts verändert)' : '').'.');
+            $total = \count($messages);
+            $note('info', $total.' Nachricht(en) in der INBOX'.($dryRun ? ' (Testlauf – es wird nichts verändert)' : '').'.');
 
             foreach ($messages as $message) {
                 try {
@@ -107,6 +120,7 @@ class BounceCollector
                     $reports = $this->parser->parse($this->rawMessage($message));
 
                     if ([] === $reports) {
+                        ++$skipped;
                         $note('comment', 'Übersprungen: keine Unzustellbarkeitsmeldung (kein DSN).');
 
                         if (!$dryRun) {
@@ -135,7 +149,12 @@ class BounceCollector
                             continue;
                         }
 
-                        $this->applyReport($bounce);
+                        match ($this->applyReport($bounce)) {
+                            'hard' => ++$hard,
+                            'unmatched' => ++$unmatched,
+                            'soft' => ++$soft,
+                            default => null,
+                        };
                     }
 
                     if (!$dryRun) {
@@ -144,15 +163,47 @@ class BounceCollector
                 } catch (\Throwable $e) {
                     $this->logger->warning('Workflow bounce collector: could not process a message ('.$e->getMessage().').');
                     $note('error', 'Fehler bei einer Nachricht: '.$e->getMessage());
+                    $this->systemLog('Bounce-Collector: Fehler bei einer Nachricht – '.$e->getMessage(), ContaoContext::ERROR);
                 }
             }
 
             $client->disconnect();
             $note('info', 'Fertig.');
+
+            if (!$dryRun) {
+                // One heartbeat line per run in the back end system log, so it is visible that
+                // the cron ran, connected and what it found — even when nothing was actionable.
+                $this->systemLog(\sprintf(
+                    'Bounce-Postfach geprüft (%s:%d): %d Nachricht(en), %d hart markiert, %d weich, %d ohne Zuordnung, %d ohne DSN.',
+                    $config['host'],
+                    $config['port'],
+                    $total,
+                    $hard,
+                    $soft,
+                    $unmatched,
+                    $skipped,
+                ));
+            }
         } catch (\Throwable $e) {
             $this->logger->warning('Workflow bounce collector: IMAP error ('.$e->getMessage().').');
             $note('error', 'IMAP-Fehler: '.$e->getMessage());
+            $this->systemLog('Bounce-Collector: IMAP-Fehler – '.$e->getMessage(), ContaoContext::ERROR);
         }
+    }
+
+    /**
+     * Writes to the Contao system log (tl_log), which is visible in the back end under
+     * System → System log without any CLI access — the only diagnostic channel on hosting
+     * where the console is unavailable. Unlike the default app log (fingers_crossed, only
+     * flushed on an error), these entries are recorded immediately.
+     */
+    private function systemLog(string $message, string $action = ContaoContext::CRON): void
+    {
+        $this->logger->log(
+            ContaoContext::ERROR === $action ? 'error' : 'info',
+            $message,
+            ['contao' => new ContaoContext(self::class.'::collect', $action)],
+        );
     }
 
     /**
@@ -166,11 +217,16 @@ class BounceCollector
         }
     }
 
-    private function applyReport(BounceReport $report): void
+    /**
+     * @return string one of hard|unmatched|soft|none
+     */
+    private function applyReport(BounceReport $report): string
     {
         if ($report->isHardBounce()) {
-            $this->recordHardBounce($report);
-        } elseif ($report->isSoftBounce()) {
+            return $this->recordHardBounce($report) ? 'hard' : 'unmatched';
+        }
+
+        if ($report->isSoftBounce()) {
             // A temporary problem (greylisting, mailbox full, delayed retry): the final
             // outcome is still open, so the state is left untouched — only logged.
             $this->logger->info(\sprintf(
@@ -178,10 +234,14 @@ class BounceCollector
                 $report->recipient,
                 $report->status,
             ));
+
+            return 'soft';
         }
+
+        return 'none';
     }
 
-    private function recordHardBounce(BounceReport $report): void
+    private function recordHardBounce(BounceReport $report): bool
     {
         $send = $this->locateSend($report);
 
@@ -191,8 +251,12 @@ class BounceCollector
                 $report->recipient,
                 $report->parcelId ?? '—',
             ));
+            $this->systemLog(
+                \sprintf('Harter Bounce für %s konnte keinem Versand zugeordnet werden (Parcel-ID %s).', $report->recipient, $report->parcelId ?? '—'),
+                ContaoContext::ERROR,
+            );
 
-            return;
+            return false;
         }
 
         $now = time();
@@ -211,6 +275,10 @@ class BounceCollector
             "UPDATE tl_workflow_entry SET bounceHard = '1', bounceInfo = ?, tstamp = ? WHERE id = ?",
             [$this->shorten($report->recipient.' – '.$code), $now, (int) $send['entryId']],
         );
+
+        $this->systemLog(\sprintf('Unzustellbar (Bounce): Eintrag %d – %s (%s).', (int) $send['entryId'], $report->recipient, $code));
+
+        return true;
     }
 
     /**
@@ -287,6 +355,8 @@ class BounceCollector
             'username' => isset($parts['user']) ? urldecode($parts['user']) : '',
             'password' => isset($parts['pass']) ? urldecode($parts['pass']) : '',
             'authentication' => null,
+            // Fail fast instead of hanging the (web) cron on an unreachable mailbox.
+            'timeout' => 20,
         ];
     }
 

@@ -6,6 +6,19 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.9.2] – 2026-07-16
+
+### Hinzugefügt
+- **Bounce-Abruf schreibt ins Contao-System-Log** (Backend: System → System-Log), damit ohne
+  CLI-Zugriff nachvollziehbar ist, was der Cron tut: pro Lauf eine Zeile „Bounce-Postfach
+  geprüft (…): N Nachrichten, X hart markiert, …", je hart markierter Adresse ein Eintrag,
+  sowie klare Fehlermeldungen (leere/ungültige DSN, IMAP-Fehler, nicht zuordenbarer Bounce).
+  Das umgeht das prod-Log, das per `fingers_crossed` nur bei Fehlern schreibt.
+
+### Behoben
+- **IMAP-Verbindungs-Timeout (20 s)**, damit ein nicht erreichbares Bounce-Postfach den
+  (Web-)Cron `/_contao/cron` nicht blockiert.
+
 ## [2.9.1] – 2026-07-16
 
 ### Hinzugefügt
