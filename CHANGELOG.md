@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.13.0] – 2026-07-17
+
 ### Hinzugefügt
 - **Diagnose der Bounce-Erkennung in der Workflow-Übersicht.** Oben in der Übersicht wird jetzt
   der Zustand des Bounce-Postfachs angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung
