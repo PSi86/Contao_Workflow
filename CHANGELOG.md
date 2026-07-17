@@ -8,6 +8,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [2.11.1] – 2026-07-17
 
+### Geändert
+- **Der Bounce-Cron schreibt nur noch ins System-Log, wenn er etwas getan hat.** Die Zeile
+  „Bounce-Postfach geprüft (…): 0 Nachricht(en), …" erschien bei jedem Lauf, also alle 15
+  Minuten — ein leeres Postfach ist aber der Normalzustand, und die Meldung begrub die
+  Einträge, auf die es ankommt. Sie erscheint jetzt nur noch, wenn Nachrichten verarbeitet
+  wurden (auch wenn keine davon ein DSN trug — sie wurden trotzdem aus der INBOX verschoben).
+  Fehler werden unverändert immer geloggt, und `workflow:bounce:collect` berichtet weiterhin
+  jeden Schritt, sodass sich die Funktionsfähigkeit jederzeit prüfen lässt.
+
 ### Behoben
 - **Zu großer Abstand zwischen Fließtext und Unterschriftsfeld im PDF.** Der Abstand entstand
   aus zwei Quellen — dem `margin-bottom` des Body (18px) und dem `margin-top` des

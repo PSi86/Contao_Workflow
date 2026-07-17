@@ -173,9 +173,14 @@ class BounceCollector
             $client->disconnect();
             $note('info', 'Fertig.');
 
-            if (!$dryRun) {
-                // One heartbeat line per run in the back end system log, so it is visible that
-                // the cron ran, connected and what it found — even when nothing was actionable.
+            // Only log a run that actually did something. An empty mailbox is the normal
+            // state, so a line every 15 minutes would bury the entries that matter — and the
+            // system log is the one diagnostic channel available without CLI access. A run
+            // with messages IS worth a line even when none carried a DSN: those messages were
+            // still moved out of the INBOX. Errors are logged regardless (see the catch
+            // blocks), and "workflow:bounce:collect" reports every step on demand, so
+            // liveness stays checkable without the heartbeat.
+            if (!$dryRun && $total > 0) {
                 $this->systemLog(\sprintf(
                     'Bounce-Postfach geprüft (%s:%d): %d Nachricht(en), %d hart markiert, %d weich, %d ohne Zuordnung, %d ohne DSN.',
                     $config['host'],
