@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
+use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Environment;
@@ -11,12 +12,14 @@ use Contao\FilesModel;
 use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
+use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
+use Symfony\Component\Routing\RouterInterface;
 
 /**
  * Surfaces an incomplete/not-runnable workflow in the edit mask: an info box with
@@ -36,6 +39,8 @@ class WorkflowIntegrityListener
         private readonly WorkflowValidator $validator,
         private readonly PlaceholderResolver $placeholders,
         private readonly SpreadsheetInspector $inspector,
+        private readonly RouterInterface $router,
+        private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $projectDir,
     ) {
     }
@@ -113,6 +118,39 @@ class WorkflowIntegrityListener
         }
 
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+    }
+
+    /**
+     * Reminds, on the edit mask, that the source file was changed but not re-imported yet: the
+     * stored entries and — critically — the snapshotted number formats are stale, so the form
+     * and PDF preview keep showing the old data/formatting. Carries a "run import" link that
+     * returns to this edit mask, so the fix is one click away from where the file was changed.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
+    public function flagStaleSource(DataContainer $dc): void
+    {
+        if (!$dc->id || !$this->isEditMask()) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null === $workflow || !$this->validator->isReimportNeeded($workflow)) {
+            return;
+        }
+
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_reimport'] ?? [];
+
+        $url = $this->router->generate('workflow_import', ['id' => (int) $workflow->id])
+            .'?rt='.$this->csrfTokenManager->getDefaultTokenValue().'&return=edit';
+
+        Message::addInfo(sprintf(
+            '%s <a href="%s" class="tl_submit" style="margin-left:.4em;">%s</a>',
+            (string) ($lang['edit_hint'] ?? 'Die Quelldatei wurde geändert, aber noch nicht importiert.'),
+            StringUtil::specialchars($url),
+            (string) ($lang['import_button'] ?? 'Jetzt importieren'),
+        ));
     }
 
     /**

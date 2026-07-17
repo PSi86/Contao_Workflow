@@ -19,6 +19,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'col_reason'       => 'Reason',
     'hard_bounces_hint'=> 'These addresses do not exist (hard bounces) and are excluded from invitations and reminders. Correct the entry’s e-mail address to bring it back in.',
     'no_import'        => '⚠ The workflow is configured, but <strong>no import has run yet</strong> – there are no responses yet. Please use “Run import” first.',
+    'reimport_needed'  => '⚠ The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats – please “Run import” to load the current data and field formatting.',
     'completed'        => 'received',
     'open'             => 'open',
     'total'            => 'total',
@@ -76,4 +77,11 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_placeholder'    => 'Sender address “%s” uses an example/placeholder domain (“%s”). Mail to such addresses is not delivered and bounce messages vanish unnoticed. Please set a real sender address on your own domain (in the Notification Center).',
     'sender_no_mx'          => 'Sender address “%s”: the domain “%s” has no MX record in DNS. Mail from this sender is undeliverable and bounce messages vanish unnoticed. Please set a real, sendable sender address (in the Notification Center).',
     'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
+];
+
+// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the source file was
+// changed but not imported yet.
+$GLOBALS['TL_LANG']['workflow_reimport'] = [
+    'edit_hint'     => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
+    'import_button' => 'Run import now',
 ];

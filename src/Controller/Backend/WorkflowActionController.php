@@ -73,9 +73,10 @@ class WorkflowActionController
 
     /**
      * Blocks execution of a not-runnable workflow (e.g. a fresh copy without a
-     * source file): adds the concrete problems as an error and redirects back.
+     * source file): adds the concrete problems as an error and redirects back to
+     * $backTo (the overview by default; the edit mask when the action was triggered there).
      */
-    private function assertRunnable(WorkflowModel $workflow): ?RedirectResponse
+    private function assertRunnable(WorkflowModel $workflow, ?RedirectResponse $backTo = null): ?RedirectResponse
     {
         $problems = $this->validator->getProblems($workflow);
 
@@ -89,7 +90,7 @@ class WorkflowActionController
             StringUtil::specialchars(implode(' ', $problems)),
         ));
 
-        return $this->backToDashboard();
+        return $backTo ?? $this->backToDashboard();
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -100,7 +101,13 @@ class WorkflowActionController
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
-        if ($redirect = $this->assertRunnable($workflow)) {
+        // Import can be triggered from the workflow's edit mask (the "re-import needed" hint);
+        // "return=edit" sends the user back there instead of to the overview.
+        $backTo = 'edit' === (string) $request->query->get('return')
+            ? $this->backToEdit($id)
+            : $this->backToDashboard();
+
+        if ($redirect = $this->assertRunnable($workflow, $backTo)) {
             return $redirect;
         }
 
@@ -123,7 +130,7 @@ class WorkflowActionController
             Message::addError('Import fehlgeschlagen: '.$e->getMessage());
         }
 
-        return $this->backToDashboard();
+        return $backTo;
     }
 
     /**
@@ -666,5 +673,15 @@ class WorkflowActionController
         return new RedirectResponse(
             $this->router->generate('contao_backend', ['do' => 'workflow_overview']),
         );
+    }
+
+    private function backToEdit(int $id): RedirectResponse
+    {
+        return new RedirectResponse($this->router->generate('contao_backend', [
+            'do'  => 'workflow_manage',
+            'act' => 'edit',
+            'id'  => $id,
+            'rt'  => $this->csrfTokenManager->getDefaultTokenValue(),
+        ]));
     }
 }

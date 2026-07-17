@@ -298,6 +298,33 @@ class WorkflowValidator
     }
 
     /**
+     * Whether the source file has changed since the last import, so the stored entries (and,
+     * crucially, the snapshotted number formats) are stale until a re-import runs. Until then
+     * the form/PDF preview keeps showing the old data and formatting.
+     *
+     * Detected by comparing the current file's checksum with the one the importer recorded on
+     * its last successful run (tl_workflow.sourceHash). Deliberately scoped to "changed AFTER an
+     * import": a never-imported workflow (empty sourceHash) is guided by the separate "run
+     * import" hint, and a missing/unreadable file is a separate problem ({@see getProblems()}).
+     */
+    public function isReimportNeeded(WorkflowModel $workflow): bool
+    {
+        if (!$workflow->sourceFile || '' === (string) $workflow->sourceHash) {
+            return false;
+        }
+
+        $path = $this->inspector->resolvePath($workflow);
+
+        if (null === $path) {
+            return false;
+        }
+
+        $hash = @md5_file($path);
+
+        return false !== $hash && $hash !== (string) $workflow->sourceHash;
+    }
+
+    /**
      * Reasons why invitations/reminders cannot be sent (in addition to being runnable):
      * a valid form page is required for the link, and at least one notification must be
      * assigned. An empty list means sending is possible.

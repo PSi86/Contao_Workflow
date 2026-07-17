@@ -60,6 +60,9 @@ $l = $this->dash;
         <?php if (0 === (int) $wf['total']): ?>
           <p class="wf-warn"><?= $l['no_import'] ?></p>
         <?php endif; ?>
+        <?php if (!empty($wf['reimportNeeded'])): ?>
+          <p class="tl_error" style="margin-bottom:1em;font-weight:bold;"><?= $l['reimport_needed'] ?></p>
+        <?php endif; ?>
         <?php if (!$wf['canSend']): ?>
           <p class="wf-warn">Versand nicht möglich: <?= $esc(implode('; ', $wf['sendBlockers'])) ?>. (Formularseite + Benachrichtigung – siehe ANLEITUNG.md, Abschnitt 1–2.)</p>
         <?php endif; ?>

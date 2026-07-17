@@ -7,6 +7,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Hinweis „Quelldatei geändert – Import nötig".** Wird die Quelldatei eines Workflows
+  gewechselt, ohne den Import erneut auszuführen, zeigten Vorschau-Formular und Vorschau-PDF
+  weiterhin die **alten** Daten und Zahlenformate. Solange dieser Zustand anhält (Quelldatei
+  geändert, aber noch kein Import), erscheint jetzt ein Hinweis — **sowohl in den
+  Workflow-Einstellungen als auch in der Übersicht** beim betroffenen Workflow. In den
+  Einstellungen lässt sich der Import direkt über einen „Jetzt importieren"-Link ausführen
+  (danach zurück zur Bearbeitungsmaske). Erkannt über die Prüfsumme der Datei gegen die des
+  letzten Imports; DE + EN lokalisiert.
 - **Diagnose der Bounce-Erkennung in der Workflow-Übersicht.** Oben in der Übersicht wird jetzt
   der Zustand des Bounce-Postfachs angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung
   öffnet (sie liest den letzten Cron-Befund):

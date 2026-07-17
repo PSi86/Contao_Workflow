@@ -19,6 +19,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'col_reason'       => 'Grund',
     'hard_bounces_hint'=> 'Diese Adressen existieren nicht (harte Bounces) und werden von Einladungen und Erinnerungen ausgeschlossen. Korrigiere die E-Mail-Adresse des Eintrags, um ihn wieder aufzunehmen.',
     'no_import'        => '⚠ Der Workflow ist konfiguriert, aber es wurde noch <strong>kein Import ausgeführt</strong> – es liegen noch keine Antworten vor. Bitte zuerst „Import ausführen“.',
+    'reimport_needed'  => '⚠ Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und PDF zeigen bis dahin die alten Daten und Zahlenformate – bitte „Import ausführen“, um die aktuellen Daten und Feldformatierungen zu laden.',
     'completed'        => 'eingegangen',
     'open'             => 'offen',
     'total'            => 'gesamt',
@@ -76,4 +77,11 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_placeholder'    => 'Absenderadresse „%s“ verwendet eine Beispiel-/Platzhalterdomain („%s“). An solche Adressen werden Mails nicht zugestellt, und Unzustellbarkeitsmeldungen (Bounces) verschwinden unbemerkt. Bitte im Notification Center eine echte Absenderadresse eurer Domain setzen.',
     'sender_no_mx'          => 'Absenderadresse „%s“: Die Domain „%s“ hat keinen MX-Eintrag im DNS. Mit diesem Absender sind die Mails unzustellbar, und Unzustellbarkeitsmeldungen (Bounces) verschwinden unbemerkt. Bitte eine echte, versandfähige Absenderadresse setzen (im Notification Center).',
     'sender_domain_mismatch'=> 'Die Absenderdomain „%s“ weicht von der Website-Domain (%s) ab. Bitte die SPF-/DKIM-/DMARC-Ausrichtung prüfen, sonst landen die Mails leicht im Spam.',
+];
+
+// WorkflowIntegrityListener::flagStaleSource() – Hinweis in der Bearbeitungsmaske, wenn die
+// Quelldatei geändert, aber noch nicht importiert wurde.
+$GLOBALS['TL_LANG']['workflow_reimport'] = [
+    'edit_hint'     => 'Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und Vorschau-PDF zeigen bis dahin die alten Daten und Zahlenformate. Bitte den Import ausführen, um die aktuellen Daten und Feldformatierungen zu laden.',
+    'import_button' => 'Jetzt importieren',
 ];

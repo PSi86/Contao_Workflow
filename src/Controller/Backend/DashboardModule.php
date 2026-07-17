@@ -83,6 +83,9 @@ class DashboardModule extends BackendModule
                     'published'     => (bool) $workflow->published,
                     'runnable'      => [] === $problems,
                     'problems'      => $problems,
+                    // Source file changed but not re-imported yet: entries and number formats
+                    // are stale (form/PDF preview show the old data) until an import runs.
+                    'reimportNeeded' => [] === $problems && $validator->isReimportNeeded($workflow),
                     'canSend'       => [] === $problems && [] === $sendBlockers,
                     'sendBlockers'  => $sendBlockers,
                     'completed'     => $status->countCompleted($workflow),
