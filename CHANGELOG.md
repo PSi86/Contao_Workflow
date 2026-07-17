@@ -6,6 +6,21 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Nach dem Kopieren blieben „Datum/Ort für Unterschriftszeile" unmarkiert.** Eine Kopie
+  übernimmt die Quelldatei nicht (`doNotCopy`), weshalb alle Felder, die eine Spalte der
+  Quelldatei benennen, rot umrandet und mit „Unbekannte Option" versehen werden. Bei diesen
+  beiden griff das nicht:
+  - **Keines von beiden wurde rot umrandet**: `WorkflowValidator::orphanedFields()` kannte nur
+    `sourceSheet`, `emailField`, `questions` und `rules`. Beide Felder benennen aber genauso
+    eine Spalte und werden jetzt nach derselben Regel geprüft — auch einzeln, wenn die
+    Quelldatei vorhanden, der Wert darin aber nicht mehr enthalten ist.
+  - **„Datum für Unterschriftszeile" zeigte zusätzlich kein „Unbekannte Option"**: seine
+    Auswahlliste stammte aus den Datums-/„Aktuelle Zeit"-Antwortfeldern des Workflows statt aus
+    der Quelldatei. Die Antwortfelder werden mitkopiert, also existierte die Option weiterhin
+    und der Wert sah gültig aus. Die Liste ist jetzt auf Spalten beschränkt, die die aktuelle
+    Quelldatei wirklich hat.
+
 ## [2.11.2] – 2026-07-17
 
 ### Geändert
