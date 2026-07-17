@@ -152,3 +152,40 @@ Numerischer Vergleich funktioniert dann auch für formatierte Werte.
 | Bestehende Zahlenfelder haben keinen Snapshot | Fallback: aus dem gespeicherten String ableiten (deutsch ist eindeutig, §0.4) |
 | rgxp-`digit`-Entfernung schwächt Validierung | `normalizeNumber()` validiert selbst und meldet konkret |
 | `type=text` verliert den nativen Spinner | Bewusst akzeptiert — `inputmode="decimal"` hält die numerische Tastatur |
+
+---
+
+## 5. Ergebnis (umgesetzt, v2.12.0)
+
+Alle sieben Arbeitspakete sind umgesetzt. Abweichungen und Erkenntnisse gegenüber dem Plan:
+
+- **Der Analyzer überspringt Zeilen ohne E-Mail.** Nicht geplant, sondern von der echten
+  Quelldatei erzwungen: „Höhe der ÜLP" wurde abgelehnt wegen der **Summenzeile**
+  (`"16,800.00 €"` als Text) — einer Zeile, die der Importer nie importiert. Der Analyzer
+  spiegelt jetzt dessen Regel.
+- **General-Zellen mit Nachkommastellen werden lokalisiert** (`3000.5` → `3000,5`);
+  Ganzzahlen bleiben unverändert. Deutsches Excel zeigt sie ebenfalls mit Komma.
+- **Zwei Altbugs in `currencySymbol()`** fielen erst durch die Testbarkeit auf: `[$-407]`
+  (reiner Locale-Marker) lieferte `"$"`; `[$€-de-DE]` galt als wissenschaftliches Format, weil
+  „de-**DE**" ein `E-` enthält. Die Klassifikation strippt jetzt bracketed Marker, statt sich
+  auf Groß-/Kleinschreibung zu verlassen.
+- **`ValueParser::inferFormat()`** kam dazu (im Plan nur als „Fallback" erwähnt): Altfelder ohne
+  Snapshot leiten ihr Format aus dem gespeicherten Wert ab. Ein Test sichert die tragende
+  Eigenschaft: `format(parse($s), inferFormat($s)) === $s`.
+- **Der letzte Trenner gewinnt** beim Parsen (`1.234,50` **und** `1,234.50` → 1234.5). Die
+  ursprüngliche Regel „Komma ⇒ Punkte sind Gruppierung" lag bei englischer Eingabe um Faktor
+  1000 daneben.
+
+**Verifiziert** gegen die echte Quelldatei und den laufenden Stack: Import/Export per
+Console-Command (Reihenfolge Quelle == Export), das gerenderte Formular
+(`type="text"`, `value="3.000,00"`), das per `PdfGenerator` erzeugte PDF
+(„in Höhe von **1.234,50 €**") und die JS-Spiegelung gegen alle PHP-Fälle.
+
+### Nicht Teil dieses Plans, aber aufgefallen
+
+Es gibt weiterhin **vier** Stellen, die einen Namen slugifizieren
+(`PdfGenerator::sanitizeFileName`, `SpreadsheetExporter::writeFile`,
+`WorkflowActionController::configFilename`, `PlaceholderResolver::normalize`) plus das neue
+`PlaceholderResolver::fileSlug()`. Zwei davon verschlucken Umlaute. Zusammenführen wäre ein
+eigener, kleiner Plan — dieselbe Zersplitterung, die dieser Plan für die Zahlenformate behoben
+hat.

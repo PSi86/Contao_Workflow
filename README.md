@@ -85,8 +85,10 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte. Beim Import werden
      Datums- sowie Währungs-/Zahlenzellen **deutsch lokalisiert** übernommen (z. B. `17.12.1955`,
-     eine „Währung“-Zelle `3000` → `3.000,00 €`); Zellen im Format „Standard“ bleiben unverändert
-     (`3000` bleibt `3000`).
+     eine „Währung“-Zelle `3000` → `3.000,00 €`). Eine Zelle im Format „Standard“ behält ihre
+     eigenen Stellen – `3000` bleibt `3000`, `3000.5` wird zu `3000,5` (so zeigt deutsches Excel
+     sie auch). Formatiert wird **genau einmal**, beim Import bzw. beim Speichern einer Antwort;
+     Formular, Live-Vorschau, PDF und Export zeigen danach denselben Wert.
    - **Inhalt (Formular & Dokument):** **Überschrift** und optionaler **Einleitungstext** –
      erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt;
      der Einleitungstext zusätzlich mit **Textauszeichnung** `[b]`/`[i]`/`[u]`, die Überschrift ohne).

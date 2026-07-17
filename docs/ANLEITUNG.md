@@ -203,7 +203,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
   Überschrift (erscheint nur, wenn ausgefüllt); im **Dokument** taucht er **nie** auf –
   Platzhalter, `{{Insert-Tags}}` und die Textauszeichnung `[b]`/`[i]`/`[u]` werden darin aufgelöst,
 - **Typ:** Freitext (ein-/mehrzeilig), **Zahl**, Datum, Dropdown, Radio-Buttons,
-  Checkboxen (Mehrfachauswahl), **Aktuelle Zeit** oder **Erklärung** (statischer Text ohne Eingabefeld),
+  Checkboxen (Mehrfachauswahl), **Aktuelle Zeit** oder **Erklärung** (statischer Text ohne Eingabefeld).
+  Zum Typ **Zahl** siehe den Kasten weiter unten – er stellt Anforderungen an die Formatierung
+  der Quellspalte,
 - **Speicherfeld:** die **Quellspalte**, in die der Wert geschrieben wird –
   fließt in Export und PDF-Tokens. Bei Eingabefeldern sinnvollerweise gesetzt (ohne
   Speicherfeld wird die Antwort nicht gespeichert); bei **„Erklärung"** entfällt es,
@@ -243,6 +245,33 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 - bei Options­typen die **Optionen**: je Zeile **Wert** (wird gespeichert) +
   **Options-Text** (wird angezeigt) + **Dokument-Text** (erscheint im PDF; leer =
   Options-Text). Mit den **+/–-Buttons** Zeilen hinzufügen/entfernen.
+
+> **Feldtyp „Zahl": Anforderungen an die Quellspalte**
+>
+> Ein Zahlenfeld zeigt den gespeicherten Wert, lässt ihn bearbeiten und schreibt ihn zurück.
+> Das funktioniert nur, wenn sich die Formatierung der Spalte **reproduzieren** lässt – sonst
+> würde der Wert beim Zurückschreiben still verändert. Beim **Speichern des Feldes** wird die
+> gewählte Spalte deshalb über alle importierten Zeilen geprüft:
+>
+> - **Erlaubt:** keine oder genau **zwei** Nachkommastellen. Tausendertrennung ist egal, das
+>   **Währungssymbol** ebenfalls (es wird bei der Eingabe ignoriert und bleibt auf dem
+>   gespeicherten und gedruckten Wert erhalten).
+> - **Abgelehnt:** Prozent-, Datums-, Bruch- und wissenschaftliche Formate, Text in einer
+>   Zahlenspalte sowie **gemischte** Nachkommastellen. Die Meldung nennt Zeile, Wert und
+>   Excel-Format.
+> - **Summenzeilen** (Zeilen ohne E-Mail) bleiben außen vor – sie werden auch nicht importiert.
+>
+> Passt die Spalte nicht, ist **„Freitext"** die Alternative: dort wird das Format nicht
+> geprüft und der Wert unverändert übernommen (z. B. `1.234,56 €`) – er lässt sich dann aber
+> auch nicht rechnerisch weiterverwenden.
+>
+> Die Prüfung meldet sich außerdem beim Bearbeiten des Workflows, falls die Quelldatei später
+> gegen eine mit anderer Formatierung getauscht wird.
+>
+> **Anzeige:** Zahlen erscheinen im Formular, in der Live-Vorschau, im PDF und im Export in
+> **deutscher Schreibweise** und identisch – so, wie sie in der Quelldatei formatiert sind
+> (`1.234,50 €`). Eingeben darf man tolerant: `1234`, `1234,5`, `1.234,50` und auch `1234.5`
+> werden verstanden und beim Speichern ins Format der Spalte gebracht.
 
 Beispiel (Demo): Typ **Radio**, Speicherfeld `Entscheidung`, zwei Optionen
 „Einverstanden"→`ja` und „Nicht einverstanden"→`nein`, jeweils mit einem vollständigen
@@ -385,8 +414,12 @@ angezeigten Link öffnen.
   **„Erinnerungen senden"** (mit Anzahl) und einem **Bestätigungsschritt** mit der konkreten
   Empfängerliste. Einladungen gehen an Status 0, Erinnerungen an Status 1.
 - **„Export (XLSX)" / „Export (CSV)"** → die **Quellspalten in Originalreihenfolge**,
-  gefüllt mit den aktuellen Daten (inkl. der gespeicherten Antwortwerte).
-- **„PDFs herunterladen"** → ZIP der erzeugten PDFs (nur die dieses Workflows).
+  gefüllt mit den aktuellen Daten (inkl. der gespeicherten Antwortwerte). Auch die **Zeilen**
+  stehen in der Reihenfolge der Quelldatei, der Export lässt sich also direkt dagegen
+  vergleichen. Dateiname: `<Workflow>_<Datum>_<Uhrzeit>.xlsx`.
+- **„PDFs herunterladen"** → ZIP der erzeugten PDFs (nur die dieses Workflows). Dateiname:
+  `<Workflow>_<Datum>_<Uhrzeit>_<Anzahl>-PDFs.zip`, z. B.
+  `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip`.
 - **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
 - **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
   betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein

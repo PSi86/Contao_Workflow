@@ -6,6 +6,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.12.0] – 2026-07-17
+
+Fasst die zurückgezogene 2.11.2 mit zusammen (sie war nur kurz veröffentlicht und wurde nie
+installiert).
+
 ### Behoben
 - **Nach dem Kopieren blieben „Datum/Ort für Unterschriftszeile" unmarkiert.** Eine Kopie
   übernimmt die Quelldatei nicht (`doNotCopy`), weshalb alle Felder, die eine Spalte der
@@ -20,8 +25,6 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
     der Quelldatei. Die Antwortfelder werden mitkopiert, also existierte die Option weiterhin
     und der Wert sah gültig aus. Die Liste ist jetzt auf Spalten beschränkt, die die aktuelle
     Quelldatei wirklich hat.
-
-## [2.11.2] – 2026-07-17
 
 ### Geändert
 - **Die heruntergeladene PDF-ZIP heißt jetzt nach Workflow, Zeitpunkt und Anzahl.** Statt

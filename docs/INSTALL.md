@@ -55,10 +55,13 @@ Ohne Composer zur Hand tut es auch ein einfaches ZIP des Ordnerinhalts (composer
 muss an der ZIP-Wurzel liegen, `vendor/` weglassen):
 
 ```powershell
-Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-2.0.0.zip -Force
+Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-2.12.0.zip -Force
 ```
 
-Das ZIP enthält dank fester `"version": "2.0.0"` eine auflösbare Version.
+Das ZIP enthält dank der festen `"version"` in der `composer.json` eine auflösbare Version –
+der Dateiname muss zu ihr passen (hier `2.12.0`). Bequemer und weniger fehleranfällig ist
+`scripts/build-bundle.ps1`: das Skript liest die Version aus der `composer.json` und schließt
+`vendor/`, `tests/` usw. automatisch aus.
 
 ---
 

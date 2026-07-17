@@ -141,6 +141,14 @@ Gerendert wird mit **mPDF**. Es versteht UTF-8 und viel HTML4/5, aber nur eine
   (so würden „Ort, Datum"/„Unterschrift" kleiner als der Fließtext gerendert). Die
   mitgelieferten Master setzen `width="210" height="70"` und eine explizite `font-size` am
   Unterschriftsblock in Höhe der Fließtext-Größe.
+- **Abstände nur aus EINER Quelle:** mPDF lässt zwei aufeinandertreffende Margins (unteres
+  Margin des Vorgängers, oberes Margin des Folgeelements) unterhalb einer Schwelle
+  kollabieren, oberhalb aber **addiert** es sie. Am Unterschriftsblock hieß das gemessen:
+  0px und 18px ergaben denselben Abstand, 19px sprang um 14px. Der Abstand war so nicht
+  vorhersagbar einstellbar. Die mitgelieferten Master geben dem Body deshalb **kein** unteres
+  Margin (`.body, .letter-body { margin: 18px 0 0; }`) – der Abstand über der Unterschrift
+  entspricht dann exakt `.sig { margin-top }` (Standard `30px`). Wer einen eigenen Master
+  baut: einen der beiden Margins auf 0 lassen, sonst wird das Ergebnis Rätselraten.
 - Seitenformat A4, kein JavaScript.
 
 Referenz: [Supported CSS](https://mpdf.github.io/css-stylesheets/supported-css.html) ·
