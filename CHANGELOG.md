@@ -6,6 +6,28 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.10.0] – 2026-07-17
+
+### Geändert
+- **„Ausstehende Antworten" → „Offene Vorgänge" – die Liste zeigt jetzt alles, was noch
+  nicht sauber abgeschlossen ist.** Ein Eintrag verschwindet erst, wenn er beantwortet **und**
+  die Bestätigung (PDF + Ergebnis-Mail) erfolgreich erzeugt wurde **und** kein Versandfehler
+  oder Bounce vorliegt. Zustellprobleme beantworteter Einträge (Versandfehler/Bounce der
+  Ergebnis-Mail) erscheinen damit direkt zeilenweise in der Liste — mit Name/Abteilung zur
+  Zuordnung, in der sortierbaren Spalte „Zustellung". Die früheren separaten Boxen
+  „Versandfehler" und „Ungültige Adressen" entfallen (die Information steht jetzt in der
+  Liste).
+
+### Hinzugefügt
+- **Ausfallsichere Ergebnis-Zustellung.** Schlägt beim Absenden des Formulars die
+  PDF-Erzeugung oder der Versand der Bestätigungs-Mail fehl, geht die **Antwort nie verloren**
+  und der Teilnehmer sieht **keine Fehlerseite** mehr. Der Fehlschlag wird am Eintrag
+  festgehalten und in „Offene Vorgänge" als **„Ausstehend"** angezeigt (Grund im Tooltip) —
+  kein stiller, aussperrender Zustand mehr. Ein neuer Cron holt offene Bestätigungen
+  automatisch nach (Selbstheilung transienter Fehler bzw. nach einer Ursachenbehebung), und
+  die neue Aktion **„Bestätigung neu senden"** erzeugt PDF und Ergebnis-Mail für markierte
+  Einträge erneut — das dient zugleich dem Neuversand nach einem Bounce/einer Adress-Korrektur.
+
 ## [2.9.5] – 2026-07-17
 
 ### Geändert

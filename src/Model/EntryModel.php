@@ -24,6 +24,10 @@ use Contao\StringUtil;
  * @property int    $respondedAt
  * @property string $sendError     Last mail send failure (kind + message); empty when OK.
  * @property int    $sendErrorAt
+ * @property string $bounceHard    '1' when a hard bounce (invalid address) was received.
+ * @property string $bounceInfo    Recipient + diagnostic code of the bounce.
+ * @property int    $resultDoneAt  When the confirmation (PDF + result mail) was produced OK.
+ * @property string $resultError   Last confirmation-processing error; empty when OK.
  */
 class EntryModel extends Model
 {

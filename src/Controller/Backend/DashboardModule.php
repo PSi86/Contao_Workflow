@@ -88,8 +88,6 @@ class DashboardModule extends BackendModule
                     'open'          => $status->countOpen($workflow),
                     'total'         => $status->countTotal($id),
                     'breakdown'     => $status->getBreakdown($workflow),
-                    'sendErrors'    => $status->getSendErrors($id),
-                    'hardBounces'   => $status->getHardBounces($id),
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
@@ -98,6 +96,7 @@ class DashboardModule extends BackendModule
                     'inviteCount'   => $byStatus[WorkflowStatus::STATUS_IMPORTED] ?? 0,
                     'reminderCount' => $byStatus[WorkflowStatus::STATUS_INVITED] ?? 0,
                     'sendUrl'       => $router->generate('workflow_send', ['id' => $id]),
+                    'reprocessUrl'  => $router->generate('workflow_reprocess', ['id' => $id]),
                     'rt'            => $rt,
                     'urls'          => [
                         // Direct link into the workflow_manage edit view for this workflow.
@@ -138,9 +137,13 @@ class DashboardModule extends BackendModule
         $hasAbteilung = false;
         $pending = [];
 
+        // "Offene Vorgänge": everything not fully finished. An entry drops out only once it
+        // is answered AND its confirmation was produced (resultDoneAt > 0) AND there is no
+        // send error / hard bounce. A not-yet-answered entry has resultDoneAt = 0 and is
+        // therefore included as well (the classic pending case).
         $entries = EntryModel::findBy(
-            ['pid=?', 'status<?'],
-            [(int) $workflow->id, $workflow->getFinalStatus()],
+            ['pid=?', "(resultDoneAt=0 OR (sendError IS NOT NULL AND sendError!='') OR bounceHard!='')"],
+            [(int) $workflow->id],
             ['order' => 'status, email'],
         );
 
@@ -196,6 +199,9 @@ class DashboardModule extends BackendModule
                 $delivery = 'bounce';
             } elseif ('' !== $sendError) {
                 $delivery = 'error';
+            } elseif ((int) $entry->respondedAt > 0 && 0 === (int) $entry->resultDoneAt) {
+                // Answered, but the confirmation (PDF + result mail) is not through yet.
+                $delivery = 'pending';
             } elseif ((int) $entry->status >= WorkflowStatus::STATUS_INVITED) {
                 $delivery = 'sent';
             }
@@ -211,6 +217,7 @@ class DashboardModule extends BackendModule
                 'delivery'    => $delivery,
                 'sendError'   => $sendError,
                 'bounceInfo'  => (string) $entry->bounceInfo,
+                'resultError' => (string) $entry->resultError,
             ];
         }
 

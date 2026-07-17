@@ -36,18 +36,58 @@ class SubmissionProcessor
             $entry->signature = $this->stripDataUriPrefix($signature);
         }
 
+        // The response is a fact the moment the participant submits valid data — persist it
+        // first and unconditionally. It must never be lost, no matter what happens next.
         $entry->status = WorkflowStatus::STATUS_RESPONDED;
         $entry->respondedAt = time();
         $entry->tstamp = time();
         $entry->save();
 
-        $relativePath = $this->pdfGenerator->generateAndStore($entry, $workflow);
+        // Producing the confirmation (PDF + result mail) is a separate, retryable step. A
+        // failure here must not lose the response, must not surface as an error to the
+        // participant, and must not leave a silent inconsistent state — see
+        // produceConfirmation(). The retry cron and the back end action re-run exactly this.
+        $this->produceConfirmation($workflow, $entry);
+    }
 
-        $this->notificationDispatcher->sendResult(
-            $workflow,
-            $entry,
-            $this->pdfStorage->getAbsolutePath($relativePath),
-        );
+    /**
+     * Generates the PDF and sends the result mail, recording success/failure on the entry.
+     * Never throws. Returns true when the confirmation was produced. Idempotent: the PDF is
+     * overwritten and a repeated result mail is harmless, so it is safe to call again from
+     * the retry cron or the "re-send confirmation" back end action.
+     */
+    public function produceConfirmation(WorkflowModel $workflow, EntryModel $entry): bool
+    {
+        try {
+            $relativePath = $this->pdfGenerator->generateAndStore($entry, $workflow);
+
+            $this->notificationDispatcher->sendResult(
+                $workflow,
+                $entry,
+                $this->pdfStorage->getAbsolutePath($relativePath),
+            );
+
+            $entry->resultDoneAt = time();
+            $entry->resultError = '';
+            $entry->tstamp = time();
+            $entry->save();
+
+            return true;
+        } catch (\Throwable $e) {
+            $entry->resultDoneAt = 0;
+            $entry->resultError = $this->shorten($e->getMessage());
+            $entry->tstamp = time();
+            $entry->save();
+
+            return false;
+        }
+    }
+
+    private function shorten(string $message): string
+    {
+        $message = trim((string) preg_replace('/\s+/', ' ', $message));
+
+        return mb_strlen($message) > 240 ? mb_substr($message, 0, 240).'…' : $message;
     }
 
     private function stripDataUriPrefix(string $signature): string

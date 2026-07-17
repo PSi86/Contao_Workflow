@@ -131,6 +131,18 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'eval' => ['doNotCopy' => true],
             'sql'  => "varchar(255) NOT NULL default ''",
         ],
+        // Post-response processing: PDF generated AND result mail enqueued successfully.
+        // 0 while still open/failed; a workflow is only "fully done" (and drops out of the
+        // "Offene Vorgänge" list) once this is set and there is no send error / hard bounce.
+        // Fed by SubmissionProcessor::produceConfirmation() and the retry cron.
+        'resultDoneAt' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "int(10) unsigned NOT NULL default 0",
+        ],
+        'resultError' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(255) NOT NULL default ''",
+        ],
         // The in-flight parcel id and its kind used to live here (one slot per entry).
         // They now live in the durable tl_workflow_send table so a mail can be correlated
         // to its (asynchronous) send result and to a later bounce; see

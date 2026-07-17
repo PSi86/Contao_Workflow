@@ -57,41 +57,6 @@ $l = $this->dash;
         <?php endif; ?>
       <?php endif; ?>
 
-      <?php if (!empty($wf['sendErrors'])): ?>
-        <details open class="wf-send-errors" style="margin-bottom:1em;">
-          <summary class="tl_error" style="cursor:pointer;font-weight:bold;">Versandfehler (<?= \count($wf['sendErrors']) ?>) – diese E-Mails wurden nicht zugestellt</summary>
-          <table class="tl_listing" style="margin-top:.6em;">
-            <thead><tr><th><?= $l['col_email'] ?></th><th>Fehler</th></tr></thead>
-            <tbody>
-            <?php foreach ($wf['sendErrors'] as $err): ?>
-              <tr>
-                <td><?= $esc($err['email']) ?></td>
-                <td><?= $esc($err['error']) ?></td>
-              </tr>
-            <?php endforeach; ?>
-            </tbody>
-          </table>
-          <p class="tl_info" style="margin:.4em 0 0;">Der Workflow-Schritt dieser Einträge wurde bewusst nicht weitergesetzt. Ursache beheben (z. B. Absenderadresse/SMTP) und erneut „<?= $l['btn_send'] ?>".</p>
-        </details>
-      <?php endif; ?>
-
-      <?php if (!empty($wf['hardBounces'])): ?>
-        <details open class="wf-hard-bounces" style="margin-bottom:1em;">
-          <summary class="tl_error" style="cursor:pointer;font-weight:bold;"><?= $esc(sprintf($l['hard_bounces'], \count($wf['hardBounces']))) ?></summary>
-          <table class="tl_listing" style="margin-top:.6em;">
-            <thead><tr><th><?= $l['col_email'] ?></th><th><?= $l['col_reason'] ?></th></tr></thead>
-            <tbody>
-            <?php foreach ($wf['hardBounces'] as $b): ?>
-              <tr>
-                <td><?= $esc($b['email']) ?></td>
-                <td><?= $esc($b['info']) ?></td>
-              </tr>
-            <?php endforeach; ?>
-            </tbody>
-          </table>
-          <p class="tl_info" style="margin:.4em 0 0;"><?= $l['hard_bounces_hint'] ?></p>
-        </details>
-      <?php endif; ?>
 
       <div style="display:flex;gap:2em;flex-wrap:wrap;margin-bottom:1em;">
         <div><strong style="font-size:1.6em;"><?= (int) $wf['completed'] ?></strong><br><?= $l['completed'] ?></div>
@@ -141,6 +106,13 @@ $l = $this->dash;
             <?php foreach ($wf['selectSteps'] as $s): ?>
               <button type="button" class="tl_submit wf-sel-status" data-status="<?= (int) $s['index'] ?>"><?= $esc($s['label']) ?> (<?= (int) $s['count'] ?>)</button>
             <?php endforeach; ?>
+            <span class="wf-bulk-sep"></span>
+            <button type="button" class="tl_submit wf-reprocess"
+                    data-url="<?= $esc($wf['reprocessUrl']) ?>"
+                    data-rt="<?= $esc($wf['rt']) ?>"
+                    data-confirm="<?= $esc($l['reprocess_confirm']) ?>"
+                    data-none="<?= $esc($l['reprocess_none']) ?>"
+                    title="<?= $esc($l['reprocess_hint']) ?>"><?= $l['btn_reprocess'] ?></button>
           </div>
 
           <table class="tl_listing showColumns wf-table">
@@ -164,7 +136,7 @@ $l = $this->dash;
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><td data-k="abteilung"><?= $esc($p['abteilung']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>
-                <td data-k="delivery"><?php if ('bounce' === $p['delivery']): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif ('error' === $p['delivery']): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php elseif ('sent' === $p['delivery']): ?><span class="wf-badge wf-badge--sent" title="<?= $esc($l['delivery_sent_hint']) ?>"><?= $l['delivery_sent'] ?></span><?php endif; ?></td>
+                <td data-k="delivery"><?php if ('bounce' === $p['delivery']): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif ('error' === $p['delivery']): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php elseif ('pending' === $p['delivery']): ?><span class="wf-badge wf-badge--pending" title="<?= $esc($p['resultError'] ?: $l['delivery_pending_hint']) ?>"><?= $l['delivery_pending'] ?></span><?php elseif ('sent' === $p['delivery']): ?><span class="wf-badge wf-badge--sent" title="<?= $esc($l['delivery_sent_hint']) ?>"><?= $l['delivery_sent'] ?></span><?php endif; ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>

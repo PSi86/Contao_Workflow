@@ -11,7 +11,9 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
@@ -60,6 +62,7 @@ class WorkflowActionController
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
+        private readonly SubmissionProcessor $submissionProcessor,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -454,6 +457,55 @@ class WorkflowActionController
         } catch (\Throwable $e) {
             Message::addError('Versand fehlgeschlagen: '.$e->getMessage());
         }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * Re-generates the PDF and re-sends the result mail for the selected (already answered)
+     * entries. Used to recover a confirmation that failed at submission time and to re-send
+     * one to a corrected address after a bounce. Idempotent via SubmissionProcessor.
+     */
+    #[Route('/reprocess/{id}', name: 'workflow_reprocess', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function reprocess(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        $ids = array_values(array_filter(array_map('intval', (array) $request->request->all('ids'))));
+
+        if ([] === $ids) {
+            Message::addInfo('Es wurden keine Einträge markiert.');
+
+            return $this->backToDashboard();
+        }
+
+        $done = 0;
+        $failed = 0;
+
+        foreach ($ids as $entryId) {
+            $entry = EntryModel::findByPk($entryId);
+
+            // Only entries of this workflow, and only answered ones (a confirmation only
+            // exists after a response).
+            if (null === $entry || (int) $entry->pid !== (int) $workflow->id || (int) $entry->respondedAt <= 0) {
+                continue;
+            }
+
+            if ($this->submissionProcessor->produceConfirmation($workflow, $entry)) {
+                ++$done;
+            } else {
+                ++$failed;
+            }
+        }
+
+        Message::addConfirmation(sprintf(
+            'Bestätigung neu erzeugt und versendet: %d erfolgreich, %d weiterhin fehlerhaft.',
+            $done,
+            $failed,
+        ));
 
         return $this->backToDashboard();
     }
