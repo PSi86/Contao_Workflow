@@ -6,7 +6,7 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
-## [2.11.1] – 2026-07-17
+## [2.11.2] – 2026-07-17
 
 ### Geändert
 - **Die heruntergeladene PDF-ZIP heißt jetzt nach Workflow, Zeitpunkt und Anzahl.** Statt
@@ -24,6 +24,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   wurden (auch wenn keine davon ein DSN trug — sie wurden trotzdem aus der INBOX verschoben).
   Fehler werden unverändert immer geloggt, und `workflow:bounce:collect` berichtet weiterhin
   jeden Schritt, sodass sich die Funktionsfähigkeit jederzeit prüfen lässt.
+
+## [2.11.1] – 2026-07-17
 
 ### Behoben
 - **Zu großer Abstand zwischen Fließtext und Unterschriftsfeld im PDF.** Der Abstand entstand
