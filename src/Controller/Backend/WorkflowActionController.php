@@ -19,6 +19,7 @@ use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
+use Psimandl\WorkflowBundle\Service\Slugger;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
@@ -61,6 +62,7 @@ class WorkflowActionController
         private readonly WorkflowFormView $formView,
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly Slugger $slugger,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
@@ -293,11 +295,13 @@ class WorkflowActionController
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
+        [$name, $fallback] = $this->configFilename($workflow);
+
         $response = new Response($this->configExporter->exportJson($workflow));
         $response->headers->set('Content-Type', 'application/json; charset=utf-8');
         $response->headers->set(
             'Content-Disposition',
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $this->configFilename($workflow)),
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $name, $fallback),
         );
 
         return $response;
@@ -420,11 +424,12 @@ class WorkflowActionController
         ));
     }
 
-    private function configFilename(WorkflowModel $workflow): string
+    /**
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
+     */
+    private function configFilename(WorkflowModel $workflow): array
     {
-        $base = trim((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $workflow->title), '-');
-
-        return ('' !== $base ? $base : 'workflow-'.$workflow->id).'.json';
+        return $this->downloadName((string) $workflow->title, '.json', 'workflow-'.$workflow->id);
     }
 
     /**
@@ -540,7 +545,7 @@ class WorkflowActionController
         $response->headers->set('Content-Type', $result['contentType']);
         $response->headers->set(
             'Content-Disposition',
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $result['filename']),
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $result['filename'], $result['filenameFallback']),
         );
 
         return $response;
@@ -573,11 +578,10 @@ class WorkflowActionController
 
         $zip->close();
 
+        [$name, $fallback] = $this->pdfBundleName($workflow, \count($files));
+
         $response = new BinaryFileResponse($zipPath);
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            $this->pdfBundleName($workflow, \count($files)),
-        );
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $name, $fallback);
         $response->deleteFileAfterSend(true);
 
         return $response;
@@ -585,23 +589,38 @@ class WorkflowActionController
 
     /**
      * File name of the downloaded PDF bundle, e.g.
-     * "EStG_Uebungsleiter_20260717_150644_24-PDFs.zip".
+     * "EStG Übungsleiter_20260717_150644_24-PDFs.zip" – with the ASCII fallback
+     * "EStG_Uebungsleiter_…" for the RFC 5987 header.
      *
      * The old "workflow_pdfs_<id>.zip" said nothing once a few of them sat in a download
      * folder: which workflow, from when, and how many documents. Same shape as the
      * spreadsheet export (name, then a sortable timestamp), so bundles of one workflow sort
      * chronologically; the count is appended because it is the one thing a downloader checks
      * first.
+     *
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
      */
-    private function pdfBundleName(WorkflowModel $workflow, int $count): string
+    private function pdfBundleName(WorkflowModel $workflow, int $count): array
     {
-        return sprintf(
-            '%s_%s_%d-%s.zip',
-            $this->placeholderResolver->fileSlug((string) $workflow->title) ?: 'Workflow',
-            date('Ymd_His'),
-            $count,
-            1 === $count ? 'PDF' : 'PDFs',
-        );
+        $suffix = sprintf('_%s_%d-%s.zip', date('Ymd_His'), $count, 1 === $count ? 'PDF' : 'PDFs');
+
+        return $this->downloadName((string) $workflow->title, $suffix, 'Workflow');
+    }
+
+    /**
+     * Two spellings of a download file name: the Unicode name (title characters kept – umlauts,
+     * any script) for the RFC 5987 filename* header, and an ASCII transliteration as the
+     * fallback for old clients. Neither drops a character, and neither can be empty
+     * ($fallbackBase covers a title that reduces to nothing, e.g. only punctuation).
+     *
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
+     */
+    private function downloadName(string $base, string $suffix, string $fallbackBase): array
+    {
+        return [
+            ($this->slugger->unicode($base) ?: $fallbackBase).$suffix,
+            ($this->slugger->ascii($base) ?: $fallbackBase).$suffix,
+        ];
     }
 
     private function getWorkflow(int $id): WorkflowModel

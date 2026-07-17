@@ -38,12 +38,6 @@ class PlaceholderResolver
      * ({@see fileSlug()}, PdfGenerator::sanitizeFileName()) can – "Übungsleiter" has to become
      * "Uebungsleiter", not "uebungsleiter".
      */
-    private const TRANSLITERATION = [
-        'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
-        'Ä' => 'Ae', 'Ö' => 'Oe', 'Ü' => 'Ue',
-        'ß' => 'ss',
-    ];
-
     /**
      * Inline formatting markers (BBCode style) supported in the document texts and
      * Textbausteine, mapped to the whitelisted HTML tags they produce. The same
@@ -58,8 +52,10 @@ class PlaceholderResolver
         'u' => 'u',
     ];
 
-    public function __construct(private readonly InsertTagParser $insertTagParser)
-    {
+    public function __construct(
+        private readonly InsertTagParser $insertTagParser,
+        private readonly Slugger $slugger,
+    ) {
     }
 
     /**
@@ -250,37 +246,23 @@ class PlaceholderResolver
         return preg_replace('#\[/?[biu]\]#i', '', $text) ?? $text;
     }
 
-    public function transliterate(string $value): string
-    {
-        return strtr($value, self::TRANSLITERATION);
-    }
-
+    /**
+     * The ##token## slug of a column/variable name (lowercase ASCII). Delegates to the shared
+     * {@see Slugger}: for German it is bit-identical to the former hand-rolled table, so every
+     * existing ##data_*## / ##letterhead_*## reference keeps resolving; for any other script it
+     * now produces a real slug instead of an empty one (which used to collide all columns).
+     */
     public function normalize(string $name): string
     {
-        $name = $this->transliterate($name);
-        $name = preg_replace('/[^A-Za-z0-9_]+/', '_', $name) ?? '';
-
-        return strtolower(trim($name, '_'));
+        return $this->slugger->token($name);
     }
 
     /**
-     * A name turned into a filename component, keeping its capitalisation (unlike
-     * {@see normalize()}, whose lower-casing exists for ##token## matching).
-     *
-     * Transliterates first: a plain character-class replace would silently eat the umlaut
-     * and turn "EStG Übungsleiter" into "EStG_bungsleiter". Returns '' when nothing usable
-     * is left, so the caller can fall back to a generic name.
+     * A name turned into an ASCII filename component, capitalisation preserved.
      */
     public function fileSlug(string $name): string
     {
-        $name = $this->transliterate($name);
-        $name = preg_replace('/\s+/', '_', trim($name)) ?? '';
-        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', $name) ?? '';
-        // Collapse separator runs ("Demo - Titel" -> "Demo_-_Titel" -> "Demo_Titel"). A lone
-        // hyphen inside a word is not a run and survives ("Anti-Aging").
-        $name = preg_replace('/[_-]{2,}/', '_', $name) ?? '';
-
-        return trim($name, '_-');
+        return $this->slugger->ascii($name);
     }
 
     /**
