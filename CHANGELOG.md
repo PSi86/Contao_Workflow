@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.11.0] – 2026-07-17
+
 ### Behoben
 - **Zahlenfeld verfälschte Werte um den Faktor 1000.** Eine Excel-Spalte mit
   Tausendertrennung (`#,##0`, „Benutzerdefiniert") wurde korrekt als `1.234` importiert, dann
