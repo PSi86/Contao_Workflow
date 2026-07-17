@@ -14,8 +14,10 @@ services:
             - ../src/ContaoWorkflowBundle.php
             - ../src/ContaoManager/
             - ../src/Model/
-            # Plain value object, never resolved from the container.
+            # Plain value objects, never resolved from the container.
             - ../src/Service/Bounce/BounceReport.php
+            - ../src/Excel/NumberFormat.php
+            - ../src/Excel/ColumnCheckResult.php
             # Instantiated by Contao as a BE_MOD callback, not via the container.
             - ../src/Controller/Backend/DashboardModule.php
 
@@ -35,6 +37,14 @@ services:
 
     # Used from the no-ctor AnswerConfigListener (MCW callback) via the container.
     Psimandl\WorkflowBundle\Service\SpreadsheetInspector:
+        public: true
+
+    # Pulled from the no-ctor AnswerConfigListener via the container for the number-column
+    # check – private services are inlined away in the compiled prod container.
+    Psimandl\WorkflowBundle\Excel\ColumnFormatAnalyzer:
+        public: true
+
+    Psimandl\WorkflowBundle\Excel\ColumnCompatibility:
         public: true
 
     # Accessed from the (non-service) back end dashboard module via the container

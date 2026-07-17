@@ -64,6 +64,14 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
         'tstamp' => [
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
+        // The 1-based row this entry came from in the source sheet. Entries are matched
+        // to source rows by e-mail, so without this the original row order is lost the
+        // moment the file is imported – and an export could only fall back to sorting by
+        // e-mail. Kept up to date on every re-import, and used verbatim in the format
+        // error messages ("Zeile 17"), so it must stay the real sheet row number.
+        'sourceRow' => [
+            'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
         'token' => [
             'exclude'   => true,
             'inputType' => 'text',

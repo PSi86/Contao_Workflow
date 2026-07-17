@@ -11,6 +11,9 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
+use Psimandl\WorkflowBundle\Excel\NumberFormat;
+use Psimandl\WorkflowBundle\Excel\ValueFormatter;
+use Psimandl\WorkflowBundle\Excel\ValueParser;
 use Psimandl\WorkflowBundle\Form\QuestionWidgetFactory;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
@@ -35,6 +38,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly WorkflowFormView $formView,
         private readonly QuestionWidgetFactory $widgetFactory,
+        private readonly ValueParser $valueParser,
+        private readonly ValueFormatter $valueFormatter,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $csrfTokenName,
     ) {
@@ -47,6 +52,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
         $assetDir = 'bundles/contaoworkflow';
         $GLOBALS['TL_CSS'][] = $assetDir.'/workflow-form.css';
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-signature.js';
+        // Before workflow-form.js: the live hint calls into WorkflowNumber.
+        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-number.js';
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-form.js';
 
         $token = (string) $this->framework->getAdapter(Input::class)->get('auto_item');
@@ -187,6 +194,16 @@ class WorkflowFormController extends AbstractFrontendModuleController
                 $value = $this->normalizeDate($value);
             }
 
+            if ($question->isNumber() && '' !== $value) {
+                $normalized = $this->normalizeNumber($value, $question, trim((string) ($entry->getData()[$storage] ?? '')));
+
+                if (null === $normalized) {
+                    return sprintf('Bitte geben Sie im Feld „%s" eine gültige Zahl ein.', (string) $question->label);
+                }
+
+                $value = $normalized;
+            }
+
             if ('' !== $storage) {
                 $answers[$storage] = $value;
             }
@@ -241,6 +258,34 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         // PNG magic bytes.
         return false !== $binary && str_starts_with($binary, "\x89PNG\r\n\x1a\n");
+    }
+
+    /**
+     * Rewrites a submitted number into the storage column's own format, so an answered row
+     * is spelled exactly like an imported one ("3.000,00 €") instead of keeping whatever
+     * the participant typed. The currency symbol comes back from the column's format here:
+     * it is ignored on input, but the stored value carries it.
+     *
+     * Returns null when the input holds no number at all – that is the field's validation,
+     * now that the "digit" rgxp is gone (it silently rewrote the value it checked).
+     *
+     * $storedValue is the column's current value for this entry: for a field configured
+     * before the format snapshot existed it is the only surviving evidence of the column's
+     * format, so the answer keeps the spelling the imported rows use.
+     */
+    private function normalizeNumber(string $value, QuestionModel $question, string $storedValue): ?string
+    {
+        $number = $this->valueParser->parse($value);
+
+        if (null === $number) {
+            return null;
+        }
+
+        $format = $question->getNumberFormat()
+            ?? $this->valueParser->inferFormat($storedValue)
+            ?? NumberFormat::number(0);
+
+        return $this->valueFormatter->format($number, $format);
     }
 
     /**

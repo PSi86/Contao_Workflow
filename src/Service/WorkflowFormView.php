@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Psimandl\WorkflowBundle\Excel\NumberFormat;
+use Psimandl\WorkflowBundle\Excel\ValueFormatter;
+use Psimandl\WorkflowBundle\Excel\ValueParser;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -18,6 +21,8 @@ class WorkflowFormView
 {
     public function __construct(
         private readonly DocumentBodyComposer $bodyComposer,
+        private readonly ValueParser $valueParser,
+        private readonly ValueFormatter $formatter,
     ) {
     }
 
@@ -98,10 +103,26 @@ class WorkflowFormView
                 'statement'         => '' !== $staticValue
                     ? $this->bodyComposer->formatInline($this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title))
                     : '',
+                // Number fields carry their column's format into the markup so the browser
+                // formats the live preview exactly like the PDF will. Null for every
+                // other type.
+                'numberFormat'      => $question->isNumber() ? $this->numberFormat($question, $storedValue)->toArray() : null,
             ];
         }
 
         return $views;
+    }
+
+    /**
+     * The format a number field renders with: the snapshot taken when the field was saved,
+     * or – for a field configured before snapshots existed – the format recovered from the
+     * stored value itself. Only a field with neither falls back to a plain integer.
+     */
+    private function numberFormat(QuestionModel $question, string $storedValue): NumberFormat
+    {
+        return $question->getNumberFormat()
+            ?? $this->valueParser->inferFormat($storedValue)
+            ?? NumberFormat::number(0);
     }
 
     /**
@@ -129,6 +150,18 @@ class WorkflowFormView
 
         if ('' === $value) {
             return $empty;
+        }
+
+        // A number field edits the bare number: the currency symbol carries no numeric
+        // meaning, so it never reaches the input. It stays on the stored value and is put
+        // back on submission, which keeps the column uniform between imported and
+        // answered rows.
+        if ($question->isNumber()) {
+            $number = $this->valueParser->parse($value);
+
+            return null !== $number
+                ? (string) $this->formatter->format($number, $this->numberFormat($question, $value), false)
+                : $value;
         }
 
         if ($question->isMultiple()) {

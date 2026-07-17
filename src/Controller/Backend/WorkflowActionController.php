@@ -249,6 +249,8 @@ class WorkflowActionController
             .'</head><body>'
             .$inner
             .'<script src="'.$asset.'/workflow-signature.js"></script>'
+            // Before workflow-form.js: the live hint calls into WorkflowNumber.
+            .'<script src="'.$asset.'/workflow-number.js"></script>'
             .'<script src="'.$asset.'/workflow-form.js"></script>'
             .'</body></html>';
     }

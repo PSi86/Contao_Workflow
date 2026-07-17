@@ -33,8 +33,11 @@ class SpreadsheetExporter
     {
         $this->framework->initialize();
 
+        // Row order mirrors the source file (sourceRow = the row the entry was imported
+        // from), so an export can be diffed against the original. "id" only breaks the tie
+        // for entries that predate the column and were never re-imported.
         $entries = $this->framework->getAdapter(EntryModel::class)
-            ->findBy('pid', (int) $workflow->id, ['order' => 'email']);
+            ->findBy('pid', (int) $workflow->id, ['order' => 'sourceRow, id']);
 
         // Columns = original source headers (in order); fall back to the union
         // of stored data keys if the source file is unavailable.

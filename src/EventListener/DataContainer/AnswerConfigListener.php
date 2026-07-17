@@ -8,6 +8,8 @@ use Contao\DataContainer;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
+use Psimandl\WorkflowBundle\Excel\ColumnCompatibility;
+use Psimandl\WorkflowBundle\Excel\ColumnFormatAnalyzer;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -459,6 +461,57 @@ class AnswerConfigListener
         }
 
         return $options;
+    }
+
+    /**
+     * Refuses a storage column whose Excel formatting a "number" field cannot round-trip,
+     * and snapshots the surviving format onto the question.
+     *
+     * A number field shows the stored value, lets the participant edit it and writes it
+     * back. That contract only holds while the column's format is reproducible – three
+     * decimals would be silently rounded, a percent format scaled by 100. So the column is
+     * checked here, at save time, instead of corrupting values later. The snapshot is what
+     * lets the form, the live preview, the PDF and the export agree afterwards without
+     * re-reading the (expensive) style layer of the source file.
+     *
+     * Runs as save_callback on storageField: "type" sits before it in the palette, so its
+     * posted value is already available.
+     */
+    public function validateNumberColumn(mixed $value, DataContainer $dc): mixed
+    {
+        $column = trim((string) $value);
+
+        // Only number fields have the round-trip contract; every other type (notably
+        // "text") accepts whatever the column holds.
+        if ('' === $column || 'number' !== (string) Input::post('type')) {
+            return $value;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) ($dc->activeRecord->pid ?? 0));
+
+        if (null === $workflow) {
+            return $value;
+        }
+
+        $container = System::getContainer();
+        $result = $container->get(ColumnCompatibility::class)->checkNumberColumn(
+            $column,
+            $container->get(ColumnFormatAnalyzer::class)->analyze($workflow, $column),
+        );
+
+        if (!$result->isCompatible()) {
+            throw new \RuntimeException(implode(' ', $result->problems));
+        }
+
+        // Stored alongside the field, not recomputed on read: the source file may be
+        // replaced or gone by the time the form is rendered.
+        System::getContainer()->get('database_connection')->update(
+            'tl_workflow_question',
+            ['numberFormat' => json_encode($result->format?->toArray(), JSON_THROW_ON_ERROR)],
+            ['id' => (int) $dc->id],
+        );
+
+        return $value;
     }
 
     /**

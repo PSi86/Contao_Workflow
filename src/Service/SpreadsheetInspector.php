@@ -8,6 +8,8 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
@@ -55,7 +57,6 @@ class SpreadsheetInspector
         }
 
         $sheetName = (string) $workflow->sourceSheet;
-        $headerRow = max(1, (int) $workflow->headerRow);
 
         $reader = IOFactory::createReaderForFile($path);
         $reader->setReadDataOnly(true);
@@ -64,10 +65,18 @@ class SpreadsheetInspector
             $reader->setLoadSheetsOnly([$sheetName]);
         }
 
-        $spreadsheet = $reader->load($path);
-        $sheet = '' !== $sheetName ? $spreadsheet->getSheetByName($sheetName) : null;
-        $sheet ??= $spreadsheet->getActiveSheet();
+        return $this->headersOf($this->sheetOf($reader->load($path), $sheetName), max(1, (int) $workflow->headerRow));
+    }
 
+    /**
+     * The header row of an already loaded sheet, de-duplicated. Split out so every reader
+     * (headers, importer, format analyzer) derives the exact same column names from the
+     * same rule – a second implementation would silently drift apart on duplicates.
+     *
+     * @return array<int, string> column index (1-based) => header name
+     */
+    public function headersOf(Worksheet $sheet, int $headerRow): array
+    {
         $highestCol = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
 
         $headers = [];
@@ -96,6 +105,16 @@ class SpreadsheetInspector
     }
 
     /**
+     * The configured sheet of a loaded spreadsheet, falling back to the active one.
+     */
+    public function sheetOf(Spreadsheet $spreadsheet, string $sheetName): Worksheet
+    {
+        $sheet = '' !== $sheetName ? $spreadsheet->getSheetByName($sheetName) : null;
+
+        return $sheet ?? $spreadsheet->getActiveSheet();
+    }
+
+    /**
      * Header names only, in column order (for option pickers).
      *
      * @return array<string, string> name => name
@@ -107,7 +126,10 @@ class SpreadsheetInspector
         return $names ? array_combine($names, $names) : [];
     }
 
-    private function resolvePath(WorkflowModel $workflow): ?string
+    /**
+     * Absolute path of the workflow's source file, or null when it is unset or gone.
+     */
+    public function resolvePath(WorkflowModel $workflow): ?string
     {
         if (!$workflow->sourceFile) {
             return null;

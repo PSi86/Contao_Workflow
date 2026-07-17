@@ -36,11 +36,15 @@
 .mod_workflow_form .tw-option input { margin-right: .4rem; }
 .mod_workflow_form .tw-required { color: #c00; }
 
-/* Field description: a hint shown only in the form (never in the document). */
-.mod_workflow_form .tw-field-desc { margin: 0 0 .4rem; color: #555; font-size: .9em; font-weight: normal; }
+/* Field description: shown only in the form (never in the document). It is authored
+   content, not chrome, so it inherits the body's font, size and colour – only the spacing
+   is set here. It used to be de-emphasised (#555, .9em), which made it read as a footnote
+   and set it apart from the explanation block below. */
+.mod_workflow_form .tw-field-desc { margin: 0 0 .4rem; font-weight: normal; }
 
-/* "Erklärung": a static text block rendered as a flowing paragraph. */
-.mod_workflow_form .tw-field--explanation .tw-explanation-text { white-space: pre-line; color: #222; }
+/* "Erklärung": a static text block rendered as a flowing paragraph. Same deal – inherits
+   the body, so description and explanation are indistinguishable from the rest. */
+.mod_workflow_form .tw-field--explanation .tw-explanation-text { white-space: pre-line; }
 
 .mod_workflow_form .tw-statement { margin: .6rem 0 0; padding: .5rem .75rem; background: #f5f7fa; border-left: 3px solid #1a3a61; border-radius: 0 4px 4px 0; font-size: .9em; }
 .mod_workflow_form .tw-statement-intro { display: block; font-weight: 600; color: #555; margin-bottom: .15rem; }

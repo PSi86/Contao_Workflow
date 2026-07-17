@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\Model;
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Excel\NumberFormat;
 
 /**
  * Reads and writes tl_workflow_question (one configurable answer field of a workflow).
@@ -26,6 +27,7 @@ use Contao\StringUtil;
  * @property string $showStatementInForm Whether the document text is previewed in the form ("1"/"").
  * @property string $prefill      Prefill the field with the stored data value ("1"/"").
  * @property string $readOnly     Show the stored data value read-only ("1"/"").
+ * @property string $numberFormat JSON snapshot of the storage column's Excel format ("number" only).
  */
 class QuestionModel extends Model
 {
@@ -74,6 +76,38 @@ class QuestionModel extends Model
     public function isExplanation(): bool
     {
         return 'explanation' === (string) $this->type;
+    }
+
+    public function isNumber(): bool
+    {
+        return 'number' === (string) $this->type;
+    }
+
+    /**
+     * The storage column's Excel format, snapshotted when the field was saved (see
+     * AnswerConfigListener::validateNumberColumn).
+     *
+     * Null for a field configured before the snapshot existed. Callers must then recover
+     * the format from a stored value (ValueParser::inferFormat) rather than assume a
+     * default – guessing would re-render "3.000,00 €" as "3000" and drop the very
+     * formatting this field is supposed to preserve.
+     */
+    public function getNumberFormat(): ?NumberFormat
+    {
+        $snapshot = trim((string) $this->numberFormat);
+
+        if ('' === $snapshot) {
+            return null;
+        }
+
+        try {
+            /** @var array<string, mixed> $data */
+            $data = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
+
+            return NumberFormat::fromArray($data);
+        } catch (\JsonException) {
+            return null;
+        }
     }
 
     /**

@@ -9,6 +9,8 @@ use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\LinkGenerator;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
+use Psimandl\WorkflowBundle\Excel\ColumnCompatibility;
+use Psimandl\WorkflowBundle\Excel\ColumnFormatAnalyzer;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
 /**
@@ -104,13 +106,26 @@ final class WorkflowValidatorTest extends TestCase
      */
     private function validator(array $mxDomains): WorkflowValidator
     {
-        return new class($this->createMock(SpreadsheetInspector::class), $this->createMock(LinkGenerator::class), $this->connection, $mxDomains) extends WorkflowValidator {
+        return new class(
+            $this->createMock(SpreadsheetInspector::class),
+            $this->createMock(LinkGenerator::class),
+            $this->connection,
+            $this->createMock(ColumnFormatAnalyzer::class),
+            new ColumnCompatibility(),
+            $mxDomains,
+        ) extends WorkflowValidator {
             /**
              * @param array<int, string> $mxDomains
              */
-            public function __construct(SpreadsheetInspector $inspector, LinkGenerator $linkGenerator, Connection $connection, private readonly array $mxDomains)
-            {
-                parent::__construct($inspector, $linkGenerator, $connection);
+            public function __construct(
+                SpreadsheetInspector $inspector,
+                LinkGenerator $linkGenerator,
+                Connection $connection,
+                ColumnFormatAnalyzer $columnAnalyzer,
+                ColumnCompatibility $columnCompatibility,
+                private readonly array $mxDomains,
+            ) {
+                parent::__construct($inspector, $linkGenerator, $connection, $columnAnalyzer, $columnCompatibility);
             }
 
             protected function hasMxRecord(string $domain): bool

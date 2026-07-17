@@ -113,7 +113,19 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'exclude'   => true,
             'inputType' => 'select',
             'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            // For type "number" this checks the chosen column's Excel formatting and
+            // refuses one a number field cannot round-trip (see validateNumberColumn);
+            // on success it snapshots the format into numberFormat.
+            'save_callback' => [[AnswerConfigListener::class, 'validateNumberColumn']],
             'sql'       => "varchar(128) NOT NULL default ''",
+        ],
+        // Snapshot of the storage column's Excel format (JSON), written by the
+        // compatibility check when a "number" field is saved. Not user-editable: it
+        // describes the source file, not a preference. It exists so the form, the live
+        // preview, the PDF and the export can render the value identically without
+        // re-reading the source file's style layer (expensive, and the file may be gone).
+        'numberFormat' => [
+            'sql' => "varchar(128) NOT NULL default ''",
         ],
         'mandatory' => [
             'exclude'   => true,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Psimandl\WorkflowBundle\Excel\NumberFormat;
+use Psimandl\WorkflowBundle\Excel\ValueFormatter;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -19,6 +21,7 @@ class WorkflowPreviewData
 {
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
+        private readonly ValueFormatter $formatter,
     ) {
     }
 
@@ -76,8 +79,11 @@ class WorkflowPreviewData
             return [] !== $options ? $options[0]['value'] : '';
         }
 
-        if ('number' === (string) $question->type) {
-            return '100';
+        // Spelled with the storage column's own format, so the PDF preview shows the
+        // grouping and currency a real answer will carry ("1.234,50 €") instead of a bare
+        // "100" that hides exactly the formatting the preview is meant to show.
+        if ($question->isNumber()) {
+            return (string) $this->formatter->format(1234.5, $question->getNumberFormat() ?? NumberFormat::number(2, true));
         }
 
         return 'Beispiel';

@@ -6,6 +6,59 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Zahlenfeld verfälschte Werte um den Faktor 1000.** Eine Excel-Spalte mit
+  Tausendertrennung (`#,##0`, „Benutzerdefiniert") wurde korrekt als `1.234` importiert, dann
+  aber in ein `<input type="number">` gelegt. Dessen `value` muss laut HTML eine „valid
+  floating-point number" sein — der Browser las den Punkt als **Dezimaltrenner**, verstand
+  1,234 und zeigte in deutscher Locale `1,234`. Aus 1234 wurde 1,234. Das Zahlenfeld ist jetzt
+  ein `type="text"` mit `inputmode="decimal"` und zeigt exakt den Wert, den auch das Dokument
+  enthält — inklusive Tausendertrennung.
+- **Live-Vorschau und PDF zeigten einen Dezimalpunkt statt Komma.** Zwei Ursachen mit
+  demselben Symptom: die Vorschau las `input.value` (bei `type="number"` immer
+  punkt-kanonisch), und das PDF bekam den Punkt von Contaos rgxp `digit`, der beim
+  Validieren `,` → `.` umschrieb. Der rgxp entfällt; Zahlen werden gegen das Format der
+  Quellspalte validiert und normalisiert.
+- **Regelvergleiche auf formatierten Spalten fielen still auf Stringvergleich zurück.**
+  `is_numeric("3.000,00 €")` ist `false`, also verglich „größer als" per `strcmp` — dort ist
+  `"500"` größer als `"3.000,00 €"`. Verglichen wird jetzt der geparste Zahlenwert.
+- **Währungssymbol aus einem reinen Locale-Marker.** Eine Maske `[$-407]` (Locale ohne
+  Währung) lieferte `"$"`, weil das `$` des Markers als Symbol gelesen wurde; jede Zahl der
+  Spalte bekam so ein `$`. Ebenso wurde `[$€-de-DE]` als wissenschaftliches Format erkannt
+  („de-**DE**" enthält `E-`).
+
+### Geändert
+- **Neues zentrales Excel-Modul (`src/Excel/`).** Formatierung war bisher an genau einer
+  Stelle implementiert (beim Import) und wurde danach verworfen — jeder weitere Pfad
+  (Formular, Antwort, Vorschau, PDF, Export, Regeln) musste raten. Jetzt gilt: **ein Wert
+  wird genau einmal formatiert — beim Import bzw. beim Speichern einer Antwort — und danach
+  überall unverändert angezeigt. Geparst wird nur, wenn gerechnet oder verglichen wird.**
+  Die Klassen `FormatCodeParser`, `ValueFormatter`, `ValueParser` und `ColumnCompatibility`
+  sind rein und unit-getestet (vorher: private, untestbare Methoden im Importer).
+- **Antworten werden im Format ihrer Spalte gespeichert.** Bisher hielt dieselbe Spalte zwei
+  Schreibweisen: importierte Zeilen `"3.000,00 €"`, vom Teilnehmer beantwortete `"3000.5"`.
+  Eine Eingabe wird tolerant gelesen (`1234`, `1234,5`, `1.234,50`, auch `1234.5`) und im
+  Spaltenformat abgelegt. Das Währungssymbol wird bei Eingabe und Prüfung ignoriert, bleibt
+  aber auf dem gespeicherten und gedruckten Wert.
+- **Export behält die Zeilenreihenfolge der Quelldatei.** Neue Spalte
+  `tl_workflow_entry.sourceRow`; der Export sortierte bisher alphabetisch nach E-Mail. Die
+  Migration trägt bestehende Einträge in ihrer ursprünglichen Importreihenfolge nach.
+- **Beschreibungstext und Erklärungsfeld erben die Formatierung des Body.** Die Beschreibung
+  war bewusst als Hinweis abgesetzt (`#555`, `.9em`) und wirkte dadurch wie eine Fußnote; sie
+  ist verfasster Inhalt und wird jetzt wie der übrige Formulartext dargestellt.
+- **„General"-Zellen mit Nachkommastellen werden lokalisiert** (`3000.5` → `3000,5`).
+  Ganzzahlen bleiben unverändert (`3000` → `3000`). Deutsches Excel zeigt solche Zellen
+  ebenfalls mit Komma, der Import entspricht damit der Quelldatei.
+
+### Hinzugefügt
+- **Kompatibilitätsprüfung beim Speichern eines Zahlenfeldes.** Die gewählte Spalte wird
+  über alle importierten Zeilen geprüft; akzeptiert werden nur 0 oder 2 Nachkommastellen
+  (Tausendertrennung optional, Währungssymbol egal). Prozent-, Datums-, Bruch- und
+  wissenschaftliche Formate sowie gemischte Nachkommastellen werden mit Angabe von Zeile,
+  Wert und Maske abgelehnt und auf den Feldtyp „Freitext" verwiesen. Summenzeilen (ohne
+  E-Mail) bleiben außen vor — sie werden auch nicht importiert. Dieselbe Prüfung meldet sich
+  im Workflow-Validator, falls die Quelldatei später ausgetauscht wird.
+
 ## [2.10.1] – 2026-07-17
 
 ### Geändert
