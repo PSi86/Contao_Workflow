@@ -15,6 +15,14 @@ $l = $this->dash;
   <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc(sprintf($l['stuck_queue'], (int) $this->stuckQueue)) ?></p>
 <?php endif; ?>
 
+<?php if (!empty($this->bounceBanner)): $b = $this->bounceBanner; ?>
+  <?php if ('error' === $b['level']): ?>
+    <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc($b['message']) ?></p>
+  <?php else: ?>
+    <p class="tl_info" style="margin-bottom:1.5em;"><?= $esc($b['message']) ?></p>
+  <?php endif; ?>
+<?php endif; ?>
+
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
   <summary style="cursor:pointer;font-weight:bold;">Workflow-Konfiguration importieren</summary>
   <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" style="margin-top:1em;">

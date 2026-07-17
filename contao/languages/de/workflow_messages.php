@@ -10,6 +10,11 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'not_runnable'     => '⚠ nicht ausführbar',
     'not_runnable_msg' => 'Dieser Workflow kann nicht ausgeführt werden:',
     'stuck_queue'      => '⚠ %d E-Mail(s) sind seit über 15 Minuten zum Versand eingereiht, aber noch ohne Ergebnis. Läuft der Cron bzw. der Worker? Siehe DEPLOYMENT.md, Abschnitt 2 (Worker/Cron in Produktion einrichten).',
+    // Bounce-Erkennung (Service\Bounce\BounceHealth): Hinweis-Banner, wenn kein Postfach
+    // konfiguriert ist; Fehler-Banner (%1$s = Grund, %2$s = Zeitpunkt der letzten Prüfung),
+    // wenn das konfigurierte Postfach nicht erreichbar ist.
+    'bounce_unconfigured' => 'ℹ Es ist kein Bounce-Postfach konfiguriert (oder die Konfiguration wurde nicht geladen – nach einer Änderung an der .env.local den Produktions-Cache neu erzeugen). In diesem Zustand können Zustellfehler und Bounces nicht erkannt werden. Siehe DEPLOYMENT.md, Abschnitt 3c.',
+    'bounce_error'        => '⚠ Das konfigurierte Bounce-Postfach ist nicht erreichbar: %1$s Zustellfehler und Bounces werden derzeit nicht erkannt. Bitte WORKFLOW_BOUNCE_IMAP_DSN prüfen (Host, Port, Benutzer, Passwort-Formatierung). (Zuletzt geprüft: %2$s)',
     'hard_bounces'     => 'Ungültige Adressen (%d) – dauerhaft unzustellbar (Bounce)',
     'col_reason'       => 'Grund',
     'hard_bounces_hint'=> 'Diese Adressen existieren nicht (harte Bounces) und werden von Einladungen und Erinnerungen ausgeschlossen. Korrigiere die E-Mail-Adresse des Eintrags, um ihn wieder aufzunehmen.',

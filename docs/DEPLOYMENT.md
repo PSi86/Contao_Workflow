@@ -179,6 +179,20 @@ viele Nachrichten im Postfach liegen und ob ein Bounce einem Eintrag zugeordnet 
 sie nach `INBOX/Processed`, markiert die Einträge). Mit `--dsn=imap://…` lässt sich die
 IMAP-Verbindung unabhängig von `.env.local` testen.
 
+> **Diagnose in der Workflow-Übersicht.** Der Zustand der Bounce-Erkennung wird oben in der
+> Übersicht angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung öffnet (sie liest den
+> letzten Cron-Befund):
+> - **Kein Banner** – ein Postfach ist konfiguriert und beim letzten Lauf erreichbar.
+> - **Hinweis (blau)** – es ist **kein** Postfach konfiguriert (oder die `.env`-Variable wurde
+>   nicht geladen, siehe den Managed-Edition-Hinweis oben). Zustellfehler werden dann nicht
+>   erkannt. Im System-Log steht dazu eine **Warnung**, kein Fehler.
+> - **Fehler (rot)** – ein Postfach ist konfiguriert, war beim letzten Lauf aber **nicht
+>   erreichbar** (falscher Host/Port, Zugangsdaten, Passwort-Format …). Der Grund steht im
+>   Banner und als **Fehler** im System-Log. `workflow:bounce:collect` (ohne `--dsn`) nach der
+>   Korrektur ausführen, um das Banner sofort zu aktualisieren – sonst räumt es der nächste
+>   Cron-Lauf ab. Die Log-Meldungen erscheinen nur bei einem **Zustandswechsel**, nicht bei
+>   jedem Lauf.
+
 ---
 
 ## 4. SPF / DKIM / DMARC bei all-inkl (Schritt für Schritt)

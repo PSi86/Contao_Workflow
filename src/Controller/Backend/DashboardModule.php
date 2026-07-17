@@ -9,6 +9,7 @@ use Contao\Message;
 use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
@@ -119,12 +120,52 @@ class DashboardModule extends BackendModule
         // (the cron/worker is most likely not running). This spans all workflows.
         $this->Template->stuckQueue = $status->countStuckQueued();
 
+        // Bounce-detection state, spanning all workflows: a hint when no mailbox is configured,
+        // an error when the configured one is unreachable (from the cron's last verdict).
+        $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class));
+
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
         $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
         $this->Template->restoreDemoUrl = $router->generate('workflow_install_demo').'?rt='.$rt;
         $this->Template->importUrl = $router->generate('workflow_import_config');
         $this->Template->rt = $rt;
+    }
+
+    /**
+     * The bounce-detection banner for the overview, or null when nothing needs saying.
+     *
+     * Two distinct situations, deliberately different in tone:
+     *  - no mailbox configured (determined live from the DSN, no cron run needed) → a NOTICE:
+     *    the feature is simply off, so delivery failures go unnoticed.
+     *  - a mailbox is configured but the last cron run could not reach it → an ERROR: something
+     *    is misconfigured and needs fixing. The detail comes from the stored verdict, so the
+     *    overview never opens an IMAP connection itself.
+     *
+     * @return array{level: string, message: string}|null
+     */
+    private function bounceBanner(BounceHealth $health): ?array
+    {
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
+
+        if (!$health->isConfigured()) {
+            return ['level' => 'notice', 'message' => (string) ($lang['bounce_unconfigured'] ?? '')];
+        }
+
+        $state = $health->read();
+
+        if (BounceHealth::STATE_CONFIG_ERROR === $state['state']) {
+            return [
+                'level'   => 'error',
+                'message' => sprintf(
+                    (string) ($lang['bounce_error'] ?? '%s'),
+                    $state['message'],
+                    $state['checkedAt'] > 0 ? date('d.m.Y H:i', $state['checkedAt']) : '—',
+                ),
+            ];
+        }
+
+        return null;
     }
 
     /**

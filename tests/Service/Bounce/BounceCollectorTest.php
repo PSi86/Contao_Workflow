@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceParser;
 use Psr\Log\NullLogger;
 
@@ -52,7 +53,40 @@ final class BounceCollectorTest extends TestCase
             )
             SQL);
 
-        $this->collector = new BounceCollector(new BounceParser(), $this->connection, new NullLogger(), null);
+        $this->collector = new BounceCollector(
+            new BounceParser(),
+            $this->connection,
+            new NullLogger(),
+            new BounceHealth($this->connection),
+            null,
+        );
+    }
+
+    /**
+     * An empty DSN must be reported as "unconfigured" without any IMAP attempt — this is the
+     * off-by-default state, not an error.
+     */
+    public function testEmptyDsnReportsUnconfiguredWithoutConnecting(): void
+    {
+        $noted = [];
+        $outcome = $this->collector->collect('', false, static function (string $level, string $message) use (&$noted): void {
+            $noted[] = [$level, $message];
+        });
+
+        self::assertSame(BounceHealth::STATE_UNCONFIGURED, $outcome->state);
+        self::assertNotEmpty($noted, 'the operator is told the mailbox is unconfigured');
+    }
+
+    /**
+     * A malformed DSN is a config error (the "wrong password formatting" class of problem),
+     * surfaced as such rather than thrown.
+     */
+    public function testMalformedDsnReportsConfigError(): void
+    {
+        $outcome = $this->collector->collect('not-a-valid-dsn');
+
+        self::assertSame(BounceHealth::STATE_CONFIG_ERROR, $outcome->state);
+        self::assertNotSame('', $outcome->message);
     }
 
     public function testHardBounceMovesTheSendRowToBouncedAndFlagsTheEntry(): void

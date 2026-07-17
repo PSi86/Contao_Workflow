@@ -6,6 +6,27 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Diagnose der Bounce-Erkennung in der Workflow-Übersicht.** Oben in der Übersicht wird jetzt
+  der Zustand des Bounce-Postfachs angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung
+  öffnet (sie liest den letzten Cron-Befund):
+  - **Hinweis-Banner (blau)**, wenn **kein** Postfach konfiguriert ist bzw. die
+    `WORKFLOW_BOUNCE_IMAP_DSN` nicht geladen wurde (z. B. Managed Edition mit `.env.local.php`,
+    die `.env.local` nicht direkt liest) – in diesem Zustand werden Zustellfehler und Bounces
+    nicht erkannt. Im System-Log erscheint dazu eine **Warnung**, kein Fehler.
+  - **Fehler-Banner (rot)**, wenn ein Postfach konfiguriert, beim letzten Lauf aber nicht
+    erreichbar war (falscher Host/Port, Zugangsdaten, Passwort-Format …). Grund und Zeitpunkt
+    stehen im Banner und als **Fehler** im System-Log. `workflow:bounce:collect` (ohne `--dsn`)
+    aktualisiert das Banner nach einer Korrektur sofort.
+  - Alle Texte sind DE **und** EN lokalisiert.
+
+### Geändert
+- **Der Bounce-Cron loggt seinen Konfigurationszustand nur noch bei einem Zustandswechsel.**
+  Die frühere „nicht konfiguriert"-Zeile bei jedem Lauf (alle 15 Minuten) entfällt; stattdessen
+  wird der Wechsel *in* einen Zustand einmal protokolliert (Warnung: nicht konfiguriert; Fehler:
+  nicht erreichbar; Info: wieder erreichbar). Das dauerhaft sichtbare Signal ist das
+  Übersichts-Banner, das System-Log bleibt die Wechsel-Chronik.
+
 ## [2.12.0] – 2026-07-17
 
 Fasst die zurückgezogene 2.11.2 mit zusammen (sie war nur kurz veröffentlicht und wurde nie
