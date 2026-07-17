@@ -5,6 +5,8 @@ services:
         bind:
             $projectDir: '%kernel.project_dir%'
             $csrfTokenName: '%contao.csrf_token_name%'
+            # IMAP DSN of the bounce mailbox; empty/unset turns the bounce collector off.
+            $bounceImapDsn: '%env(default::WORKFLOW_BOUNCE_IMAP_DSN)%'
 
     Psimandl\WorkflowBundle\:
         resource: ../src/
@@ -12,6 +14,8 @@ services:
             - ../src/ContaoWorkflowBundle.php
             - ../src/ContaoManager/
             - ../src/Model/
+            # Plain value object, never resolved from the container.
+            - ../src/Service/Bounce/BounceReport.php
             # Instantiated by Contao as a BE_MOD callback, not via the container.
             - ../src/Controller/Backend/DashboardModule.php
 

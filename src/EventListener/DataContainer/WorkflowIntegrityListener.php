@@ -115,6 +115,29 @@ class WorkflowIntegrityListener
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
     }
 
+    /**
+     * Warns on the edit mask when a notification's sender domain looks undeliverable (no MX
+     * record) or does not match the website domain — the root cause of silently lost bounces.
+     * Only runs while rendering the edit form, so the DNS lookup never hits a hot path.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
+    public function warnSenderDomain(DataContainer $dc): void
+    {
+        if (!$dc->id || !$this->isEditMask()) {
+            return;
+        }
+
+        $workflow = WorkflowModel::findByPk((int) $dc->id);
+
+        if (null === $workflow) {
+            return;
+        }
+
+        foreach ($this->validator->getSenderWarnings($workflow) as $warning) {
+            Message::addInfo($warning);
+        }
+    }
+
     #[AsCallback(table: 'tl_workflow', target: 'config.onsubmit')]
     public function warnOnSave(DataContainer $dc): void
     {

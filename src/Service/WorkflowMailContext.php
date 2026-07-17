@@ -24,12 +24,16 @@ class WorkflowMailContext
     private ?int $workflowId = null;
     private ?int $entryId = null;
     private ?string $kind = null;
+    private ?string $recipient = null;
+    private ?int $notificationId = null;
 
-    public function set(int $workflowId, int $entryId, string $kind): void
+    public function set(int $workflowId, int $entryId, string $kind, string $recipient = '', int $notificationId = 0): void
     {
         $this->workflowId = $workflowId;
         $this->entryId = $entryId;
         $this->kind = $kind;
+        $this->recipient = $recipient;
+        $this->notificationId = $notificationId;
     }
 
     public function clear(): void
@@ -37,6 +41,8 @@ class WorkflowMailContext
         $this->workflowId = null;
         $this->entryId = null;
         $this->kind = null;
+        $this->recipient = null;
+        $this->notificationId = null;
     }
 
     public function isActive(): bool
@@ -57,5 +63,20 @@ class WorkflowMailContext
     public function getKind(): ?string
     {
         return $this->kind;
+    }
+
+    public function getRecipient(): ?string
+    {
+        return $this->recipient;
+    }
+
+    /**
+     * The Notification Center notification id that is currently being sent. It lets the
+     * result listener's synchronous fallback tell our own in-flight mail apart from a
+     * foreign notification that happens to be sent within the same request.
+     */
+    public function getNotificationId(): ?int
+    {
+        return $this->notificationId;
     }
 }

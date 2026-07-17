@@ -88,7 +88,6 @@ class DashboardModule extends BackendModule
                     'open'          => $status->countOpen($workflow),
                     'total'         => $status->countTotal($id),
                     'breakdown'     => $status->getBreakdown($workflow),
-                    'sendErrors'    => $status->getSendErrors($id),
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
@@ -97,6 +96,7 @@ class DashboardModule extends BackendModule
                     'inviteCount'   => $byStatus[WorkflowStatus::STATUS_IMPORTED] ?? 0,
                     'reminderCount' => $byStatus[WorkflowStatus::STATUS_INVITED] ?? 0,
                     'sendUrl'       => $router->generate('workflow_send', ['id' => $id]),
+                    'finalStatus'   => $final,
                     'rt'            => $rt,
                     'urls'          => [
                         // Direct link into the workflow_manage edit view for this workflow.
@@ -114,6 +114,10 @@ class DashboardModule extends BackendModule
         // WorkflowActionController). Unlike DC-driven views, a custom back end module is
         // not wrapped with the message output, so render it here explicitly.
         $this->Template->messages = Message::generate();
+
+        // Infrastructure alarm: mails that have been queued for a while without any result
+        // (the cron/worker is most likely not running). This spans all workflows.
+        $this->Template->stuckQueue = $status->countStuckQueued();
 
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
@@ -133,9 +137,13 @@ class DashboardModule extends BackendModule
         $hasAbteilung = false;
         $pending = [];
 
+        // "Offene Vorgänge": everything not fully finished. An entry drops out only once it
+        // is answered AND its confirmation was produced (resultDoneAt > 0) AND there is no
+        // send error / hard bounce. A not-yet-answered entry has resultDoneAt = 0 and is
+        // therefore included as well (the classic pending case).
         $entries = EntryModel::findBy(
-            ['pid=?', 'status<?'],
-            [(int) $workflow->id, $workflow->getFinalStatus()],
+            ['pid=?', "(resultDoneAt=0 OR (sendError IS NOT NULL AND sendError!='') OR bounceHard!='')"],
+            [(int) $workflow->id],
             ['order' => 'status, email'],
         );
 
@@ -177,6 +185,27 @@ class DashboardModule extends BackendModule
             $hasVorname = $hasVorname || '' !== $vorname;
             $hasAbteilung = $hasAbteilung || '' !== $abteilung;
 
+            $sendError = (string) $entry->sendError;
+
+            // Delivery state shown in its own "Zustellung" column, in addition to (never
+            // replacing) the workflow status. Empty only while no mail has been attempted;
+            // otherwise always something. Precedence: a hard bounce (permanent) beats a
+            // retryable transport error, which beats a plain "sent, no error so far".
+            // "sent" is derived from the status: it only advances past "imported" once an
+            // invitation was actually sent.
+            $delivery = '';
+
+            if ('1' === (string) $entry->bounceHard) {
+                $delivery = 'bounce';
+            } elseif ('' !== $sendError) {
+                $delivery = 'error';
+            } elseif ((int) $entry->respondedAt > 0 && 0 === (int) $entry->resultDoneAt) {
+                // Answered, but the confirmation (PDF + result mail) is not through yet.
+                $delivery = 'pending';
+            } elseif ((int) $entry->status >= WorkflowStatus::STATUS_INVITED) {
+                $delivery = 'sent';
+            }
+
             $pending[] = [
                 'id'          => (int) $entry->id,
                 'email'       => $email,
@@ -185,7 +214,10 @@ class DashboardModule extends BackendModule
                 'name'        => $name,
                 'vorname'     => $vorname,
                 'abteilung'   => $abteilung,
-                'sendError'   => (string) $entry->sendError,
+                'delivery'    => $delivery,
+                'sendError'   => $sendError,
+                'bounceInfo'  => (string) $entry->bounceInfo,
+                'resultError' => (string) $entry->resultError,
             ];
         }
 

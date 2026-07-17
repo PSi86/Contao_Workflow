@@ -6,6 +6,164 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.10.1] – 2026-07-17
+
+### Geändert
+- **„Bestätigung senden" in den Dialog „E-Mails senden" integriert.** Statt eines separaten
+  Buttons ist die Bestätigung jetzt die dritte Option neben „Einladungen/Erinnerungen senden"
+  — nach derselben statusabhängigen Logik (Automatisch / Manuelle Auswahl), aber **nur für
+  Teilnehmer im höchsten Status**: Vor dem Endstatus liegen keine Daten für das PDF vor, daher
+  werden solche Einträge übersprungen. Erzeugt PDF und Ergebnis-Mail erneut (idempotent) und
+  dient zugleich dem Neuversand nach einem Bounce bzw. einer Adress-Korrektur.
+
+## [2.10.0] – 2026-07-17
+
+### Geändert
+- **„Ausstehende Antworten" → „Offene Vorgänge" – die Liste zeigt jetzt alles, was noch
+  nicht sauber abgeschlossen ist.** Ein Eintrag verschwindet erst, wenn er beantwortet **und**
+  die Bestätigung (PDF + Ergebnis-Mail) erfolgreich erzeugt wurde **und** kein Versandfehler
+  oder Bounce vorliegt. Zustellprobleme beantworteter Einträge (Versandfehler/Bounce der
+  Ergebnis-Mail) erscheinen damit direkt zeilenweise in der Liste — mit Name/Abteilung zur
+  Zuordnung, in der sortierbaren Spalte „Zustellung". Die früheren separaten Boxen
+  „Versandfehler" und „Ungültige Adressen" entfallen (die Information steht jetzt in der
+  Liste).
+
+### Hinzugefügt
+- **Ausfallsichere Ergebnis-Zustellung.** Schlägt beim Absenden des Formulars die
+  PDF-Erzeugung oder der Versand der Bestätigungs-Mail fehl, geht die **Antwort nie verloren**
+  und der Teilnehmer sieht **keine Fehlerseite** mehr. Der Fehlschlag wird am Eintrag
+  festgehalten und in „Offene Vorgänge" als **„Ausstehend"** angezeigt (Grund im Tooltip) —
+  kein stiller, aussperrender Zustand mehr. Ein neuer Cron holt offene Bestätigungen
+  automatisch nach (Selbstheilung transienter Fehler bzw. nach einer Ursachenbehebung), und
+  die neue Aktion **„Bestätigung neu senden"** erzeugt PDF und Ergebnis-Mail für markierte
+  Einträge erneut — das dient zugleich dem Neuversand nach einem Bounce/einer Adress-Korrektur.
+
+## [2.9.5] – 2026-07-17
+
+### Geändert
+- **Spalte „Zustellung" zeigt jetzt auch den Erfolgsfall.** Statt bei fehlerfreiem Versand
+  leer zu bleiben, erscheint ein grünes Badge **„Versendet"**. Leer bleibt die Spalte nur
+  noch, solange **noch keine Mail versucht** wurde. „Versendet" ist bewusst ehrlich
+  beschriftet – *angenommen, nicht garantiert zugestellt*: Ein später eintreffender Bounce
+  kippt die Zeile automatisch auf „Unzustellbar" (der Tooltip erklärt das).
+
+### Dokumentation
+- DEPLOYMENT §3a: Hinweis auf Contaos Mailer-DSN-Generator im Handbuch (baut die `MAILER_DSN`
+  inkl. korrekter URL-Kodierung zusammen).
+
+## [2.9.4] – 2026-07-17
+
+### Hinzugefügt
+- **Spalte „Zustellung" in der Liste „Ausstehende Antworten".** Zustellprobleme erscheinen
+  jetzt direkt in dieser Liste (mit Name/Abteilung zur Zuordnung), als eigenes, **sortierbares**
+  Badge – **ohne** den Workflow-Status zu überschreiben: **amber „Versandfehler"** (Transport,
+  wiederholbar) bzw. **rot „Unzustellbar"** (harter Bounce, ungültige Adresse); der genaue
+  Grund steht im Tooltip. Ein harter Bounce hat Vorrang vor einem Transportfehler. Die
+  separaten Übersichtsboxen „Versandfehler" und „Ungültige Adressen" bleiben erhalten (u. a.
+  für Bounces der Ergebnis-Mail an bereits beantwortete Einträge, die nicht in dieser Liste
+  stehen).
+
+## [2.9.3] – 2026-07-16
+
+### Behoben
+- **Bounce-Abruf gegen strikte IMAP-Server (All-Inkl/Dovecot).** Die Postfach-Abfrage
+  sendete ohne explizites Suchkriterium ein leeres `UID SEARCH`, das solche Server mit
+  „BAD … Missing search parameters" ablehnen (bei Mailpit u. a. funktionierte es zufällig).
+  Die Abfrage setzt jetzt explizit `ALL` (`UID SEARCH ALL`).
+
+## [2.9.2] – 2026-07-16
+
+### Hinzugefügt
+- **Bounce-Abruf schreibt ins Contao-System-Log** (Backend: System → System-Log), damit ohne
+  CLI-Zugriff nachvollziehbar ist, was der Cron tut: pro Lauf eine Zeile „Bounce-Postfach
+  geprüft (…): N Nachrichten, X hart markiert, …", je hart markierter Adresse ein Eintrag,
+  sowie klare Fehlermeldungen (leere/ungültige DSN, IMAP-Fehler, nicht zuordenbarer Bounce).
+  Das umgeht das prod-Log, das per `fingers_crossed` nur bei Fehlern schreibt.
+
+### Behoben
+- **IMAP-Verbindungs-Timeout (20 s)**, damit ein nicht erreichbares Bounce-Postfach den
+  (Web-)Cron `/_contao/cron` nicht blockiert.
+
+## [2.9.1] – 2026-07-16
+
+### Hinzugefügt
+- **CLI-Kommando `workflow:bounce:collect`** zum sofortigen Abrufen bzw. zur Diagnose des
+  Bounce-Postfachs, ohne bis zu 15 Minuten auf den Cron zu warten. Es zeigt Schritt für
+  Schritt, ob die DSN erkannt wird, ob die IMAP-Verbindung steht, wie viele Nachrichten im
+  Postfach liegen und ob ein Bounce einem Eintrag zugeordnet werden kann. `--dry-run`
+  verändert nichts, `--dsn=…` testet die Verbindung unabhängig von `.env.local`.
+
+### Dokumentation
+- DEPLOYMENT §3c: Hinweis, dass die Contao Managed Edition bei vorhandener `.env.local.php`
+  die `.env.local` **nicht** direkt liest (Neukompilieren mit `dotenv:dump prod`, über den
+  Contao-Manager setzen oder `.env.local.php` löschen), plus Prüf- und Testbefehle
+  (`debug:dotenv`, `workflow:bounce:collect --dry-run`).
+
+## [2.9.0] – 2026-07-16
+
+Zuverlässiges Zustand-Tracking der versendeten Mails inklusive Erkennung asynchroner
+Unzustellbarkeit (Bounces/DSN), die bisher unbemerkt blieb.
+
+### Hinzugefügt
+- **Warnung bei problematischer Absenderdomain.** Beim Bearbeiten eines Workflows warnt das
+  Backend jetzt, wenn die Absenderadresse der zugeordneten E-Mail-Vorlagen eine
+  Beispiel-/Platzhalterdomain nutzt (z. B. `example.com`), keinen MX-Eintrag im DNS hat
+  (Tippfehler wie `.de` statt `.com`) oder nicht zur Website-Domain passt. Genau das ist die
+  häufigste Ursache dafür, dass Mails unbemerkt unzustellbar sind und Bounces lautlos
+  verschwinden, obwohl der Versand gesund aussieht. Der Demo-Workflow setzt außerdem keine
+  tote `example.com`-Adresse mehr, sondern leitet den Absender aus der Domain der Website ab
+  (oder lässt ihn leer, sodass die System-Absenderadresse greift).
+- **Ungültige Adressen werden nicht erneut angeschrieben.** Eine per hartem Bounce als
+  dauerhaft unzustellbar erkannte Adresse wird aus künftigen Einladungs- und
+  Erinnerungsläufen ausgeschlossen – kein wiederholter Versand an tote Adressen (und damit
+  kein weiterer Bounce/Reputationsschaden). Solche Einträge stehen im Dashboard in einer
+  eigenen Box **„Ungültige Adressen"**, getrennt von den (wiederholbaren) Versandfehlern:
+  ein Transportproblem löst sich ggf. von selbst, eine nicht existierende Adresse braucht
+  einen Menschen. Wird die E-Mail-Adresse des Eintrags korrigiert, hebt sich die Sperre
+  automatisch auf.
+- **Bounce-Erkennung: unzustellbare Adressen aufspüren (opt-in per IMAP).** Ein „250 OK"
+  beim Absenden bedeutet nur „angenommen", nicht „zugestellt" – lehnt der Empfänger-Server
+  später ab (`550 User unknown`), kommt das als eigene Unzustellbarkeitsmeldung (Bounce/DSN)
+  zurück, die bisher unbemerkt blieb. Ein neuer Cronjob (alle 15 Minuten) liest das
+  konfigurierte Bounce-Postfach per IMAP aus, erkennt **harte** Bounces und markiert die
+  betroffene Person im Dashboard als „Unzustellbar (Bounce)". Aktivierung über
+  `WORKFLOW_BOUNCE_IMAP_DSN` in `.env.local` (siehe DEPLOYMENT.md, Abschnitt 3c); ohne
+  Konfiguration bleibt die Funktion aus. Temporäre Probleme (Greylisting, Postfach voll)
+  werden nur protokolliert, nicht als Fehler gewertet.
+- **Dashboard-Warnung „Versand hängt in der Queue".** Sind E-Mails seit über 15 Minuten zum
+  Versand eingereiht, ohne dass ein Ergebnis vorliegt, zeigt die Workflow-Übersicht jetzt
+  oben eine deutliche Warnung – typischerweise das Zeichen, dass der Cron bzw. der Worker
+  nicht läuft. Vorher war dieser Zustand unsichtbar (Eintrag blieb „ausstehend", ohne Fehler).
+
+### Geändert
+- **Interne Versandprotokollierung in eigene Tabelle `tl_workflow_send`.** Der Zustand jeder
+  einzeln versendeten Mail (Einladung / Erinnerung / Ergebnis) wird jetzt dauerhaft pro
+  Notification-Center-Parcel-ID protokolliert – eingereiht → versendet → fehlgeschlagen –
+  statt in einem einzigen Slot je Eintrag (`sendParcelId` / `sendKind`), der bei jedem neuen
+  Versand überschrieben und nach dem Ergebnis gelöscht wurde. Das ist die Grundlage für die
+  kommende Bounce-Erkennung und die Queue-Überwachung. Eine Datenbank-Migration legt die
+  Tabelle an, übernimmt noch laufende Zuordnungen und entfernt die alten Spalten;
+  `sendError` / `sendErrorAt` bleiben als Anzeigefelder am Eintrag erhalten. Ein täglicher
+  Cron räumt abgeschlossene Protokollzeilen (versendet / fehlgeschlagen / unzustellbar) nach
+  90 Tagen auf; noch eingereihte Zeilen bleiben erhalten (Signal für einen hängenden Versand).
+
+### Behoben
+- **Doppelte Einladung nach fehlgeschlagenem Erstversand.** Schlug der erste
+  SMTP-Zustellversuch fehl (z. B. am 3-Verbindungen-Limit von all-inkl) und gelang erst
+  der automatische Wiederholversuch von Symfony Messenger, blieb der Eintrag fälschlich
+  auf „importiert" mit Versandfehler stehen – der nächste „Einladungen senden"-Lauf
+  verschickte dann eine **zweite Einladung**. Die Zuordnung zwischen E-Mail und Eintrag
+  wird jetzt erst bei **erfolgreicher** Zustellung aufgelöst, sodass ein Wiederholversuch
+  weiterhin dem richtigen Eintrag zugeordnet wird.
+
+### Dokumentation
+- **DEPLOYMENT: Worker-Parallelität auf all-inkl begrenzen (autoscale).** Neuer Abschnitt 2c
+  erläutert, wann Contaos autoscale-Worker greifen (CLI-Cron bzw. `contao:supervise-workers`,
+  Default bis zu 10 parallele Prozesse) und wann stattdessen der sequenzielle Web-Worker
+  drainiert (URL-Cron `/_contao/cron`), und empfiehlt für all-inkl (max. 3 gleichzeitige
+  SMTP-Verbindungen) das Abschalten von autoscale (`autoscale: { enabled: false }`), sodass
+  genau ein Worker läuft.
+
 ## [2.8.0] – 2026-07-11
 
 ### Hinzugefügt

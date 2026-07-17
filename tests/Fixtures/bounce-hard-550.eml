@@ -1,0 +1,45 @@
+Return-Path: <>
+From: Mail Delivery System <MAILER-DAEMON@dd36332.kasserver.com>
+To: noreply@tsvkorntal.com
+Subject: Undelivered Mail Returned to Sender
+Auto-Submitted: auto-replied
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="F1B2C3D4E5boundary"
+
+--F1B2C3D4E5boundary
+Content-Type: text/plain; charset=us-ascii
+
+This is the mail system at host dd36332.kasserver.com.
+
+I'm sorry to have to inform you that your message could not be
+delivered to one or more recipients. It's attached below.
+
+--F1B2C3D4E5boundary
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; dd36332.kasserver.com
+X-Postfix-Queue-ID: 4abcdef123
+X-Postfix-Sender: rfc822; noreply@tsvkorntal.com
+Arrival-Date: Tue, 15 Jul 2026 10:00:00 +0200
+
+Final-Recipient: rfc822; sdfdfsdfsd@wherever-we-are.com
+Original-Recipient: rfc822;sdfdfsdfsd@wherever-we-are.com
+Action: failed
+Status: 5.0.0
+Remote-MTA: dns; gmail-smtp-in.l.google.com
+Diagnostic-Code: smtp; 550-5.1.1 <sdfdfsdfsd@wherever-we-are.com>: Recipient
+	address rejected: 550 User unknown
+
+--F1B2C3D4E5boundary
+Content-Type: message/rfc822
+
+Return-Path: <noreply@tsvkorntal.com>
+Notification-Center-Parcel-ID: ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00
+From: TSV Korntal <noreply@tsvkorntal.com>
+To: sdfdfsdfsd@wherever-we-are.com
+Subject: Erinnerung: Bitte um Rueckmeldung
+Content-Type: text/plain; charset=utf-8
+
+Sehr geehrte Damen und Herren, bitte denken Sie an Ihre Rueckmeldung.
+
+--F1B2C3D4E5boundary--

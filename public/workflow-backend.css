@@ -132,6 +132,14 @@
     vertical-align: middle;
 }
 
+/* Delivery indicators in the pending list's "Zustellung" column. Amber = retryable
+   transport error; red = permanent hard bounce (invalid address, needs a human). */
+.wf-badge--sent { background: #2e7d32; }
+.wf-badge--pending { background: #6b7683; }
+.wf-badge--warn { background: #cc7a00; }
+.wf-badge--bounce { background: #c0392b; }
+.wf-table td[data-k="delivery"] .wf-badge { margin-left: 0; }
+
 /* Each workflow as a distinct card in the overview. Use Contao's themed colour
    variables so the box follows light/dark mode (no hard-coded white). */
 .wf-box {

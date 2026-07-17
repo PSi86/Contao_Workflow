@@ -3,7 +3,7 @@
     "type": "contao-bundle",
     "description": "Contao 5.3 bundle for a token-based query workflow: CSV/XLSX import, individual prefilled forms with signature, PDF generation and admin overview.",
     "license": "proprietary",
-    "version": "2.8.0",
+    "version": "2.10.1",
     "authors": [
         {
             "name": "Peter Simandl",
@@ -27,11 +27,20 @@
         "symfony/http-kernel": "^6.4 || ^7.0",
         "symfony/routing": "^6.4 || ^7.0",
         "terminal42/dcawizard": "^3.0",
-        "terminal42/notification_center": "^2.0"
+        "terminal42/notification_center": "^2.0",
+        "webklex/php-imap": "^6.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {
             "Psimandl\\WorkflowBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Psimandl\\WorkflowBundle\\Tests\\": "tests/"
         }
     },
     "config": {
@@ -45,6 +54,6 @@
         "contao-manager-plugin": "Psimandl\\WorkflowBundle\\ContaoManager\\Plugin"
     },
     "archive": {
-        "exclude": ["/vendor", "/composer.lock", "/.gitignore", "/.phpunit.result.cache", "/dist"]
+        "exclude": ["/vendor", "/composer.lock", "/.gitignore", "/.phpunit.result.cache", "/.phpunit.cache", "/dist", "/tests", "/phpunit.xml.dist", "/docs/dev"]
     }
 }

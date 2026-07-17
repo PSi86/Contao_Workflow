@@ -11,6 +11,10 @@ $l = $this->dash;
 
 <h2 class="sub_headline"><?= $l['heading'] ?></h2>
 
+<?php if ((int) $this->stuckQueue > 0): ?>
+  <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc(sprintf($l['stuck_queue'], (int) $this->stuckQueue)) ?></p>
+<?php endif; ?>
+
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
   <summary style="cursor:pointer;font-weight:bold;">Workflow-Konfiguration importieren</summary>
   <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" style="margin-top:1em;">
@@ -53,23 +57,6 @@ $l = $this->dash;
         <?php endif; ?>
       <?php endif; ?>
 
-      <?php if (!empty($wf['sendErrors'])): ?>
-        <details open class="wf-send-errors" style="margin-bottom:1em;">
-          <summary class="tl_error" style="cursor:pointer;font-weight:bold;">Versandfehler (<?= \count($wf['sendErrors']) ?>) – diese E-Mails wurden nicht zugestellt</summary>
-          <table class="tl_listing" style="margin-top:.6em;">
-            <thead><tr><th><?= $l['col_email'] ?></th><th>Fehler</th></tr></thead>
-            <tbody>
-            <?php foreach ($wf['sendErrors'] as $err): ?>
-              <tr>
-                <td><?= $esc($err['email']) ?></td>
-                <td><?= $esc($err['error']) ?></td>
-              </tr>
-            <?php endforeach; ?>
-            </tbody>
-          </table>
-          <p class="tl_info" style="margin:.4em 0 0;">Der Workflow-Schritt dieser Einträge wurde bewusst nicht weitergesetzt. Ursache beheben (z. B. Absenderadresse/SMTP) und erneut „<?= $l['btn_send'] ?>".</p>
-        </details>
-      <?php endif; ?>
 
       <div style="display:flex;gap:2em;flex-wrap:wrap;margin-bottom:1em;">
         <div><strong style="font-size:1.6em;"><?= (int) $wf['completed'] ?></strong><br><?= $l['completed'] ?></div>
@@ -130,17 +117,19 @@ $l = $this->dash;
                 <?php if ($wf['hasVorname']): ?><th class="wf-sortable" data-key="vorname"><?= $l['col_vorname'] ?></th><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><th class="wf-sortable" data-key="abteilung"><?= $l['col_abteilung'] ?></th><?php endif; ?>
                 <th class="wf-sortable" data-key="status"><?= $l['col_status'] ?></th>
+                <th class="wf-sortable" data-key="delivery"><?= $l['col_delivery'] ?></th>
               </tr>
             </thead>
             <tbody>
             <?php foreach ($wf['pending'] as $p): ?>
               <tr data-status="<?= (int) $p['statusIndex'] ?>">
                 <td class="wf-cb"><input type="checkbox" class="wf-row" value="<?= (int) $p['id'] ?>" data-status="<?= (int) $p['statusIndex'] ?>" data-email="<?= $esc($p['email']) ?>" data-name="<?= $esc(trim($p['vorname'].' '.$p['name'])) ?>"></td>
-                <td data-k="email"><?= $esc($p['email']) ?><?php if (!empty($p['sendError'])): ?> <span class="wf-badge" style="background:#b33;" title="<?= $esc($p['sendError']) ?>">Versand fehlgeschlagen</span><?php endif; ?></td>
+                <td data-k="email"><?= $esc($p['email']) ?></td>
                 <?php if ($wf['hasName']): ?><td data-k="name"><?= $esc($p['name']) ?></td><?php endif; ?>
                 <?php if ($wf['hasVorname']): ?><td data-k="vorname"><?= $esc($p['vorname']) ?></td><?php endif; ?>
                 <?php if ($wf['hasAbteilung']): ?><td data-k="abteilung"><?= $esc($p['abteilung']) ?></td><?php endif; ?>
                 <td data-k="status"><?= $esc($p['status']) ?></td>
+                <td data-k="delivery"><?php if ('bounce' === $p['delivery']): ?><span class="wf-badge wf-badge--bounce" title="<?= $esc($p['bounceInfo']) ?>"><?= $l['delivery_bounce'] ?></span><?php elseif ('error' === $p['delivery']): ?><span class="wf-badge wf-badge--warn" title="<?= $esc($p['sendError']) ?>"><?= $l['delivery_error'] ?></span><?php elseif ('pending' === $p['delivery']): ?><span class="wf-badge wf-badge--pending" title="<?= $esc($p['resultError'] ?: $l['delivery_pending_hint']) ?>"><?= $l['delivery_pending'] ?></span><?php elseif ('sent' === $p['delivery']): ?><span class="wf-badge wf-badge--sent" title="<?= $esc($l['delivery_sent_hint']) ?>"><?= $l['delivery_sent'] ?></span><?php endif; ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>
@@ -151,12 +140,13 @@ $l = $this->dash;
              data-send-url="<?= $esc($wf['sendUrl']) ?>"
              data-invite="<?= (int) $wf['inviteCount'] ?>"
              data-reminder="<?= (int) $wf['reminderCount'] ?>"
-             data-invite-status="0" data-reminder-status="1"
+             data-invite-status="0" data-reminder-status="1" data-confirmation-status="<?= (int) $wf['finalStatus'] ?>"
              data-hint-manual="<?= $esc($l['hint_manual']) ?>"
              data-hint-auto="<?= $esc($l['hint_auto']) ?>"
              data-no-recipients="<?= $esc($l['no_recipients']) ?>"
              data-confirm-invite="<?= $esc($l['confirm_invite']) ?>"
-             data-confirm-reminder="<?= $esc($l['confirm_reminder']) ?>">
+             data-confirm-reminder="<?= $esc($l['confirm_reminder']) ?>"
+             data-confirm-confirmation="<?= $esc($l['confirm_confirmation']) ?>">
           <div class="wf-dialog-box">
             <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
             <h3><?= $l['btn_send'] ?></h3>
@@ -169,6 +159,7 @@ $l = $this->dash;
               <p>
                 <button type="button" class="tl_submit wf-send" data-type="invite"><?= $l['send_invites'] ?> (<span class="wf-cnt">0</span>)</button>
                 <button type="button" class="tl_submit wf-send" data-type="reminder"><?= $l['send_reminders'] ?> (<span class="wf-cnt">0</span>)</button>
+                <button type="button" class="tl_submit wf-send" data-type="confirmation"><?= $l['send_confirmations'] ?> (<span class="wf-cnt">0</span>)</button>
               </p>
               <p class="tl_info wf-hint" style="margin:0;"></p>
             </div>

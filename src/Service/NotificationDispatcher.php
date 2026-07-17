@@ -107,7 +107,7 @@ class NotificationDispatcher
         // Record which entry/kind is being sent. Used by WorkflowMailResultListener as a
         // fallback for synchronous transports, where the receipt event fires within this
         // call (before the parcel id is persisted below).
-        $this->mailContext->set((int) $workflow->id, (int) $entry->id, $kind);
+        $this->mailContext->set((int) $workflow->id, (int) $entry->id, $kind, (string) $entry->email, $notificationId);
 
         try {
             if ([] === $bulkyVouchers) {
@@ -123,9 +123,9 @@ class NotificationDispatcher
             $this->mailContext->clear();
         }
 
-        // Remember the parcel id on the entry so the (asynchronous) send result can be
-        // mapped back to it by WorkflowMailResultListener once it is actually delivered.
-        $this->rememberParcel($receipts, (int) $entry->id, $kind);
+        // Log the dispatched parcel so the (asynchronous) send result can be mapped back to
+        // it by WorkflowMailResultListener, and a later bounce correlated to it.
+        $this->rememberParcel($receipts, $workflow, $entry, $kind);
 
         // NC 2.0 returns a ReceiptCollection: one receipt per message. An empty collection
         // means nothing was handed over. A receipt confirms the mail was accepted by the
@@ -136,7 +136,7 @@ class NotificationDispatcher
             && $receipts->wereAllDelivered();
     }
 
-    private function rememberParcel(?ReceiptCollection $receipts, int $entryId, string $kind): void
+    private function rememberParcel(?ReceiptCollection $receipts, WorkflowModel $workflow, EntryModel $entry, string $kind): void
     {
         if (!$receipts instanceof ReceiptCollection) {
             return;
@@ -156,9 +156,23 @@ class NotificationDispatcher
             return;
         }
 
+        $now = time();
+
+        // Idempotent. On the asynchronous path this inserts the "queued" row that the
+        // worker's send result later updates by parcel id. On the synchronous path
+        // WorkflowMailResultListener has already inserted the row with its final state, so
+        // the ON DUPLICATE KEY UPDATE deliberately leaves state/sentAt/error/queuedAt
+        // untouched and only refreshes the descriptive columns.
         $this->connection->executeStatement(
-            'UPDATE tl_workflow_entry SET sendParcelId = ?, sendKind = ? WHERE id = ?',
-            [$identifier, $kind, $entryId],
+            'INSERT INTO tl_workflow_send (tstamp, parcelId, entryId, workflowId, kind, recipient, state, queuedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                tstamp = VALUES(tstamp),
+                entryId = VALUES(entryId),
+                workflowId = VALUES(workflowId),
+                kind = VALUES(kind),
+                recipient = VALUES(recipient)',
+            [$now, $identifier, (int) $entry->id, (int) $workflow->id, $kind, (string) $entry->email, 'queued', $now],
         );
     }
 

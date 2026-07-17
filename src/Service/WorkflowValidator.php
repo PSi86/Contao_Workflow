@@ -86,6 +86,161 @@ class WorkflowValidator
         return $problems;
     }
 
+    /**
+     * Non-blocking warnings about the notification sender address — the original root cause
+     * of silent bounce loss: a sender domain with no MX record (a placeholder like
+     * example.com, or a typo such as .de instead of .com) makes the envelope sender
+     * undeliverable, and every bounce for it disappears unnoticed while the send itself looks
+     * perfectly healthy. A mismatch with the website domain is flagged too (SPF/DKIM/DMARC
+     * alignment). These are hints on the edit mask, not run blockers.
+     *
+     * @return array<int, string>
+     */
+    public function getSenderWarnings(WorkflowModel $workflow): array
+    {
+        System::loadLanguageFile('workflow_messages');
+
+        return $this->senderWarnings([
+            (int) $workflow->ncInvite,
+            (int) $workflow->ncReminder,
+            (int) $workflow->ncResult,
+        ]);
+    }
+
+    /**
+     * Core of {@see getSenderWarnings()}, decoupled from the model so it is unit-testable.
+     *
+     * @param array<int, int> $notificationIds
+     *
+     * @return array<int, string>
+     */
+    public function senderWarnings(array $notificationIds): array
+    {
+        $siteDomains = $this->siteDomains();
+        $warnings = [];
+        $seen = [];
+
+        foreach ($notificationIds as $notificationId) {
+            if ($notificationId <= 0 || !$this->recordExists('tl_nc_notification', $notificationId)) {
+                continue;
+            }
+
+            $sender = $this->senderAddress($notificationId);
+
+            // An empty sender means the Notification Center falls back to the system admin
+            // address; nothing to warn about here.
+            if ('' === $sender) {
+                continue;
+            }
+
+            $domain = $this->domainOf($sender);
+
+            if ('' === $domain || isset($seen[$domain])) {
+                continue;
+            }
+
+            $seen[$domain] = true;
+
+            // example.com and friends resolve and even carry an MX (IANA reserves them), yet
+            // they black-hole mail — so they must be caught explicitly, before the MX check.
+            if ($this->isPlaceholderDomain($domain)) {
+                $warnings[] = sprintf($this->msg('sender_placeholder'), $sender, $domain);
+
+                continue;
+            }
+
+            if (!$this->hasMxRecord($domain)) {
+                $warnings[] = sprintf($this->msg('sender_no_mx'), $sender, $domain);
+
+                continue;
+            }
+
+            if ([] !== $siteDomains && !$this->matchesAnyDomain($domain, $siteDomains)) {
+                $warnings[] = sprintf($this->msg('sender_domain_mismatch'), $domain, implode(', ', $siteDomains));
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * The sender e-mail configured on a Notification Center notification
+     * (tl_nc_notification → tl_nc_message → tl_nc_language.email_sender_address), preferring
+     * the fallback language.
+     */
+    private function senderAddress(int $notificationId): string
+    {
+        return (string) ($this->connection->fetchOne(
+            'SELECT l.email_sender_address FROM tl_nc_language l '
+            .'INNER JOIN tl_nc_message m ON m.id = l.pid '
+            ."WHERE m.pid = ? AND l.email_sender_address <> '' "
+            .'ORDER BY l.fallback DESC LIMIT 1',
+            [$notificationId],
+        ) ?: '');
+    }
+
+    private function domainOf(string $email): string
+    {
+        $at = strrpos($email, '@');
+
+        return false === $at ? '' : strtolower(trim(substr($email, $at + 1)));
+    }
+
+    /**
+     * Distinct DNS domains of the site's root pages. Empty when every root serves any domain
+     * (no fixed dns), in which case a domain-mismatch check is not meaningful.
+     *
+     * @return array<int, string>
+     */
+    private function siteDomains(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn ($dns): string => strtolower(trim((string) $dns)),
+            $this->connection->fetchFirstColumn("SELECT DISTINCT dns FROM tl_page WHERE type = 'root' AND dns <> ''"),
+        )));
+    }
+
+    /**
+     * @param array<int, string> $domains
+     */
+    private function matchesAnyDomain(string $domain, array $domains): bool
+    {
+        foreach ($domains as $candidate) {
+            // Exact, or one is a subdomain of the other (mail.example.com vs example.com).
+            if ($domain === $candidate || str_ends_with($domain, '.'.$candidate) || str_ends_with($candidate, '.'.$domain)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * RFC 2606 / 6761 reserved example and testing domains. They are never real senders.
+     */
+    private function isPlaceholderDomain(string $domain): bool
+    {
+        if (\in_array($domain, ['example.com', 'example.net', 'example.org', 'example.edu'], true)) {
+            return true;
+        }
+
+        foreach (['.example', '.invalid', '.test', '.localhost'] as $suffix) {
+            if (str_ends_with($domain, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the domain has an MX record. Wrapped so tests can drive it without live DNS.
+     */
+    protected function hasMxRecord(string $domain): bool
+    {
+        return '' !== $domain && @checkdnsrr($domain, 'MX');
+    }
+
     private function msg(string $key): string
     {
         return (string) ($GLOBALS['TL_LANG']['workflow_validator'][$key] ?? $key);

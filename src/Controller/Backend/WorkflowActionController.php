@@ -11,7 +11,9 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
@@ -60,6 +62,7 @@ class WorkflowActionController
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
+        private readonly SubmissionProcessor $submissionProcessor,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -437,8 +440,17 @@ class WorkflowActionController
             return $redirect;
         }
 
-        $reminder = 'reminder' === (string) $request->request->get('type');
+        $type = (string) $request->request->get('type');
         $ids = array_values(array_filter(array_map('intval', (array) $request->request->all('ids'))));
+
+        // Confirmation (result mail + PDF) follows the same status logic as invitation and
+        // reminder, but can only go to participants who have reached the final status — before
+        // that there is no answer data to build the PDF from.
+        if ('confirmation' === $type) {
+            return $this->sendConfirmations($workflow, $ids);
+        }
+
+        $reminder = 'reminder' === $type;
 
         try {
             $sent = $reminder
@@ -454,6 +466,57 @@ class WorkflowActionController
         } catch (\Throwable $e) {
             Message::addError('Versand fehlgeschlagen: '.$e->getMessage());
         }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * (Re-)generates the PDF and sends the result mail for the given answered entries. Entries
+     * that have not reached the final status are skipped — a confirmation cannot be produced
+     * without the submitted data. Idempotent via SubmissionProcessor, so it doubles as the
+     * re-send after a bounce or a failed confirmation.
+     *
+     * @param array<int, int> $ids
+     */
+    private function sendConfirmations(WorkflowModel $workflow, array $ids): Response
+    {
+        if ([] === $ids) {
+            Message::addInfo('Es wurden keine Empfänger für die Bestätigung ausgewählt.');
+
+            return $this->backToDashboard();
+        }
+
+        $done = 0;
+        $failed = 0;
+        $skipped = 0;
+
+        foreach ($ids as $entryId) {
+            $entry = EntryModel::findByPk($entryId);
+
+            if (null === $entry || (int) $entry->pid !== (int) $workflow->id) {
+                continue;
+            }
+
+            // No answer yet → no data for the PDF → cannot send a confirmation.
+            if ((int) $entry->respondedAt <= 0) {
+                ++$skipped;
+
+                continue;
+            }
+
+            if ($this->submissionProcessor->produceConfirmation($workflow, $entry)) {
+                ++$done;
+            } else {
+                ++$failed;
+            }
+        }
+
+        Message::addConfirmation(sprintf(
+            'Bestätigung: %d versendet, %d fehlgeschlagen%s.',
+            $done,
+            $failed,
+            $skipped > 0 ? sprintf(', %d übersprungen (noch nicht beantwortet)', $skipped) : '',
+        ));
 
         return $this->backToDashboard();
     }

@@ -1,0 +1,2 @@
+# Preserve raw bytes/line endings of e-mail fixtures so the MIME parser sees them verbatim.
+*.eml -text

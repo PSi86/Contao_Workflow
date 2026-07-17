@@ -59,6 +59,40 @@ contao-console messenger:consume contao_prio_high contao_prio_normal contao_prio
   --time-limit=3600 --memory-limit=256M
 ```
 
+### 2c. Nur einen Worker gleichzeitig — autoscale deckeln (wichtig bei all-inkl)
+all-inkl erlaubt **max. 3 gleichzeitige SMTP-Verbindungen** (Abschnitt 3a). Wie viele
+Versand-Prozesse parallel laufen, hängt davon ab, **wie** die Queue abgearbeitet wird:
+
+- **URL-Cron auf `/_contao/cron` (Abschnitt 2a, empfohlen auf Shared Hosting):**
+  Hier springt Contaos **Web-Worker** ein — pro Web-Request **ein** sequenzieller
+  `messenger:consume` von wenigen Sekunden. Der autoscale-Supervisor läuft in diesem
+  Pfad **nicht** (er ist an den CLI-Scope gebunden). Zu beachten: der Web-Worker kann
+  bei vielen *gleichzeitigen* Seitenaufrufen mehrfach parallel anspringen.
+- **CLI-Cron / VPS-Supervisor (`contao:cron` bzw. `contao:supervise-workers`):**
+  Hier greift die **autoscale-Konfiguration** der Worker. Contaos Default skaliert
+  **einen Worker je 5 wartende Nachrichten, bis zu 10 parallel** — bei einem 300er-Schwung
+  also bis zu **10 gleichzeitige `messenger:consume`-Prozesse** und damit deutlich mehr,
+  als all-inkl an SMTP-Verbindungen zulässt.
+
+**Empfehlung** (greift für den CLI-/Supervisor-Pfad; auf reinem Shared Hosting schadet sie
+nie): autoscale abschalten, sodass **genau ein** Worker läuft. In
+`<projekt>/config/config.yaml`:
+
+```yaml
+# config/config.yaml — all-inkl: max. 3 gleichzeitige SMTP-Verbindungen
+contao:
+    messenger:
+        workers:
+            -
+                transports: [contao_prio_high]
+                options: ['--time-limit=55', '--sleep=5']
+                autoscale: { enabled: false }
+```
+
+Bei abgeschaltetem autoscale startet der Supervisor **immer genau einen** Worker
+(`contao:supervise-workers`, „Always start one worker"). Betreibe auf all-inkl außerdem
+**keinen** zusätzlichen Dauer-Worker parallel zum Cron.
+
 ---
 
 ## 3. SMTP konfigurieren
@@ -77,6 +111,10 @@ parallel betreiben.**
    ```
    - Server = `<KAS-Login>.kasserver.com`, Port **587 (STARTTLS)** oder 465 (SSL).
    - `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort ebenfalls URL-kodieren.
+   - **Tipp:** Contaos Handbuch enthält einen **Mailer-DSN-Generator**, der die DSN inklusive
+     korrekter URL-Kodierung (`@` → `%40`, Sonderzeichen im Passwort) für dich zusammenbaut –
+     das erspart Tippfehler beim Kodieren:
+     <https://docs.contao.org/5.x/manual/de/system/einstellungen/#mailer-dsn>
 3. **Absenderadresse im Notification Center** auf `noreply@deine-domain.de` setzen
    (bei allen drei Notifications, Feld „Absender") — **nicht** die Demo-Adresse
    `example.com`. Sonst stimmt die DKIM/SPF-Ausrichtung nicht und die Mail gilt als unzulässig.
@@ -89,6 +127,57 @@ Bounce-/Logging-Webhooks (z. B. **Amazon SES, Postmark, Mailgun, Brevo**):
   DKIM-Schlüssel + SPF-Include), nicht auf all-inkl.
 - Anbieter-Limits/Warmup beachten (z. B. SES-Sandbox: 1 Mail/s, nur verifizierte
   Empfänger, bis zur Freischaltung).
+
+### 3c. Bounce-Postfach einrichten (unzustellbare Adressen erkennen)
+Ein „**250 OK**" beim Absenden heißt nur „angenommen", **nicht** „zugestellt". Lehnt der
+Empfänger-Server die Mail später ab (z. B. `550 User unknown`), schickt er eine
+**Unzustellbarkeitsmeldung (Bounce/DSN)** als eigene E-Mail an die Absenderadresse zurück.
+Diese Meldung erzeugt in Contao **kein** Ereignis – sie liegt nur im Postfach. Das Bundle
+holt sie per **IMAP** ab (Cronjob alle 15 Minuten), erkennt harte Bounces und markiert die
+betroffene Person im Dashboard als **„Unzustellbar (Bounce)"**.
+
+1. **Postfach = Absenderadresse.** Die Bounces landen bei der Absenderadresse aus dem
+   Notification Center (z. B. `noreply@deine-domain.de`). Lege für sie in KAS ein echtes
+   **Postfach** an (kein reiner Weiterleitungs-Alias), damit die Bounces abholbar sind.
+2. **`WORKFLOW_BOUNCE_IMAP_DSN`** in `<projekt>/.env.local` setzen:
+   ```
+   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40deine-domain.de:PASSWORT@wXXXXXXX.kasserver.com:993?ssl=true
+   ```
+   - Server = `<KAS-Login>.kasserver.com`, IMAP-Port **993** (SSL).
+   - `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort URL-kodieren.
+   - **Leer/nicht gesetzt = Funktion aus** (kein Fehler, es passiert einfach nichts).
+3. **Spamfilter für dieses Postfach deaktivieren.** Bounces haben `MAIL FROM:<>` (leerer
+   Absender); manche Filter stufen genau das als verdächtig ein und würden die Bounce-Mails
+   aussortieren, bevor das Bundle sie sieht.
+4. **Unterordner `Processed`.** Verarbeitete Mails werden nach `INBOX/Processed` verschoben
+   (Idempotenz – nichts wird doppelt ausgewertet). Der Ordner wird bei Bedarf automatisch
+   angelegt; du kannst ihn auch selbst im Webmail erstellen.
+
+> Der Abruf läuft über Contaos regulären Cron (Abschnitt 2) – kein zusätzlicher Cronjob
+> nötig. Ist kein Bounce-Postfach konfiguriert, bleibt alles beim Alten; ein Versand gilt
+> dann weiterhin als „versendet, keine Fehlermeldung".
+
+> **⚠ Managed Edition: `.env.local` wird evtl. nicht direkt gelesen.** Existiert eine
+> kompilierte `<projekt>/.env.local.php` (der Contao-Manager legt sie an), hat sie **Vorrang**,
+> und Änderungen in `.env.local` werden ignoriert. Nach dem Eintragen von
+> `WORKFLOW_BOUNCE_IMAP_DSN` daher **eine** der Varianten:
+> - die Variable über die **Contao-Manager-Oberfläche** setzen (schreibt beides), **oder**
+> - neu kompilieren: `vendor/bin/contao-console dotenv:dump prod`, **oder**
+> - die Datei `.env.local.php` löschen (dann liest Contao `.env` + `.env.local` direkt).
+>
+> Prüfen, ob die Variable ankommt: `vendor/bin/contao-console debug:dotenv` (listet alle
+> Werte). Danach den **prod-Cache neu bauen**.
+
+**Konfiguration prüfen / Abruf sofort testen** (statt bis zu 15 Minuten auf den Cron zu
+warten):
+```
+vendor/bin/contao-console workflow:bounce:collect --dry-run
+```
+Das zeigt Schritt für Schritt: ob die DSN erkannt wird, ob die IMAP-Verbindung steht, wie
+viele Nachrichten im Postfach liegen und ob ein Bounce einem Eintrag zugeordnet werden kann –
+**ohne** etwas zu verändern. Ohne `--dry-run` verarbeitet es die Bounces sofort (verschiebt
+sie nach `INBOX/Processed`, markiert die Einträge). Mit `--dsn=imap://…` lässt sich die
+IMAP-Verbindung unabhängig von `.env.local` testen.
 
 ---
 
@@ -175,7 +264,7 @@ Wenn die Reports über einige Tage sauber sind (SPF/DKIM bestehen), schrittweise
 |---|---|
 | „Eingereiht", aber keine Mail / Status bleibt `0` | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). Der Status wechselt erst nach echtem Versand. |
 | Mails landen im Spam | SPF/DKIM/DMARC fehlen oder Absender-Domain ≠ signierte Domain (Abschnitt 3a/4). |
-| Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben. |
+| Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben; autoscale deckeln (Abschnitt 2c). |
 | Einzelne Personen ohne Mail | Transport `contao_failure` prüfen (Abschnitt 6). |
 | PDF fehlt im Anhang | NC-Notification „Ergebnis": unter „Anhänge über Tokens" muss `##attachment##` stehen. |
 

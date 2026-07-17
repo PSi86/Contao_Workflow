@@ -150,7 +150,8 @@
                 });
 
                 form.querySelector('.wf-send-type').value = type;
-                var confirmTmpl = type === 'invite' ? dialog.dataset.confirmInvite : dialog.dataset.confirmReminder;
+                // confirmInvite / confirmReminder / confirmConfirmation
+                var confirmTmpl = dialog.dataset['confirm' + type.charAt(0).toUpperCase() + type.slice(1)];
                 form.querySelector('.wf-confirm-head').textContent = confirmTmpl.replace('%count%', targets.length);
 
                 step1.hidden = true;

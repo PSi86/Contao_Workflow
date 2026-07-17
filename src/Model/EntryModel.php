@@ -24,8 +24,10 @@ use Contao\StringUtil;
  * @property int    $respondedAt
  * @property string $sendError     Last mail send failure (kind + message); empty when OK.
  * @property int    $sendErrorAt
- * @property string $sendParcelId  NC parcel id of the in-flight mail (correlation), then cleared.
- * @property string $sendKind      Kind of the in-flight mail: invite|reminder|result.
+ * @property string $bounceHard    '1' when a hard bounce (invalid address) was received.
+ * @property string $bounceInfo    Recipient + diagnostic code of the bounce.
+ * @property int    $resultDoneAt  When the confirmation (PDF + result mail) was produced OK.
+ * @property string $resultError   Last confirmation-processing error; empty when OK.
  */
 class EntryModel extends Model
 {
@@ -41,12 +43,17 @@ class EntryModel extends Model
     }
 
     /**
+     * Entries of a workflow at a given status, used to pick invitation/reminder recipients.
+     * Addresses with a confirmed hard bounce are excluded so a dead address is never mailed
+     * again (which would only produce another bounce). Correcting the address clears the flag
+     * (see EntryListener), which brings the entry back into these runs.
+     *
      * @return Collection<EntryModel>|array<EntryModel>|null
      */
     public static function findByWorkflowAndStatus(int $workflowId, int $status)
     {
         return static::findBy(
-            ['pid=?', 'status=?'],
+            ['pid=?', 'status=?', "bounceHard=''"],
             [$workflowId, $status],
         );
     }
