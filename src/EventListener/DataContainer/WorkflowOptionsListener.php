@@ -101,6 +101,13 @@ class WorkflowOptionsListener
      * Source columns of the workflow's date / "Aktuelle Zeit" answer fields, used
      * as the printed signature date in the PDF (storage column => label).
      *
+     * Restricted to columns the current source file actually has. The answer fields alone
+     * are not enough of a check: they are copied along with the workflow while the source
+     * file is not (doNotCopy), so a copy would still offer them and the stored value would
+     * look perfectly valid — no "Unbekannte Option", unlike every other source-dependent
+     * picker in the mask. A storage column that is not a header is broken anyway; the
+     * validator already reports it as such.
+     *
      * @return array<string, string>
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureDate.options')]
@@ -112,6 +119,7 @@ class WorkflowOptionsListener
             return [];
         }
 
+        $headers = $this->inspector->getHeaderOptions($workflow);
         $fields = [];
 
         foreach ($workflow->getQuestions() as $question) {
@@ -121,7 +129,7 @@ class WorkflowOptionsListener
 
             $field = trim((string) $question->storageField);
 
-            if ('' !== $field) {
+            if ('' !== $field && isset($headers[$field])) {
                 $fields[$field] = $field.' ('.(string) $question->label.')';
             }
         }
