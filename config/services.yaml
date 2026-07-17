@@ -16,6 +16,7 @@ services:
             - ../src/Model/
             # Plain value objects, never resolved from the container.
             - ../src/Service/Bounce/BounceReport.php
+            - ../src/Service/Bounce/BounceOutcome.php
             - ../src/Excel/NumberFormat.php
             - ../src/Excel/ColumnCheckResult.php
             # Instantiated by Contao as a BE_MOD callback, not via the container.
@@ -30,6 +31,10 @@ services:
 
     # Accessed from the (non-service) back end dashboard module via the container.
     Psimandl\WorkflowBundle\Service\WorkflowStatus:
+        public: true
+
+    # Read by the (non-service) back end dashboard module for the bounce-detection banner.
+    Psimandl\WorkflowBundle\Service\Bounce\BounceHealth:
         public: true
 
     Psimandl\WorkflowBundle\Service\WorkflowValidator:

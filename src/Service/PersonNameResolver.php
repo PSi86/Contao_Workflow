@@ -16,6 +16,10 @@ namespace Psimandl\WorkflowBundle\Service;
  */
 class PersonNameResolver
 {
+    public function __construct(private readonly Slugger $slugger)
+    {
+    }
+
     /** In priority order; the first matching column of the data wins. */
     public const FIRST_NAME_ALIASES = ['vorname', 'rufname', 'firstname', 'givenname', 'forename', 'christianname', 'prename'];
 
@@ -74,7 +78,11 @@ class PersonNameResolver
 
     public function normalize(string $value): string
     {
-        return (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($value, 'UTF-8'));
+        // Transliterate first (via the shared slugger), THEN strip separators: the aliases are
+        // ASCII, so a header must be reduced to ASCII to match. Without the transliteration an
+        // umlaut header ("Übungsleiter") lost its first letters ("bungsleiter") and stopped
+        // matching; a non-Latin header collapsed to "" and collided with every other.
+        return (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($this->slugger->ascii($value), 'UTF-8'));
     }
 
     /**

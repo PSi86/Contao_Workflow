@@ -6,6 +6,57 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.14.0] – 2026-07-17
+
+### Hinzugefügt
+- **Hinweis „Quelldatei geändert – Import nötig".** Wird die Quelldatei eines Workflows
+  gewechselt, ohne den Import erneut auszuführen, zeigten Vorschau-Formular und Vorschau-PDF
+  weiterhin die **alten** Daten und Zahlenformate. Solange dieser Zustand anhält (Quelldatei
+  geändert, aber noch kein Import), erscheint jetzt ein Hinweis — **sowohl in den
+  Workflow-Einstellungen als auch in der Übersicht** beim betroffenen Workflow. In den
+  Einstellungen lässt sich der Import direkt über einen „Jetzt importieren"-Link ausführen
+  (danach zurück zur Bearbeitungsmaske). Erkannt über die Prüfsumme der Datei gegen die des
+  letzten Imports; DE + EN lokalisiert.
+- **Diagnose der Bounce-Erkennung in der Workflow-Übersicht.** Oben in der Übersicht wird jetzt
+  der Zustand des Bounce-Postfachs angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung
+  öffnet (sie liest den letzten Cron-Befund):
+  - **Hinweis-Banner (blau)**, wenn **kein** Postfach konfiguriert ist bzw. die
+    `WORKFLOW_BOUNCE_IMAP_DSN` nicht geladen wurde (z. B. Managed Edition mit `.env.local.php`,
+    die `.env.local` nicht direkt liest) – in diesem Zustand werden Zustellfehler und Bounces
+    nicht erkannt. Im System-Log erscheint dazu eine **Warnung**, kein Fehler.
+  - **Fehler-Banner (rot)**, wenn ein Postfach konfiguriert, beim letzten Lauf aber nicht
+    erreichbar war (falscher Host/Port, Zugangsdaten, Passwort-Format …). Grund und Zeitpunkt
+    stehen im Banner und als **Fehler** im System-Log. `workflow:bounce:collect` (ohne `--dsn`)
+    aktualisiert das Banner nach einer Korrektur sofort.
+  - Alle Texte sind DE **und** EN lokalisiert.
+
+### Geändert
+- **Ein zentraler Slugger auf Basis von Symfonys `AsciiSlugger` ersetzt die vier bisherigen
+  Slug-Varianten.** Deutsch bleibt bit-identisch (`Übungsleiter`→`uebungsleiter`, bewiesen an den
+  echten Spaltennamen — kein bestehender `##data_*##`-Token bricht), aber jedes andere Skript
+  wird jetzt korrekt transliteriert (`Отдел`→`otdel`, `人事部`→`ren_shi_bu`) statt zu einem
+  leeren Slug zu kollabieren.
+- **Download-Dateinamen behalten ihre Original-Zeichen.** Export, Konfig-Export und PDF-ZIP
+  senden den echten Namen (`EStG Übungsleiter …xlsx`, `Отдел …xlsx`) als RFC-5987-Header
+  (`filename*=UTF-8''…`) mit einer ASCII-Transliteration als Fallback für alte Clients — es wird
+  kein Zeichen mehr verschluckt.
+- **Spalten-Erkennung (Name/Vorname/Abteilung) transliteriert zuerst**, sodass ein Header wie
+  „Übungsleiter-Nachname" nicht mehr an einem verschluckten Umlaut scheitert.
+- **Der Bounce-Cron loggt seinen Konfigurationszustand nur noch bei einem Zustandswechsel.**
+  Die frühere „nicht konfiguriert"-Zeile bei jedem Lauf (alle 15 Minuten) entfällt; stattdessen
+  wird der Wechsel *in* einen Zustand einmal protokolliert (Warnung: nicht konfiguriert; Fehler:
+  nicht erreichbar; Info: wieder erreichbar). Das dauerhaft sichtbare Signal ist das
+  Übersichts-Banner, das System-Log bleibt die Wechsel-Chronik.
+
+### Behoben
+- **Umlaute und andere Nicht-ASCII-Zeichen wurden in Dateinamen und Token-Slugs verschluckt.**
+  Der Export-Dateiname (XLSX/CSV) und der Konfig-Export (JSON) machten aus „EStG Übungsleiter"
+  ein „EStG bungsleiter" (das Ü fiel ersatzlos weg), weil sie nicht transliterierten. Schwerer
+  wog: der `##data_*##`-Token-Slug kannte nur die sieben deutschen Umlaut-Zeichen — bei jedem
+  anderen Skript (Kyrillisch, CJK, Griechisch, Arabisch, akzentuiertes Latein) blieb nach dem
+  Strip **nichts** übrig, sodass **alle** Spalten auf denselben leeren Slug kollidierten und nur
+  die erste im Dokument adressierbar war.
+
 ## [2.12.0] – 2026-07-17
 
 Fasst die zurückgezogene 2.11.2 mit zusammen (sie war nur kurz veröffentlicht und wurde nie

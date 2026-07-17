@@ -19,6 +19,7 @@ use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
+use Psimandl\WorkflowBundle\Service\Slugger;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
@@ -61,6 +62,7 @@ class WorkflowActionController
         private readonly WorkflowFormView $formView,
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly Slugger $slugger,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
@@ -71,9 +73,10 @@ class WorkflowActionController
 
     /**
      * Blocks execution of a not-runnable workflow (e.g. a fresh copy without a
-     * source file): adds the concrete problems as an error and redirects back.
+     * source file): adds the concrete problems as an error and redirects back to
+     * $backTo (the overview by default; the edit mask when the action was triggered there).
      */
-    private function assertRunnable(WorkflowModel $workflow): ?RedirectResponse
+    private function assertRunnable(WorkflowModel $workflow, ?RedirectResponse $backTo = null): ?RedirectResponse
     {
         $problems = $this->validator->getProblems($workflow);
 
@@ -87,7 +90,7 @@ class WorkflowActionController
             StringUtil::specialchars(implode(' ', $problems)),
         ));
 
-        return $this->backToDashboard();
+        return $backTo ?? $this->backToDashboard();
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -98,7 +101,13 @@ class WorkflowActionController
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
-        if ($redirect = $this->assertRunnable($workflow)) {
+        // Import can be triggered from the workflow's edit mask (the "re-import needed" hint);
+        // "return=edit" sends the user back there instead of to the overview.
+        $backTo = 'edit' === (string) $request->query->get('return')
+            ? $this->backToEdit($id)
+            : $this->backToDashboard();
+
+        if ($redirect = $this->assertRunnable($workflow, $backTo)) {
             return $redirect;
         }
 
@@ -121,7 +130,7 @@ class WorkflowActionController
             Message::addError('Import fehlgeschlagen: '.$e->getMessage());
         }
 
-        return $this->backToDashboard();
+        return $backTo;
     }
 
     /**
@@ -293,11 +302,13 @@ class WorkflowActionController
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
+        [$name, $fallback] = $this->configFilename($workflow);
+
         $response = new Response($this->configExporter->exportJson($workflow));
         $response->headers->set('Content-Type', 'application/json; charset=utf-8');
         $response->headers->set(
             'Content-Disposition',
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $this->configFilename($workflow)),
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $name, $fallback),
         );
 
         return $response;
@@ -420,11 +431,12 @@ class WorkflowActionController
         ));
     }
 
-    private function configFilename(WorkflowModel $workflow): string
+    /**
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
+     */
+    private function configFilename(WorkflowModel $workflow): array
     {
-        $base = trim((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $workflow->title), '-');
-
-        return ('' !== $base ? $base : 'workflow-'.$workflow->id).'.json';
+        return $this->downloadName((string) $workflow->title, '.json', 'workflow-'.$workflow->id);
     }
 
     /**
@@ -540,7 +552,7 @@ class WorkflowActionController
         $response->headers->set('Content-Type', $result['contentType']);
         $response->headers->set(
             'Content-Disposition',
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $result['filename']),
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $result['filename'], $result['filenameFallback']),
         );
 
         return $response;
@@ -573,11 +585,10 @@ class WorkflowActionController
 
         $zip->close();
 
+        [$name, $fallback] = $this->pdfBundleName($workflow, \count($files));
+
         $response = new BinaryFileResponse($zipPath);
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            $this->pdfBundleName($workflow, \count($files)),
-        );
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $name, $fallback);
         $response->deleteFileAfterSend(true);
 
         return $response;
@@ -585,23 +596,38 @@ class WorkflowActionController
 
     /**
      * File name of the downloaded PDF bundle, e.g.
-     * "EStG_Uebungsleiter_20260717_150644_24-PDFs.zip".
+     * "EStG Übungsleiter_20260717_150644_24-PDFs.zip" – with the ASCII fallback
+     * "EStG_Uebungsleiter_…" for the RFC 5987 header.
      *
      * The old "workflow_pdfs_<id>.zip" said nothing once a few of them sat in a download
      * folder: which workflow, from when, and how many documents. Same shape as the
      * spreadsheet export (name, then a sortable timestamp), so bundles of one workflow sort
      * chronologically; the count is appended because it is the one thing a downloader checks
      * first.
+     *
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
      */
-    private function pdfBundleName(WorkflowModel $workflow, int $count): string
+    private function pdfBundleName(WorkflowModel $workflow, int $count): array
     {
-        return sprintf(
-            '%s_%s_%d-%s.zip',
-            $this->placeholderResolver->fileSlug((string) $workflow->title) ?: 'Workflow',
-            date('Ymd_His'),
-            $count,
-            1 === $count ? 'PDF' : 'PDFs',
-        );
+        $suffix = sprintf('_%s_%d-%s.zip', date('Ymd_His'), $count, 1 === $count ? 'PDF' : 'PDFs');
+
+        return $this->downloadName((string) $workflow->title, $suffix, 'Workflow');
+    }
+
+    /**
+     * Two spellings of a download file name: the Unicode name (title characters kept – umlauts,
+     * any script) for the RFC 5987 filename* header, and an ASCII transliteration as the
+     * fallback for old clients. Neither drops a character, and neither can be empty
+     * ($fallbackBase covers a title that reduces to nothing, e.g. only punctuation).
+     *
+     * @return array{0: string, 1: string} [unicode name, ascii fallback]
+     */
+    private function downloadName(string $base, string $suffix, string $fallbackBase): array
+    {
+        return [
+            ($this->slugger->unicode($base) ?: $fallbackBase).$suffix,
+            ($this->slugger->ascii($base) ?: $fallbackBase).$suffix,
+        ];
     }
 
     private function getWorkflow(int $id): WorkflowModel
@@ -647,5 +673,15 @@ class WorkflowActionController
         return new RedirectResponse(
             $this->router->generate('contao_backend', ['do' => 'workflow_overview']),
         );
+    }
+
+    private function backToEdit(int $id): RedirectResponse
+    {
+        return new RedirectResponse($this->router->generate('contao_backend', [
+            'do'  => 'workflow_manage',
+            'act' => 'edit',
+            'id'  => $id,
+            'rt'  => $this->csrfTokenManager->getDefaultTokenValue(),
+        ]));
     }
 }

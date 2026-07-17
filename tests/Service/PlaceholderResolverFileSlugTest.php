@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\Tests\Service;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
+use Psimandl\WorkflowBundle\Service\Slugger;
 
 /**
  * fileSlug() turns a workflow title into a download file name. The umlaut case is the point:
@@ -19,9 +20,9 @@ final class PlaceholderResolverFileSlugTest extends TestCase
 
     protected function setUp(): void
     {
-        // fileSlug() is pure string work; the insert-tag parser is only used by the
-        // token-rendering methods.
-        $this->resolver = new PlaceholderResolver($this->createMock(InsertTagParser::class));
+        // fileSlug()/normalize() delegate to the shared Slugger; the insert-tag parser is only
+        // used by the token-rendering methods.
+        $this->resolver = new PlaceholderResolver($this->createMock(InsertTagParser::class), new Slugger());
     }
 
     /**
@@ -42,12 +43,14 @@ final class PlaceholderResolverFileSlugTest extends TestCase
             'umlaut'            => ['EStG Übungsleiter', 'EStG_Uebungsleiter'],
             'plain'             => ['Verzicht Ehrenamtspauschale', 'Verzicht_Ehrenamtspauschale'],
             'sharp s'           => ['Straßenfest', 'Strassenfest'],
-            'all umlauts'       => ['äöü ÄÖÜ ß', 'aeoeue_AeOeUe_ss'],
+            // The locale-aware slugger expands all-caps umlauts in caps (ÄÖÜ -> AEOEUE),
+            // which reads more naturally than the old table's mixed-case "AeOeUe".
+            'all umlauts'       => ['äöü ÄÖÜ ß', 'aeoeue_AEOEUE_ss'],
 
-            // An all-caps acronym gets "Ue", not "UE": the transliteration is a plain
-            // character map and cannot know that "ÜLP" is an acronym. Accepted – a file name
-            // stays readable, and context-aware casing is not worth the complexity here.
-            'acronym'           => ['Übungsleiter ÜLP 2026', 'Uebungsleiter_UeLP_2026'],
+            // An all-caps acronym expands in caps too ("ÜLP" -> "UELP"). The lower-cased
+            // token (used for ##data_*##) is "uelp" either way, so nothing resolves
+            // differently; only the case-preserving file name looks tidier.
+            'acronym'           => ['Übungsleiter ÜLP 2026', 'Uebungsleiter_UELP_2026'],
 
             // Capitalisation is kept – unlike normalize(), which lower-cases for ##tokens##.
             'keeps case'        => ['CamelCase Titel', 'CamelCase_Titel'],
@@ -75,12 +78,12 @@ final class PlaceholderResolverFileSlugTest extends TestCase
     }
 
     /**
-     * A hyphen inside a word is not a separator run and has to survive – only the runs the
-     * replacements produce get collapsed.
+     * The shared slugger normalises every non-alphanumeric run to the "_" separator, so an
+     * internal hyphen becomes "_" too. Consistent and still lossless (nothing dropped).
      */
-    public function testKeepsAWordInternalHyphen(): void
+    public function testHyphensBecomeTheSeparator(): void
     {
-        $this->assertSame('Anti-Aging-Kurs', $this->resolver->fileSlug('Anti-Aging-Kurs'));
+        $this->assertSame('Anti_Aging_Kurs', $this->resolver->fileSlug('Anti-Aging-Kurs'));
     }
 
     /**

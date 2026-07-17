@@ -66,7 +66,7 @@ class BounceCollectCommand extends Command
         $io->writeln(\sprintf('DSN aus %s: %s', $source, $this->maskPassword($dsn)));
         $io->newLine();
 
-        $this->collector->collect(
+        $outcome = $this->collector->collect(
             $dsn,
             (bool) $input->getOption('dry-run'),
             static function (string $level, string $message) use ($io): void {
@@ -77,6 +77,14 @@ class BounceCollectCommand extends Command
                 };
             },
         );
+
+        // Only reconcile the global health when this run used the CONFIGURED mailbox: a --dsn
+        // override tests a different one, and must not move the banner that reflects the real
+        // feature state. Reconciling here lets an admin fix the config, run the command, and
+        // see the overview banner clear at once instead of waiting for the next cron.
+        if ('WORKFLOW_BOUNCE_IMAP_DSN' === $source) {
+            $this->collector->reconcileHealth($outcome);
+        }
 
         return Command::SUCCESS;
     }

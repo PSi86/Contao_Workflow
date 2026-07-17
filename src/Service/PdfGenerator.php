@@ -29,6 +29,7 @@ class PdfGenerator
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly PlaceholderResolver $placeholderResolver,
         private readonly PersonNameResolver $nameResolver,
+        private readonly Slugger $slugger,
         private readonly string $projectDir,
     ) {
     }
@@ -102,12 +103,10 @@ class PdfGenerator
 
     private function sanitizeFileName(string $name): string
     {
-        $name = $this->placeholderResolver->transliterate($name);
-        $name = preg_replace('/\s+/', '_', $name) ?? '';
-        $name = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $name) ?? '';
-        $name = trim($name, '_.-');
-
-        return mb_substr($name, 0, 120);
+        // On-disk PDF name (and later a ZIP member): kept ASCII on purpose — a Cyrillic or
+        // umlaut member name in a ZIP is mangled by many desktop unzip tools. The shared
+        // slugger transliterates any script faithfully, so nothing is dropped to empty.
+        return mb_substr($this->slugger->ascii($name), 0, 120);
     }
 
     /**

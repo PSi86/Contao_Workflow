@@ -10,10 +10,16 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'not_runnable'     => '⚠ not runnable',
     'not_runnable_msg' => 'This workflow cannot run:',
     'stuck_queue'      => '⚠ %d e-mail(s) have been queued for sending for over 15 minutes without a result. Is the cron/worker running? See DEPLOYMENT.md, section 2 (setting up the worker/cron in production).',
+    // Bounce detection (Service\Bounce\BounceHealth): a notice banner when no mailbox is
+    // configured; an error banner (%1$s = reason, %2$s = time of the last check) when the
+    // configured mailbox cannot be reached.
+    'bounce_unconfigured' => 'ℹ No bounce mailbox is configured (or the configuration did not load – after changing .env.local, rebuild the production cache). In this state, delivery failures and bounces cannot be detected. See DEPLOYMENT.md, section 3c.',
+    'bounce_error'        => '⚠ The configured bounce mailbox cannot be reached: %1$s Delivery failures and bounces are currently not detected. Please check WORKFLOW_BOUNCE_IMAP_DSN (host, port, user, password formatting). (Last checked: %2$s)',
     'hard_bounces'     => 'Invalid addresses (%d) – permanently undeliverable (bounce)',
     'col_reason'       => 'Reason',
     'hard_bounces_hint'=> 'These addresses do not exist (hard bounces) and are excluded from invitations and reminders. Correct the entry’s e-mail address to bring it back in.',
     'no_import'        => '⚠ The workflow is configured, but <strong>no import has run yet</strong> – there are no responses yet. Please use “Run import” first.',
+    'reimport_needed'  => '⚠ The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats – please “Run import” to load the current data and field formatting.',
     'completed'        => 'received',
     'open'             => 'open',
     'total'            => 'total',
@@ -71,4 +77,11 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_placeholder'    => 'Sender address “%s” uses an example/placeholder domain (“%s”). Mail to such addresses is not delivered and bounce messages vanish unnoticed. Please set a real sender address on your own domain (in the Notification Center).',
     'sender_no_mx'          => 'Sender address “%s”: the domain “%s” has no MX record in DNS. Mail from this sender is undeliverable and bounce messages vanish unnoticed. Please set a real, sendable sender address (in the Notification Center).',
     'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
+];
+
+// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the source file was
+// changed but not imported yet.
+$GLOBALS['TL_LANG']['workflow_reimport'] = [
+    'edit_hint'     => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
+    'import_button' => 'Run import now',
 ];

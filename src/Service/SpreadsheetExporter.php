@@ -23,11 +23,12 @@ class SpreadsheetExporter
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly SpreadsheetInspector $inspector,
+        private readonly Slugger $slugger,
     ) {
     }
 
     /**
-     * @return array{content: string, filename: string, contentType: string}
+     * @return array{content: string, filename: string, filenameFallback: string, contentType: string}
      */
     public function export(WorkflowModel $workflow, string $format = 'xlsx'): array
     {
@@ -123,7 +124,7 @@ class SpreadsheetExporter
     }
 
     /**
-     * @return array{content: string, filename: string, contentType: string}
+     * @return array{content: string, filename: string, filenameFallback: string, contentType: string}
      */
     private function writeFile(Spreadsheet $spreadsheet, string $writerType, string $contentType, WorkflowModel $workflow, string $extension): array
     {
@@ -134,12 +135,17 @@ class SpreadsheetExporter
         $content = (string) file_get_contents($tmp);
         unlink($tmp);
 
-        $slug = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) $workflow->title) ?: 'workflow';
+        // Two spellings of the same name: the download keeps the title's own characters (umlauts,
+        // any script) via the RFC 5987 filename* header, with an ASCII transliteration as the
+        // fallback for old clients. Neither swallows a character.
+        $title = (string) $workflow->title;
+        $stamp = date('Ymd_His');
 
         return [
-            'content'     => $content,
-            'filename'    => sprintf('%s_%s.%s', $slug, date('Ymd_His'), $extension),
-            'contentType' => $contentType,
+            'content'          => $content,
+            'filename'         => sprintf('%s_%s.%s', $this->slugger->unicode($title) ?: 'Workflow', $stamp, $extension),
+            'filenameFallback' => sprintf('%s_%s.%s', $this->slugger->ascii($title) ?: 'Workflow', $stamp, $extension),
+            'contentType'      => $contentType,
         ];
     }
 }

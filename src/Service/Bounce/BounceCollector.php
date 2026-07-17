@@ -8,6 +8,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
 use Contao\CoreBundle\Monolog\ContaoContext;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 use Webklex\PHPIMAP\ClientManager;
 use Webklex\PHPIMAP\Message;
 
@@ -39,24 +40,64 @@ class BounceCollector
         private readonly BounceParser $parser,
         private readonly Connection $connection,
         private readonly LoggerInterface $logger,
+        private readonly BounceHealth $health,
         private readonly ?string $bounceImapDsn = null,
     ) {
     }
 
     public function __invoke(): void
     {
-        $this->collect(trim((string) $this->bounceImapDsn));
+        $this->reconcileHealth($this->collect(trim((string) $this->bounceImapDsn)));
+    }
+
+    /**
+     * Persists the run's verdict and logs ONLY when it changed since the last run. The always-
+     * visible signal is the overview banner (fed from the same stored verdict); the system log
+     * is the audit trail of transitions, so logging every 15 minutes would just be noise. The
+     * severity matches the state: a set-but-unreachable mailbox is an ERROR that needs fixing,
+     * a missing DSN is a WARNING (the feature is simply off), and a recovered mailbox is an
+     * informational note.
+     */
+    public function reconcileHealth(BounceOutcome $outcome): void
+    {
+        $previous = $this->health->record($outcome->state, $outcome->message);
+
+        if ($previous === $outcome->state) {
+            return;
+        }
+
+        match ($outcome->state) {
+            BounceHealth::STATE_UNCONFIGURED => $this->systemLog(
+                'Bounce-Postfach nicht konfiguriert: WORKFLOW_BOUNCE_IMAP_DSN ist leer oder wurde nicht geladen. '
+                .'In diesem Zustand werden Zustellfehler und Bounces nicht erkannt.',
+                LogLevel::WARNING,
+            ),
+            BounceHealth::STATE_CONFIG_ERROR => $this->systemLog(
+                'Bounce-Postfach nicht erreichbar: '.$outcome->message.' '
+                .'Zustellfehler und Bounces werden derzeit nicht erkannt – bitte WORKFLOW_BOUNCE_IMAP_DSN prüfen.',
+                LogLevel::ERROR,
+            ),
+            // Only worth a line as a RECOVERY: null means the first-ever run was already fine.
+            BounceHealth::STATE_OK => null === $previous
+                ? null
+                : $this->systemLog('Bounce-Postfach wieder erreichbar.', LogLevel::INFO),
+            default => null,
+        };
     }
 
     /**
      * Reads the bounce mailbox and applies the bounces. Shared by the cron ({@see __invoke()})
      * and the workflow:bounce:collect command. The optional reporter surfaces each step on the
      * console for diagnosis; $dryRun inspects the mailbox without moving mails or writing to
-     * the database. Never throws — every failure is logged (and, if given, reported).
+     * the database.
+     *
+     * Never throws — every failure becomes the returned {@see BounceOutcome} (and, if given, is
+     * reported). The caller decides what to persist/log about it ({@see reconcileHealth()}),
+     * which keeps this method free of the "log once per state change" concern.
      *
      * @param (\Closure(string, string): void)|null $report ($level in info|comment|error, $message)
      */
-    public function collect(string $dsn, bool $dryRun = false, ?\Closure $report = null): void
+    public function collect(string $dsn, bool $dryRun = false, ?\Closure $report = null): BounceOutcome
     {
         $note = static function (string $level, string $message) use ($report): void {
             if (null !== $report) {
@@ -66,21 +107,16 @@ class BounceCollector
 
         if ('' === $dsn) {
             $note('comment', 'Kein Bounce-Postfach konfiguriert (WORKFLOW_BOUNCE_IMAP_DSN ist leer).');
-            // Visible in the back end system log so a mis-delivered .env value is diagnosable
-            // (GENERAL, not ERROR: an intentionally unconfigured site should not log errors).
-            $this->systemLog('Bounce-Postfach nicht konfiguriert: WORKFLOW_BOUNCE_IMAP_DSN ist leer oder kam nicht in der Anwendung an.', ContaoContext::GENERAL);
 
-            return; // Not configured: the bounce feature is off.
+            return BounceOutcome::unconfigured();
         }
 
         try {
             $config = $this->configFromDsn($dsn);
         } catch (\Throwable $e) {
-            $this->logger->warning('Workflow bounce collector: invalid WORKFLOW_BOUNCE_IMAP_DSN ('.$e->getMessage().').');
             $note('error', 'Ungültige DSN: '.$e->getMessage());
-            $this->systemLog('Bounce-Collector: ungültige DSN – '.$e->getMessage(), ContaoContext::ERROR);
 
-            return;
+            return BounceOutcome::configError('Ungültige DSN ('.$e->getMessage().').');
         }
 
         $total = 0;
@@ -97,12 +133,10 @@ class BounceCollector
             $inbox = $client->getFolder('INBOX');
 
             if (null === $inbox) {
-                $this->logger->warning('Workflow bounce collector: INBOX not found.');
                 $note('error', 'INBOX nicht gefunden.');
-                $this->systemLog('Bounce-Collector: INBOX nicht gefunden.', ContaoContext::ERROR);
                 $client->disconnect();
 
-                return;
+                return BounceOutcome::configError('INBOX nicht gefunden.');
             }
 
             if (!$dryRun) {
@@ -166,7 +200,7 @@ class BounceCollector
                 } catch (\Throwable $e) {
                     $this->logger->warning('Workflow bounce collector: could not process a message ('.$e->getMessage().').');
                     $note('error', 'Fehler bei einer Nachricht: '.$e->getMessage());
-                    $this->systemLog('Bounce-Collector: Fehler bei einer Nachricht – '.$e->getMessage(), ContaoContext::ERROR);
+                    $this->systemLog('Bounce-Collector: Fehler bei einer Nachricht – '.$e->getMessage(), LogLevel::ERROR);
                 }
             }
 
@@ -192,10 +226,12 @@ class BounceCollector
                     $skipped,
                 ));
             }
+
+            return BounceOutcome::ok();
         } catch (\Throwable $e) {
-            $this->logger->warning('Workflow bounce collector: IMAP error ('.$e->getMessage().').');
             $note('error', 'IMAP-Fehler: '.$e->getMessage());
-            $this->systemLog('Bounce-Collector: IMAP-Fehler – '.$e->getMessage(), ContaoContext::ERROR);
+
+            return BounceOutcome::configError('IMAP-Fehler ('.$e->getMessage().').');
         }
     }
 
@@ -204,14 +240,20 @@ class BounceCollector
      * System → System log without any CLI access — the only diagnostic channel on hosting
      * where the console is unavailable. Unlike the default app log (fingers_crossed, only
      * flushed on an error), these entries are recorded immediately.
+     *
+     * The PSR level sets the severity and the shown category: an error is filed under ERROR,
+     * a warning under GENERAL (so a missing DSN does not read as a fault), everything else
+     * under CRON.
      */
-    private function systemLog(string $message, string $action = ContaoContext::CRON): void
+    private function systemLog(string $message, string $level = LogLevel::INFO): void
     {
-        $this->logger->log(
-            ContaoContext::ERROR === $action ? 'error' : 'info',
-            $message,
-            ['contao' => new ContaoContext(self::class.'::collect', $action)],
-        );
+        $action = match ($level) {
+            LogLevel::ERROR => ContaoContext::ERROR,
+            LogLevel::WARNING => ContaoContext::GENERAL,
+            default => ContaoContext::CRON,
+        };
+
+        $this->logger->log($level, $message, ['contao' => new ContaoContext(self::class.'::collect', $action)]);
     }
 
     /**
@@ -261,7 +303,7 @@ class BounceCollector
             ));
             $this->systemLog(
                 \sprintf('Harter Bounce für %s konnte keinem Versand zugeordnet werden (Parcel-ID %s).', $report->recipient, $report->parcelId ?? '—'),
-                ContaoContext::ERROR,
+                LogLevel::ERROR,
             );
 
             return false;
