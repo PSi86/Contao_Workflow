@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.14.0] – 2026-07-17
+
 ### Hinzugefügt
 - **Hinweis „Quelldatei geändert – Import nötig".** Wird die Quelldatei eines Workflows
   gewechselt, ohne den Import erneut auszuführen, zeigten Vorschau-Formular und Vorschau-PDF
