@@ -44,13 +44,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'mode_manual'      => 'Manual selection (checked participants)',
     'send_invites'     => 'Send invitations',
     'send_reminders'   => 'Send reminders',
+    'send_confirmations' => 'Send confirmation',
     'send_now'         => 'Send now',
     'back'             => 'Back',
     'no_pending'       => 'No open items.',
-    'btn_reprocess'      => 'Re-send confirmation',
-    'reprocess_hint'     => 'Regenerate the PDF and re-send the confirmation mail for the checked (answered) entries.',
-    'reprocess_confirm'  => 'Regenerate the PDF and re-send the confirmation mail for %count% checked entries?',
-    'reprocess_none'     => 'Please check the affected (answered) entries first.',
     'delivery_pending'      => 'Pending',
     'delivery_pending_hint' => 'Response recorded, but the confirmation (PDF + e-mail) has not been produced yet. A retry runs automatically; or use “Re-send confirmation”.',
     // Used by workflow-backend.js (via data-* attributes).
@@ -59,6 +56,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'no_recipients'    => 'There are no matching recipients for this action.',
     'confirm_invite'   => 'The following %count% recipients will receive the invitation:',
     'confirm_reminder' => 'The following %count% recipients will receive the reminder:',
+    'confirm_confirmation' => 'The following %count% recipients will receive the confirmation (the PDF is regenerated):',
 ];
 
 // WorkflowValidator::getProblems() – shown on the overview (and the edit mask).

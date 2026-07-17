@@ -150,7 +150,8 @@
                 });
 
                 form.querySelector('.wf-send-type').value = type;
-                var confirmTmpl = type === 'invite' ? dialog.dataset.confirmInvite : dialog.dataset.confirmReminder;
+                // confirmInvite / confirmReminder / confirmConfirmation
+                var confirmTmpl = dialog.dataset['confirm' + type.charAt(0).toUpperCase() + type.slice(1)];
                 form.querySelector('.wf-confirm-head').textContent = confirmTmpl.replace('%count%', targets.length);
 
                 step1.hidden = true;
@@ -161,59 +162,11 @@
         updateCounts(box);
     }
 
-    // "Bestätigung neu erzeugen & senden" for the checked rows: regenerates the PDF and
-    // re-sends the result mail. POSTs the selected ids to the reprocess route.
-    function setupReprocess(box) {
-        var btn = box.querySelector('.wf-reprocess');
-
-        if (!btn) {
-            return;
-        }
-
-        btn.addEventListener('click', function () {
-            var ids = [];
-            box.querySelectorAll('input.wf-row').forEach(function (cb) {
-                if (cb.checked) { ids.push(cb.value); }
-            });
-
-            if (!ids.length) {
-                alert(btn.dataset.none);
-                return;
-            }
-
-            if (!confirm(btn.dataset.confirm.replace('%count%', ids.length))) {
-                return;
-            }
-
-            var form = document.createElement('form');
-            form.method = 'post';
-            form.action = btn.dataset.url;
-
-            var rt = document.createElement('input');
-            rt.type = 'hidden';
-            rt.name = 'REQUEST_TOKEN';
-            rt.value = btn.dataset.rt;
-            form.appendChild(rt);
-
-            ids.forEach(function (id) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'ids[]';
-                input.value = id;
-                form.appendChild(input);
-            });
-
-            document.body.appendChild(form);
-            form.submit();
-        });
-    }
-
     ready(function () {
         document.querySelectorAll('.wf-box').forEach(function (box) {
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
-            setupReprocess(box);
         });
     });
 })();

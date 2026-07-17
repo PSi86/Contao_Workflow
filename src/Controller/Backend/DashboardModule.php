@@ -96,7 +96,7 @@ class DashboardModule extends BackendModule
                     'inviteCount'   => $byStatus[WorkflowStatus::STATUS_IMPORTED] ?? 0,
                     'reminderCount' => $byStatus[WorkflowStatus::STATUS_INVITED] ?? 0,
                     'sendUrl'       => $router->generate('workflow_send', ['id' => $id]),
-                    'reprocessUrl'  => $router->generate('workflow_reprocess', ['id' => $id]),
+                    'finalStatus'   => $final,
                     'rt'            => $rt,
                     'urls'          => [
                         // Direct link into the workflow_manage edit view for this workflow.

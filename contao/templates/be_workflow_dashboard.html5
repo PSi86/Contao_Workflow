@@ -106,13 +106,6 @@ $l = $this->dash;
             <?php foreach ($wf['selectSteps'] as $s): ?>
               <button type="button" class="tl_submit wf-sel-status" data-status="<?= (int) $s['index'] ?>"><?= $esc($s['label']) ?> (<?= (int) $s['count'] ?>)</button>
             <?php endforeach; ?>
-            <span class="wf-bulk-sep"></span>
-            <button type="button" class="tl_submit wf-reprocess"
-                    data-url="<?= $esc($wf['reprocessUrl']) ?>"
-                    data-rt="<?= $esc($wf['rt']) ?>"
-                    data-confirm="<?= $esc($l['reprocess_confirm']) ?>"
-                    data-none="<?= $esc($l['reprocess_none']) ?>"
-                    title="<?= $esc($l['reprocess_hint']) ?>"><?= $l['btn_reprocess'] ?></button>
           </div>
 
           <table class="tl_listing showColumns wf-table">
@@ -147,12 +140,13 @@ $l = $this->dash;
              data-send-url="<?= $esc($wf['sendUrl']) ?>"
              data-invite="<?= (int) $wf['inviteCount'] ?>"
              data-reminder="<?= (int) $wf['reminderCount'] ?>"
-             data-invite-status="0" data-reminder-status="1"
+             data-invite-status="0" data-reminder-status="1" data-confirmation-status="<?= (int) $wf['finalStatus'] ?>"
              data-hint-manual="<?= $esc($l['hint_manual']) ?>"
              data-hint-auto="<?= $esc($l['hint_auto']) ?>"
              data-no-recipients="<?= $esc($l['no_recipients']) ?>"
              data-confirm-invite="<?= $esc($l['confirm_invite']) ?>"
-             data-confirm-reminder="<?= $esc($l['confirm_reminder']) ?>">
+             data-confirm-reminder="<?= $esc($l['confirm_reminder']) ?>"
+             data-confirm-confirmation="<?= $esc($l['confirm_confirmation']) ?>">
           <div class="wf-dialog-box">
             <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
             <h3><?= $l['btn_send'] ?></h3>
@@ -165,6 +159,7 @@ $l = $this->dash;
               <p>
                 <button type="button" class="tl_submit wf-send" data-type="invite"><?= $l['send_invites'] ?> (<span class="wf-cnt">0</span>)</button>
                 <button type="button" class="tl_submit wf-send" data-type="reminder"><?= $l['send_reminders'] ?> (<span class="wf-cnt">0</span>)</button>
+                <button type="button" class="tl_submit wf-send" data-type="confirmation"><?= $l['send_confirmations'] ?> (<span class="wf-cnt">0</span>)</button>
               </p>
               <p class="tl_info wf-hint" style="margin:0;"></p>
             </div>

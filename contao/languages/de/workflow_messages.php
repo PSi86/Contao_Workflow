@@ -44,13 +44,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'mode_manual'      => 'Manuelle Auswahl (markierte Teilnehmer)',
     'send_invites'     => 'Einladungen senden',
     'send_reminders'   => 'Erinnerungen senden',
+    'send_confirmations' => 'Bestätigung senden',
     'send_now'         => 'Jetzt senden',
     'back'             => 'Zurück',
     'no_pending'       => 'Keine offenen Vorgänge.',
-    'btn_reprocess'      => 'Bestätigung neu senden',
-    'reprocess_hint'     => 'Für die markierten (beantworteten) Einträge das PDF neu erzeugen und die Bestätigungs-Mail erneut senden.',
-    'reprocess_confirm'  => 'Für %count% markierte Einträge das PDF neu erzeugen und die Bestätigungs-Mail erneut senden?',
-    'reprocess_none'     => 'Bitte zuerst die betroffenen (beantworteten) Einträge markieren.',
     'delivery_pending'      => 'Ausstehend',
     'delivery_pending_hint' => 'Antwort erfasst, aber die Bestätigung (PDF + E-Mail) wurde noch nicht erzeugt. Ein Wiederholversuch läuft automatisch; oder „Bestätigung neu senden" nutzen.',
     // Used by workflow-backend.js (via data-* attributes).
@@ -59,6 +56,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'no_recipients'    => 'Es gibt keine passenden Empfänger für diese Aktion.',
     'confirm_invite'   => 'Folgende %count% Empfänger erhalten die Einladung:',
     'confirm_reminder' => 'Folgende %count% Empfänger erhalten die Erinnerung:',
+    'confirm_confirmation' => 'Folgende %count% Empfänger erhalten die Bestätigung (PDF wird neu erzeugt):',
 ];
 
 // WorkflowValidator::getProblems() – shown on the overview (and the edit mask).

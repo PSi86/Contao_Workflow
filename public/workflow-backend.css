@@ -140,13 +140,6 @@
 .wf-badge--bounce { background: #c0392b; }
 .wf-table td[data-k="delivery"] .wf-badge { margin-left: 0; }
 
-/* Divider before the "re-send confirmation" action in the bulk row. */
-.wf-bulk-sep {
-    border-left: 1px solid var(--content-border, #ccc);
-    align-self: stretch;
-    margin: 0 .2em;
-}
-
 /* Each workflow as a distinct card in the overview. Use Contao's themed colour
    variables so the box follows light/dark mode (no hard-coded white). */
 .wf-box {

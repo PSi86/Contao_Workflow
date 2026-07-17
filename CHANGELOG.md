@@ -6,6 +6,16 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [2.10.1] – 2026-07-17
+
+### Geändert
+- **„Bestätigung senden" in den Dialog „E-Mails senden" integriert.** Statt eines separaten
+  Buttons ist die Bestätigung jetzt die dritte Option neben „Einladungen/Erinnerungen senden"
+  — nach derselben statusabhängigen Logik (Automatisch / Manuelle Auswahl), aber **nur für
+  Teilnehmer im höchsten Status**: Vor dem Endstatus liegen keine Daten für das PDF vor, daher
+  werden solche Einträge übersprungen. Erzeugt PDF und Ergebnis-Mail erneut (idempotent) und
+  dient zugleich dem Neuversand nach einem Bounce bzw. einer Adress-Korrektur.
+
 ## [2.10.0] – 2026-07-17
 
 ### Geändert

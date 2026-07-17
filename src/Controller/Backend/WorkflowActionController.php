@@ -440,8 +440,17 @@ class WorkflowActionController
             return $redirect;
         }
 
-        $reminder = 'reminder' === (string) $request->request->get('type');
+        $type = (string) $request->request->get('type');
         $ids = array_values(array_filter(array_map('intval', (array) $request->request->all('ids'))));
+
+        // Confirmation (result mail + PDF) follows the same status logic as invitation and
+        // reminder, but can only go to participants who have reached the final status — before
+        // that there is no answer data to build the PDF from.
+        if ('confirmation' === $type) {
+            return $this->sendConfirmations($workflow, $ids);
+        }
+
+        $reminder = 'reminder' === $type;
 
         try {
             $sent = $reminder
@@ -462,35 +471,36 @@ class WorkflowActionController
     }
 
     /**
-     * Re-generates the PDF and re-sends the result mail for the selected (already answered)
-     * entries. Used to recover a confirmation that failed at submission time and to re-send
-     * one to a corrected address after a bounce. Idempotent via SubmissionProcessor.
+     * (Re-)generates the PDF and sends the result mail for the given answered entries. Entries
+     * that have not reached the final status are skipped — a confirmation cannot be produced
+     * without the submitted data. Idempotent via SubmissionProcessor, so it doubles as the
+     * re-send after a bounce or a failed confirmation.
+     *
+     * @param array<int, int> $ids
      */
-    #[Route('/reprocess/{id}', name: 'workflow_reprocess', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function reprocess(int $id, Request $request): Response
+    private function sendConfirmations(WorkflowModel $workflow, array $ids): Response
     {
-        $this->framework->initialize();
-        $this->assertToken($request);
-        $this->assertAccess();
-        $workflow = $this->getWorkflow($id);
-
-        $ids = array_values(array_filter(array_map('intval', (array) $request->request->all('ids'))));
-
         if ([] === $ids) {
-            Message::addInfo('Es wurden keine Einträge markiert.');
+            Message::addInfo('Es wurden keine Empfänger für die Bestätigung ausgewählt.');
 
             return $this->backToDashboard();
         }
 
         $done = 0;
         $failed = 0;
+        $skipped = 0;
 
         foreach ($ids as $entryId) {
             $entry = EntryModel::findByPk($entryId);
 
-            // Only entries of this workflow, and only answered ones (a confirmation only
-            // exists after a response).
-            if (null === $entry || (int) $entry->pid !== (int) $workflow->id || (int) $entry->respondedAt <= 0) {
+            if (null === $entry || (int) $entry->pid !== (int) $workflow->id) {
+                continue;
+            }
+
+            // No answer yet → no data for the PDF → cannot send a confirmation.
+            if ((int) $entry->respondedAt <= 0) {
+                ++$skipped;
+
                 continue;
             }
 
@@ -502,9 +512,10 @@ class WorkflowActionController
         }
 
         Message::addConfirmation(sprintf(
-            'Bestätigung neu erzeugt und versendet: %d erfolgreich, %d weiterhin fehlerhaft.',
+            'Bestätigung: %d versendet, %d fehlgeschlagen%s.',
             $done,
             $failed,
+            $skipped > 0 ? sprintf(', %d übersprungen (noch nicht beantwortet)', $skipped) : '',
         ));
 
         return $this->backToDashboard();
