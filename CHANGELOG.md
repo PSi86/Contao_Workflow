@@ -8,6 +8,23 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [2.11.1] – 2026-07-17
 
+### Geändert
+- **Die heruntergeladene PDF-ZIP heißt jetzt nach Workflow, Zeitpunkt und Anzahl.** Statt
+  `workflow_pdfs_19.zip` (was im Download-Ordner nichts aussagte) z. B.
+  `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip` — gleiche Form wie der Tabellen-Export, also
+  sortieren mehrere Pakete eines Workflows chronologisch.
+- **Großgeschriebene Umlaute werden in Dateinamen korrekt transliteriert.** `Ü` ergab bisher
+  `ue` statt `Ue`, weshalb ein PDF-Name mitten im Wort kleingeschrieben wurde
+  („Verzicht_uebungsleiter_…"). Betrifft neu erzeugte Dateien; die Platzhalter-Auflösung
+  (`##data_*##`) ist unberührt, sie schreibt ohnehin alles klein.
+- **Der Bounce-Cron schreibt nur noch ins System-Log, wenn er etwas getan hat.** Die Zeile
+  „Bounce-Postfach geprüft (…): 0 Nachricht(en), …" erschien bei jedem Lauf, also alle 15
+  Minuten — ein leeres Postfach ist aber der Normalzustand, und die Meldung begrub die
+  Einträge, auf die es ankommt. Sie erscheint jetzt nur noch, wenn Nachrichten verarbeitet
+  wurden (auch wenn keine davon ein DSN trug — sie wurden trotzdem aus der INBOX verschoben).
+  Fehler werden unverändert immer geloggt, und `workflow:bounce:collect` berichtet weiterhin
+  jeden Schritt, sodass sich die Funktionsfähigkeit jederzeit prüfen lässt.
+
 ### Behoben
 - **Zu großer Abstand zwischen Fließtext und Unterschriftsfeld im PDF.** Der Abstand entstand
   aus zwei Quellen — dem `margin-bottom` des Body (18px) und dem `margin-top` des
