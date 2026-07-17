@@ -32,9 +32,15 @@ class PlaceholderResolver
      * names) stay readable (e.g. "Tätigkeit" -> "taetigkeit", "Straße" ->
      * "strasse").
      */
+    /**
+     * The capital forms map to "Ae"/"Oe"/"Ue", not "ae"/"oe"/"ue": {@see normalize()} lower-cases
+     * afterwards and cannot tell the difference, but the case-preserving callers
+     * ({@see fileSlug()}, PdfGenerator::sanitizeFileName()) can – "Übungsleiter" has to become
+     * "Uebungsleiter", not "uebungsleiter".
+     */
     private const TRANSLITERATION = [
         'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
-        'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue',
+        'Ä' => 'Ae', 'Ö' => 'Oe', 'Ü' => 'Ue',
         'ß' => 'ss',
     ];
 
@@ -255,6 +261,26 @@ class PlaceholderResolver
         $name = preg_replace('/[^A-Za-z0-9_]+/', '_', $name) ?? '';
 
         return strtolower(trim($name, '_'));
+    }
+
+    /**
+     * A name turned into a filename component, keeping its capitalisation (unlike
+     * {@see normalize()}, whose lower-casing exists for ##token## matching).
+     *
+     * Transliterates first: a plain character-class replace would silently eat the umlaut
+     * and turn "EStG Übungsleiter" into "EStG_bungsleiter". Returns '' when nothing usable
+     * is left, so the caller can fall back to a generic name.
+     */
+    public function fileSlug(string $name): string
+    {
+        $name = $this->transliterate($name);
+        $name = preg_replace('/\s+/', '_', trim($name)) ?? '';
+        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', $name) ?? '';
+        // Collapse separator runs ("Demo - Titel" -> "Demo_-_Titel" -> "Demo_Titel"). A lone
+        // hyphen inside a word is not a run and survives ("Anti-Aging").
+        $name = preg_replace('/[_-]{2,}/', '_', $name) ?? '';
+
+        return trim($name, '_-');
     }
 
     /**

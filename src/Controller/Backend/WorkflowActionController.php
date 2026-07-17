@@ -18,6 +18,7 @@ use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
+use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
@@ -59,6 +60,7 @@ class WorkflowActionController
         private readonly WorkflowPreviewData $previewData,
         private readonly WorkflowFormView $formView,
         private readonly DocumentBodyComposer $bodyComposer,
+        private readonly PlaceholderResolver $placeholderResolver,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
@@ -574,11 +576,32 @@ class WorkflowActionController
         $response = new BinaryFileResponse($zipPath);
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            sprintf('workflow_pdfs_%d.zip', $workflow->id),
+            $this->pdfBundleName($workflow, \count($files)),
         );
         $response->deleteFileAfterSend(true);
 
         return $response;
+    }
+
+    /**
+     * File name of the downloaded PDF bundle, e.g.
+     * "EStG_Uebungsleiter_20260717_150644_24-PDFs.zip".
+     *
+     * The old "workflow_pdfs_<id>.zip" said nothing once a few of them sat in a download
+     * folder: which workflow, from when, and how many documents. Same shape as the
+     * spreadsheet export (name, then a sortable timestamp), so bundles of one workflow sort
+     * chronologically; the count is appended because it is the one thing a downloader checks
+     * first.
+     */
+    private function pdfBundleName(WorkflowModel $workflow, int $count): string
+    {
+        return sprintf(
+            '%s_%s_%d-%s.zip',
+            $this->placeholderResolver->fileSlug((string) $workflow->title) ?: 'Workflow',
+            date('Ymd_His'),
+            $count,
+            1 === $count ? 'PDF' : 'PDFs',
+        );
     }
 
     private function getWorkflow(int $id): WorkflowModel
