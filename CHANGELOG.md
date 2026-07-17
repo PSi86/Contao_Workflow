@@ -6,6 +6,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Zu großer Abstand zwischen Fließtext und Unterschriftsfeld im PDF.** Der Abstand entstand
+  aus zwei Quellen — dem `margin-bottom` des Body (18px) und dem `margin-top` des
+  Signaturblocks (50px) — die mPDF unterhalb einer Schwelle kollabieren lässt, oberhalb aber
+  addiert: 18px ergaben denselben Abstand wie 0px, 19px sprangen um 14px nach unten. Der Body
+  hat jetzt kein unteres Margin mehr (er steht immer unmittelbar vor dem Signaturblock, das
+  Margin wirkte nirgends sonst), womit der Abstand exakt dem `margin-top` des Blocks
+  entspricht. Auf 30px halbiert: gemessen 66,2px → 33,0px. Betrifft beide Briefpapier-Master.
+
 ## [2.11.0] – 2026-07-17
 
 ### Behoben

@@ -14,7 +14,11 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
     h1 { font-size: 15pt; margin: 0 0 2px; }
     /* One blank line (one body line height) between heading and intro. */
     .letter-intro { margin: 16pt 0 0; }
-    .body, .letter-body { margin: 18px 0; }
+    /* No bottom margin: the body is always the last element before the signature table,
+       so its bottom margin only ever added to that gap – and mPDF collapses the two below
+       a certain size but adds them above it, which made the distance jump by 14px for a
+       1px change. The gap now has exactly one source (.sig margin-top) and is linear. */
+    .body, .letter-body { margin: 18px 0 0; }
     .amount { font-weight: bold; }
 
     .pdf-head { width: 100%; border-collapse: collapse; font-family: sans-serif; }
@@ -25,8 +29,10 @@ $ortDatum = trim(($this->ort ?? '').', '.($this->datum ?? ''), ', ');
     .pdf-rule { border-bottom: 1.5pt solid #1059A7; line-height: 0; font-size: 0; margin-top: 4px; }
 
     /* Explicit sans-serif so the signature labels match the body font. Without it a
-       <div> nested in a table cell can fall back to mPDF's serif default font. */
-    .sig { width: 100%; margin-top: 50px; border-collapse: collapse; font-family: sans-serif; }
+       <div> nested in a table cell can fall back to mPDF's serif default font.
+       margin-top is the only source of the gap above the signature (see .letter-body):
+       the rendered distance equals this value. */
+    .sig { width: 100%; margin-top: 30px; border-collapse: collapse; font-family: sans-serif; }
     .sig td { width: 50%; padding-right: 24px; font-family: sans-serif; }
     .sig .sigimg { height: 70px; }
     /* Same size as the body: the signature caption must not render smaller than the
