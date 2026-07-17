@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Psimandl\WorkflowBundle\Excel\ValueParser;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -16,6 +17,10 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class RuleEvaluator
 {
+    public function __construct(private readonly ValueParser $valueParser)
+    {
+    }
+
     public function resolveRule(WorkflowModel $workflow, EntryModel $entry): ?RuleModel
     {
         $data = $entry->getData();
@@ -68,11 +73,14 @@ class RuleEvaluator
                 return '' !== $expected && false !== mb_stripos($actual, $expected);
         }
 
-        // Numeric comparison when both sides are numeric, string comparison otherwise.
-        if (is_numeric(trim($actual)) && is_numeric(trim($expected))) {
-            $a = (float) $actual;
-            $b = (float) $expected;
+        // Numeric comparison when both sides hold a number, string comparison otherwise.
+        // Parsed rather than cast: a stored value carries its column's formatting
+        // ("3.000,00 €"), which is not is_numeric() – so a "greater than" on a currency
+        // column used to silently degrade into a strcmp, where "500" > "3.000,00 €".
+        $a = $this->valueParser->parse($actual);
+        $b = $this->valueParser->parse($expected);
 
+        if (null !== $a && null !== $b) {
             return match ($operator) {
                 'eq'  => $a === $b,
                 'neq' => $a !== $b,

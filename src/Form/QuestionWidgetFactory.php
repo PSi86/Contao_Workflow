@@ -74,9 +74,12 @@ class QuestionWidgetFactory
             'mandatory' => $question->isMandatory(),
             'multiple'  => $question->isMultiple(),
             'options'   => $options,
-            // Numeric validation incl. decimals; Contao converts a German
-            // decimal comma automatically.
-            'rgxp'      => 'number' === (string) $question->type ? 'digit' : '',
+            // No rgxp for "number": Contao's "digit" rgxp rewrites the value it validates
+            // (German comma → dot), so $widget->value came back as "1234.5" and was stored
+            // and printed with a decimal point. Numbers are validated and normalised
+            // against the column's own format instead – see
+            // WorkflowFormController::normalizeNumber().
+            'rgxp'      => '',
             // Plain-text values like the form generator (tags are still
             // stripped by Contao's input cleaning, entities come back decoded).
             'decodeEntities' => true,

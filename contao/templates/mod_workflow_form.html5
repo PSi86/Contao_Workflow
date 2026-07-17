@@ -94,8 +94,22 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
           <input type="text" id="<?= $esc($ctrlId) ?>" value="<?= $esc($q['autoValue']) ?>" readonly>
 
         <?php elseif ('text' === $q['type'] || 'date' === $q['type'] || 'number' === $q['type']): ?>
-          <?php $inputType = ['text' => 'text', 'date' => 'date', 'number' => 'number'][$q['type']]; ?>
-          <input type="<?= $inputType ?>"<?= 'number' === $q['type'] ? ' step="any"' : '' ?> id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
+          <?php
+            // A number field is deliberately NOT <input type="number">: that element's
+            // value must be a "valid floating-point number" (HTML), so a German "1.234"
+            // is read as 1.234 and shown as "1,234" – the value falsified by a factor of
+            // 1000. type="text" shows the stored string verbatim, exactly as the document
+            // will, and inputmode keeps the numeric keyboard on mobile.
+            $inputType = ['text' => 'text', 'date' => 'date', 'number' => 'text'][$q['type']];
+            $numAttr = '';
+
+            if ('number' === $q['type'] && null !== $q['numberFormat']) {
+                $numAttr = ' inputmode="decimal" data-wf-number'
+                    .' data-wf-decimals="'.(int) $q['numberFormat']['decimals'].'"'
+                    .' data-wf-grouping="'.($q['numberFormat']['grouping'] ? '1' : '0').'"';
+            }
+          ?>
+          <input type="<?= $inputType ?>"<?= $numAttr ?> id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
 
         <?php elseif ('textarea' === $q['type']): ?>
           <textarea id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" rows="4"<?= $req.$roInput ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>

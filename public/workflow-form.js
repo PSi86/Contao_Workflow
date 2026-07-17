@@ -88,6 +88,10 @@
             if (value !== '') {
                 if (input && input.type === 'date') {
                     value = formatDate(value);
+                } else if (input && input.hasAttribute('data-wf-number') && window.WorkflowNumber) {
+                    // Show the number the way the document will spell it ("1.234,50"),
+                    // not the raw keystrokes – the preview's whole promise.
+                    value = window.WorkflowNumber.formatInput(input);
                 }
                 result = template.split('##answer##').join(escapeHtml(value));
             }

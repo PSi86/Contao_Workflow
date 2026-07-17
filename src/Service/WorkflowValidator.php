@@ -7,6 +7,9 @@ namespace Psimandl\WorkflowBundle\Service;
 use Contao\StringUtil;
 use Contao\System;
 use Doctrine\DBAL\Connection;
+use Psimandl\WorkflowBundle\Excel\ColumnCompatibility;
+use Psimandl\WorkflowBundle\Excel\ColumnFormatAnalyzer;
+use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
 /**
@@ -21,6 +24,8 @@ class WorkflowValidator
         private readonly SpreadsheetInspector $inspector,
         private readonly LinkGenerator $linkGenerator,
         private readonly Connection $connection,
+        private readonly ColumnFormatAnalyzer $columnAnalyzer,
+        private readonly ColumnCompatibility $columnCompatibility,
     ) {
     }
 
@@ -55,8 +60,23 @@ class WorkflowValidator
         foreach ($workflow->getQuestions() as $question) {
             $field = trim((string) $question->storageField);
 
-            if ('' !== $field && !\in_array($field, $headers, true)) {
+            if ('' === $field) {
+                continue;
+            }
+
+            if (!\in_array($field, $headers, true)) {
                 $problems[] = sprintf($this->msg('storage_missing'), $field, (string) $question->label);
+
+                continue;
+            }
+
+            // The column is checked when the field is saved, but the source file can be
+            // swapped afterwards – a new file with three decimals would otherwise only
+            // surface as silently rounded values in the finished documents.
+            if ($question->isNumber()) {
+                foreach ($this->numberColumnProblems($workflow, $question, $field) as $problem) {
+                    $problems[] = $problem;
+                }
             }
         }
 
@@ -84,6 +104,26 @@ class WorkflowValidator
         }
 
         return $problems;
+    }
+
+    /**
+     * Formatting problems of a "number" field's storage column, prefixed with the field so
+     * the message is actionable from the workflow list ("Antwortfeld „Betrag": …").
+     *
+     * @return array<int, string>
+     */
+    private function numberColumnProblems(WorkflowModel $workflow, QuestionModel $question, string $column): array
+    {
+        $result = $this->columnCompatibility->checkNumberColumn(
+            $column,
+            $this->columnAnalyzer->analyze($workflow, $column),
+        );
+
+        if ($result->isCompatible()) {
+            return [];
+        }
+
+        return [sprintf('Antwortfeld „%s": %s', (string) $question->label, implode(' ', $result->problems))];
     }
 
     /**

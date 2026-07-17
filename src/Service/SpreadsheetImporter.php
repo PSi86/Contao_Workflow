@@ -6,10 +6,9 @@ namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Psimandl\WorkflowBundle\Excel\CellReader;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
@@ -28,6 +27,7 @@ class SpreadsheetImporter
         private readonly TokenGenerator $tokenGenerator,
         private readonly SpreadsheetInspector $inspector,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly CellReader $cellReader,
         private readonly string $projectDir,
     ) {
     }
@@ -86,7 +86,7 @@ class SpreadsheetImporter
             $data = [];
             foreach ($headers as $colIndex => $name) {
                 $letter = Coordinate::stringFromColumnIndex($colIndex);
-                $data[$name] = $this->cellValue($sheet->getCell($letter.$r));
+                $data[$name] = $this->cellReader->read($sheet->getCell($letter.$r));
             }
 
             $email = null !== $emailHeader ? ($data[$emailHeader] ?? '') : '';
@@ -119,6 +119,9 @@ class SpreadsheetImporter
 
                 $entry->email = $email;
                 $entry->data = serialize($data);
+                // Re-imported rows follow the new file, so the row number is refreshed
+                // even for entries that already existed.
+                $entry->sourceRow = $r;
                 $entry->tstamp = time();
                 $entry->save();
                 ++$updated;
@@ -130,6 +133,7 @@ class SpreadsheetImporter
                 $entry->status = WorkflowStatus::STATUS_IMPORTED;
                 $entry->email = $email;
                 $entry->data = serialize($data);
+                $entry->sourceRow = $r;
                 $entry->save();
                 ++$inserted;
             }
@@ -148,109 +152,6 @@ class SpreadsheetImporter
         ];
     }
 
-    /**
-     * The value of a source cell as a trimmed string. Excel date cells carry a serial
-     * number plus a (possibly locale-specific, e.g. US "m/d/yyyy") number format;
-     * getFormattedValue() would print that raw format, so a birthday stored as an Excel
-     * date ends up as "12/17/1955". Normalise every date/date-time cell to the German
-     * d.m.Y (or d.m.Y H:i when a time part is present), matching the format used
-     * everywhere else in the workflow (submission, "Aktuelle Zeit", ##system_today##).
-     */
-    private function cellValue(Cell $cell): string
-    {
-        $raw = $cell->getValue();
-
-        // Only reformat real date cells. Date::isDateTime() is also true for pure
-        // time / duration formats (serial < 1, a fraction of a day); those must keep
-        // their formatted value ("12:00") instead of becoming a 1899 epoch date.
-        if (is_numeric($raw) && (float) $raw >= 1.0 && Date::isDateTime($cell)) {
-            $date = Date::excelToDateTimeObject((float) $raw);
-            $hasTime = '000000' !== $date->format('His');
-
-            return $date->format($hasTime ? 'd.m.Y H:i' : 'd.m.Y');
-        }
-
-        // A numeric cell with an explicit currency/number format ("Währung", "Zahl").
-        // Excel stores the format code with US separators, so getFormattedValue() would
-        // print "3,000.00 €"; render it with German conventions ("3.000,00 €") instead.
-        if (is_numeric($raw) && !Date::isDateTime($cell)) {
-            $localized = $this->localizeNumber((float) $raw, $cell);
-
-            if (null !== $localized) {
-                return $localized;
-            }
-        }
-
-        return trim((string) $cell->getFormattedValue());
-    }
-
-    /**
-     * German representation of a numeric cell that carries an explicit currency/number
-     * format. PhpSpreadsheet renders the file's format code literally (US-style
-     * "3,000.00 €"); this rebuilds the value with German separators (grouping ".",
-     * decimal ",") while keeping the cell's own settings – number of decimals, whether
-     * the format groups thousands and the currency symbol.
-     *
-     * Returns null for values that must keep PhpSpreadsheet's formatted output: the
-     * "General" format (a plain number such as "3000" stays "3000"), and percentage,
-     * scientific or fraction formats we deliberately do not touch.
-     */
-    private function localizeNumber(float $value, Cell $cell): ?string
-    {
-        $mask = (string) $cell->getStyle()->getNumberFormat()->getFormatCode();
-
-        // No explicit format = a plain number; leave "3000" as "3000".
-        if ('' === $mask || 'General' === strtoupper($mask)) {
-            return null;
-        }
-
-        // Percent (scales by 100), scientific ("0.00E+00") and fraction formats need
-        // their own handling – keep PhpSpreadsheet's formatted value for them. The
-        // scientific check looks for "E+"/"E-" so it does not trip on a letter in a
-        // currency mask (e.g. the locale marker "[$€-de-DE]").
-        if (str_contains($mask, '%') || preg_match('/E[+-]/', $mask) || str_contains($mask, '?/')) {
-            return null;
-        }
-
-        // The positive section (before the first ";") defines decimals and grouping.
-        $positive = explode(';', $mask)[0];
-
-        $decimals = 0;
-        if (preg_match('/\.([0#]+)/', $positive, $m)) {
-            $decimals = \strlen($m[1]);
-        }
-
-        // Group thousands only when the mask does (a "," inside the integer part).
-        $integerPart = explode('.', $positive)[0];
-        $thousandsSep = str_contains($integerPart, ',') ? '.' : '';
-
-        $number = number_format($value, $decimals, ',', $thousandsSep);
-        $symbol = $this->currencySymbol($mask);
-
-        return '' !== $symbol ? $number.' '.$symbol : $number;
-    }
-
-    /**
-     * The currency symbol carried by an Excel number-format code, or an empty string
-     * for a plain number format. Handles a locale currency marker ("[$€-407]"), a bare
-     * currency sign anywhere in the mask ("€", "$", …) and a quoted ISO code ("EUR").
-     */
-    private function currencySymbol(string $mask): string
-    {
-        if (preg_match('/\[\$([^\]\-]+)/u', $mask, $m)) {
-            return trim($m[1]);
-        }
-
-        if (preg_match('/[€$£¥₣]/u', $mask, $m)) {
-            return $m[0];
-        }
-
-        if (preg_match('/"\s*([A-Za-z]{3})\s*"/', $mask, $m)) {
-            return strtoupper($m[1]);
-        }
-
-        return '';
-    }
 
     /**
      * @return array<string, EntryModel> lower-cased e-mail => entry
