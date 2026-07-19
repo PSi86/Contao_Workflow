@@ -6,6 +6,13 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **„Formularfeld anlegen" endete bei gesperrten Workflows auf einer Fehlerseite.** Liegen
+  bereits Antworten vor, sind Anlegen und Löschen von Formularfeldern gesperrt – die Knöpfe
+  wurden aber weiterhin angeboten, weil die Sperre erst beim Öffnen des Dialogs griff. Statt
+  einer Fehlermeldung („Table … is not creatable") werden „Neu" und das Löschen-Symbol jetzt
+  gar nicht mehr angezeigt.
+
 ## [3.0.0] – 2026-07-19
 
 Diese Version schützt erfasste Antworten konsequent gegen nachträgliche Änderungen an der
