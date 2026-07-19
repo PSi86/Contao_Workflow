@@ -6,6 +6,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.0.1] – 2026-07-19
+
+Fehlerkorrektur zu 3.0.0; ersetzt diese vollständig.
+
 ### Behoben
 - **„Formularfeld anlegen" endete bei gesperrten Workflows auf einer Fehlerseite.** Liegen
   bereits Antworten vor, sind Anlegen und Löschen von Formularfeldern gesperrt – die Knöpfe
