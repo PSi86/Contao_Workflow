@@ -42,6 +42,11 @@ verschickt nichts mehr).
   ausgeblendet.
 
 ### Behoben
+- **Options-Listen konnten einen Fatal auslösen, wenn Contao sie ohne Datensatz-Kontext
+  abfragt.** Die Callbacks für Tabellenblatt, E-Mail-Spalte, Unterschriftsdatum/-ort und
+  Speicherfeld verlangten zwingend einen DataContainer, obwohl Contao dort auch `null`
+  durchreicht (etwa aus dem MultiColumnWizard). Sie liefern nun eine leere Liste statt eines
+  Fehlers.
 - **Der Formular-Link eines Teilnehmers ließ sich nicht sauber kopieren.** Er stand als
   Fließtext im Hilfetext des Token-Felds, sodass ein Doppelklick die umgebenden Worte mitnahm
   und die Zeile mitten im Link umbrechen konnte. Er steht weiterhin an derselben Stelle, jetzt

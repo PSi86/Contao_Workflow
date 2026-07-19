@@ -27,10 +27,15 @@ class WorkflowOptionsListener
     }
 
     /**
+     * The $dc parameter is nullable throughout this class: Widget::getAttributesFromDca()
+     * hands the options callback whatever the caller passed, and while DC_Table always passes
+     * itself, MultiColumnWizard::generateSimpleMcw() for one passes null outright. A
+     * non-nullable parameter would turn that into a fatal TypeError instead of an empty list.
+     *
      * @return array<int, string>
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.sourceSheet.options')]
-    public function getSheetOptions(DataContainer $dc): array
+    public function getSheetOptions(?DataContainer $dc = null): array
     {
         $workflow = $this->getWorkflow($dc);
 
@@ -44,7 +49,7 @@ class WorkflowOptionsListener
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.emailField.options')]
     #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureLocation.options')]
-    public function getHeaderOptions(DataContainer $dc): array
+    public function getHeaderOptions(?DataContainer $dc = null): array
     {
         $workflow = $this->getWorkflow($dc);
 
@@ -58,7 +63,7 @@ class WorkflowOptionsListener
      * @return array<string, string>
      */
     #[AsCallback(table: 'tl_workflow_question', target: 'fields.storageField.options')]
-    public function getQuestionStorageOptions(DataContainer $dc): array
+    public function getQuestionStorageOptions(?DataContainer $dc = null): array
     {
         $workflow = WorkflowModel::findByPk($this->questionParent->resolve($dc));
 
@@ -103,7 +108,7 @@ class WorkflowOptionsListener
      * @return array<string, string>
      */
     #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureDate.options')]
-    public function getSignatureDateOptions(DataContainer $dc): array
+    public function getSignatureDateOptions(?DataContainer $dc = null): array
     {
         $workflow = $this->getWorkflow($dc);
 
@@ -184,9 +189,9 @@ class WorkflowOptionsListener
         return serialize($clean);
     }
 
-    private function getWorkflow(DataContainer $dc): ?WorkflowModel
+    private function getWorkflow(?DataContainer $dc): ?WorkflowModel
     {
-        if (!$dc->id) {
+        if (!$dc?->id) {
             return null;
         }
 
