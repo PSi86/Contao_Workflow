@@ -33,6 +33,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   ausgeblendet.
 
 ### Behoben
+- **Der Formular-Link eines Teilnehmers ließ sich nicht sauber kopieren.** Er stand als
+  Fließtext im Hilfetext des Token-Felds, sodass ein Doppelklick die halbe Zeile mitnahm. Er
+  steht jetzt in einem eigenen Feld „Formular-Link": ein Klick markiert ihn vollständig, ein
+  Knopf daneben kopiert ihn in die Zwischenablage.
 - **Gesperrte Auswahlfelder ließen sich trotz Sperre noch bedienen.** Gespeichert wurde die
   Änderung zwar nie, sie verschwand aber erst beim Speichern kommentarlos. Ursache waren zwei
   Schichten oberhalb des Servers: das Chosen-Suchfeld ersetzt das Auswahlfeld durch eigenes

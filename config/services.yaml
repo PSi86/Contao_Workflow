@@ -80,6 +80,11 @@ services:
     Psimandl\WorkflowBundle\EventListener\DataContainer\ResetButtonListener:
         public: true
 
+    # DCA input_field_callback for the participant's form link, referenced by class
+    # name and resolved via System::importStatic() – must be public.
+    Psimandl\WorkflowBundle\EventListener\DataContainer\EntryFormLinkListener:
+        public: true
+
     # DCA button_callback for the workflow delete operation (PDF-aware confirmation),
     # referenced by class name and resolved via System::importStatic() – must be public.
     Psimandl\WorkflowBundle\EventListener\DataContainer\WorkflowDeleteListener:

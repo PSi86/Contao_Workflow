@@ -31,6 +31,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocation'] = ['Signature place f
 $GLOBALS['TL_LANG']['tl_workflow']['pdfFileName'] = ['PDF file name', 'Pattern for the generated PDF file name, placeholders and {{insert tags}} allowed, e.g. Verzicht_##data_name##_##data_vorname##. Sanitized to a safe name; a short token is appended on collision. Empty = token.'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPreview']  = ['Form preview', 'Opens a preview of the form with sample data (submit disabled).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfPreview']   = ['PDF preview', 'Opens the generated PDF with sample data in a new tab.'];
+$GLOBALS['TL_LANG']['tl_workflow']['resetEntries'] = ['Reset participants', 'Discards every recorded answer and releases the locked source settings.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncInvite']     = ['Invitation notification', 'Notification Center: invitation with the individual link.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']   = ['Reminder notification', 'Notification Center: reminder for pending responses.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']     = ['Result notification', 'Notification Center: result mail with the attached PDF.'];

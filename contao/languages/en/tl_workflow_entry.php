@@ -9,6 +9,7 @@ $GLOBALS['TL_LANG']['tl_workflow_entry']['document_legend'] = 'Document';
 
 $GLOBALS['TL_LANG']['tl_workflow_entry']['email']     = ['E-mail', 'E-mail address of the person.'];
 $GLOBALS['TL_LANG']['tl_workflow_entry']['token']     = ['Token', 'Individual key for the personal form link.'];
+$GLOBALS['TL_LANG']['tl_workflow_entry']['formLink']  = ['Form link', 'This participant\'s personal link, ready to copy.'];
 $GLOBALS['TL_LANG']['tl_workflow_entry']['status']    = ['Status', 'Current step (0 = imported, 1 = invited, 2 = responded).'];
 $GLOBALS['TL_LANG']['tl_workflow_entry']['signature'] = ['Signature', 'Base64 PNG of the signature.'];
 $GLOBALS['TL_LANG']['tl_workflow_entry']['data']      = ['Data', 'All source fields incl. the stored answers (JSON).'];
