@@ -38,7 +38,10 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   und die Zeile mitten im Link umbrechen konnte. Er steht weiterhin an derselben Stelle, jetzt
   aber als eigenes Element: **ein Klick markiert genau die URL und kopiert sie zugleich in die
   Zwischenablage** (kurze Bestätigung „✓ kopiert"). Ohne Zwischenablage-Berechtigung bleibt die
-  URL markiert und lässt sich von Hand kopieren.
+  URL markiert und lässt sich von Hand kopieren. Die beiden Hinweis-Popups, die Contao über
+  diesem Hilfetext einblendete – darunter eine funktionslose Kopie des Links, die beim
+  Daraufzubewegen verschwand –, entfallen; auf Tablets öffnete sich sonst beim Antippen das
+  Popup, statt den Link zu kopieren.
 - **Gesperrte Auswahlfelder ließen sich trotz Sperre noch bedienen.** Gespeichert wurde die
   Änderung zwar nie, sie verschwand aber erst beim Speichern kommentarlos. Ursache waren zwei
   Schichten oberhalb des Servers: das Chosen-Suchfeld ersetzt das Auswahlfeld durch eigenes

@@ -84,21 +84,12 @@ class EntryFormLinkListener
         }
 
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+        $GLOBALS['TL_JAVASCRIPT']['wf_copylink'] = 'bundles/contaoworkflow/workflow-copylink.js|static';
 
-        // Clipboard API where available (it needs a secure context); otherwise select the
-        // element and fall back to execCommand. Either way the URL ends up selected, so a
-        // manual copy always works too.
-        $copy = 'var t=this.textContent.trim();'
-            .'var r=document.createRange();r.selectNodeContents(this);'
-            .'var s=window.getSelection();s.removeAllRanges();s.addRange(r);'
-            ."if(navigator.clipboard){navigator.clipboard.writeText(t)}else{document.execCommand('copy')}"
-            ."var e=this;e.classList.add('wf-copied');"
-            ."setTimeout(function(){e.classList.remove('wf-copied')},1500)";
-
+        // No title attribute and no inline handler: the copying – and the removal of Contao's
+        // own tooltip on this help paragraph – live in workflow-copylink.js. A title would
+        // only add a second tooltip on top of the one being removed there.
         return 'Formular-Link – klicken zum Kopieren:<br>'
-            .'<span class="wf-copylink" title="Klicken kopiert den Link in die Zwischenablage"'
-            .' onclick="'.StringUtil::specialchars($copy).'">'
-            .StringUtil::specialchars($url)
-            .'</span>';
+            .'<span class="wf-copylink">'.StringUtil::specialchars($url).'</span>';
     }
 }
