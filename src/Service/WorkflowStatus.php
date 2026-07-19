@@ -21,6 +21,16 @@ class WorkflowStatus
     public const STATUS_INVITED = 1;
     public const STATUS_RESPONDED = 2;
 
+    /**
+     * Labels for the three status values, indexed by the value itself. The single source for
+     * them — the model fallback, the demo seeder and the config importer all read it here.
+     *
+     * These are not configurable per workflow: the status values are fixed, so a per-workflow
+     * list could only relabel them, while its length or order silently redefined what the
+     * numbers mean. tl_workflow.steps still exists for stored data and the config format.
+     */
+    public const DEFAULT_STEPS = ['Importiert', 'Eingeladen', 'Beantwortet'];
+
     public function __construct(private readonly Connection $connection)
     {
     }

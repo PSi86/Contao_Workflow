@@ -82,7 +82,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 3. **Workflow** (Backend → Workflow → Workflows → **Bearbeiten**).
    Die *gesamte* Konfiguration liegt auf einer Seite, in Abschnitte gegliedert
    (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
-   - **Allgemein:** Titel, *Veröffentlicht*; **Schritte** z. B. `Importiert`, `Eingeladen`, `Beantwortet`
+   - **Allgemein:** Titel, *Veröffentlicht*
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte. Beim Import werden
      Datums- sowie Währungs-/Zahlenzellen **deutsch lokalisiert** übernommen (z. B. `17.12.1955`,
      eine „Währung“-Zelle `3000` → `3.000,00 €`). Eine Zelle im Format „Standard“ behält ihre

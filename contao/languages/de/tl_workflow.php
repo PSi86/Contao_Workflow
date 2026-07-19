@@ -9,6 +9,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['content_legend']      = 'Inhalt (Formular & 
 $GLOBALS['TL_LANG']['tl_workflow']['form_legend']         = 'Formular & Formularfelder';
 $GLOBALS['TL_LANG']['tl_workflow']['pdf_legend']          = 'Dokument-Einstellungen';
 $GLOBALS['TL_LANG']['tl_workflow']['notification_legend'] = 'Benachrichtigungen';
+$GLOBALS['TL_LANG']['tl_workflow']['reset_legend']        = 'Zurücksetzen';
 
 $GLOBALS['TL_LANG']['tl_workflow']['title']       = ['Titel', 'Name des Workflows.'];
 $GLOBALS['TL_LANG']['tl_workflow']['published']   = ['Veröffentlicht', 'Nur veröffentlichte Workflows nehmen Antworten entgegen.'];
@@ -30,6 +31,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocation'] = ['Ort für Untersch
 $GLOBALS['TL_LANG']['tl_workflow']['pdfFileName'] = ['PDF-Dateiname', 'Muster für den Dateinamen des PDFs, Platzhalter und {{Insert-Tags}} erlaubt, z. B. Verzicht_##data_name##_##data_vorname##. Wird zu einem sicheren Dateinamen bereinigt; bei Namensgleichheit wird automatisch ein kurzer Token angehängt. Leer = Token.'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPreview'] = ['Formular-Vorschau', 'Öffnet eine Ansicht des Formulars mit Beispieldaten (Absenden deaktiviert).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfPreview']  = ['PDF-Vorschau', 'Öffnet das generierte PDF mit Beispieldaten in einem neuen Tab.'];
+$GLOBALS['TL_LANG']['tl_workflow']['resetEntries'] = ['Teilnehmer zurücksetzen', 'Verwirft alle erfassten Antworten und gibt die gesperrten Quell-Einstellungen wieder frei.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncInvite']    = ['Einladungs-Benachrichtigung', 'Notification Center: Einladung mit individuellem Link.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']  = ['Erinnerungs-Benachrichtigung', 'Notification Center: Erinnerung bei ausstehender Antwort.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']    = ['Ergebnis-Benachrichtigung', 'Notification Center: Ergebnis-Mail mit angehängtem PDF.'];

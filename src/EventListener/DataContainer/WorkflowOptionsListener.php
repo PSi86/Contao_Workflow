@@ -20,8 +20,10 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
  */
 class WorkflowOptionsListener
 {
-    public function __construct(private readonly SpreadsheetInspector $inspector)
-    {
+    public function __construct(
+        private readonly SpreadsheetInspector $inspector,
+        private readonly QuestionParentResolver $questionParent,
+    ) {
     }
 
     /**
@@ -58,7 +60,7 @@ class WorkflowOptionsListener
     #[AsCallback(table: 'tl_workflow_question', target: 'fields.storageField.options')]
     public function getQuestionStorageOptions(DataContainer $dc): array
     {
-        $workflow = WorkflowModel::findByPk($this->resolveQuestionWorkflowId($dc));
+        $workflow = WorkflowModel::findByPk($this->questionParent->resolve($dc));
 
         return null === $workflow ? [] : $this->inspector->getHeaderOptions($workflow);
     }
@@ -74,16 +76,6 @@ class WorkflowOptionsListener
         return Controller::getTemplateGroup('pdf_body_');
     }
 
-    /**
-     * Pre-fills the steps when empty (new workflow), so the field is not blank.
-     */
-    #[AsCallback(table: 'tl_workflow', target: 'fields.steps.load')]
-    public function defaultSteps(mixed $value): mixed
-    {
-        return [] === StringUtil::deserialize($value, true)
-            ? serialize(['Importiert', 'Eingeladen', 'Beantwortet'])
-            : $value;
-    }
 
     /**
      * Offers the available PDF body templates (all "pdf_body_*" templates) so the
@@ -201,37 +193,4 @@ class WorkflowOptionsListener
         return WorkflowModel::findByPk((int) $dc->id);
     }
 
-    /**
-     * Resolves the parent workflow id of the answer field currently being edited
-     * or created. On edit "id" is the question; on create "pid" is either the
-     * parent workflow (PASTE_INTO) or a sibling question (PASTE_AFTER, mode 1).
-     */
-    private function resolveQuestionWorkflowId(DataContainer $dc): int
-    {
-        if (isset($dc->activeRecord->pid) && (int) $dc->activeRecord->pid > 0) {
-            return (int) $dc->activeRecord->pid;
-        }
-
-        if ($dc->id && 'create' !== Input::get('act')) {
-            $question = QuestionModel::findByPk((int) $dc->id);
-
-            if (null !== $question) {
-                return (int) $question->pid;
-            }
-        }
-
-        $pid = (int) Input::get('pid');
-
-        if ($pid < 1) {
-            return 0;
-        }
-
-        if (1 === (int) Input::get('mode')) {
-            $sibling = QuestionModel::findByPk($pid);
-
-            return null !== $sibling ? (int) $sibling->pid : 0;
-        }
-
-        return $pid;
-    }
 }

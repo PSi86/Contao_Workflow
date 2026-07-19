@@ -46,6 +46,13 @@
 
         wrap.style.display = visible ? '' : 'none';
 
+        // A field locked server-side (WorkflowLockListener marks it "tw-locked" because
+        // participants have already answered) must stay disabled whatever the selector says –
+        // re-enabling it here would undo the lock in the browser.
+        if (wrap.classList.contains('tw-locked')) {
+            return;
+        }
+
         // Disable hidden inputs so they are not posted/validated (and re-enable
         // them when shown again).
         wrap.querySelectorAll('input, select, textarea').forEach(function (el) {

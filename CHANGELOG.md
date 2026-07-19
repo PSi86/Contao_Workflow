@@ -6,6 +6,101 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.0.0] – 2026-07-19
+
+Diese Version schützt erfasste Antworten konsequent gegen nachträgliche Änderungen an der
+Konfiguration. Der Sprung auf eine neue Hauptversion ergibt sich daraus, dass Einstellungen,
+die bisher jederzeit änderbar waren, nun gesperrt sein können, und dass sich das Verhalten von
+Import und Versand geändert hat – siehe „Geändert" (im Einzelnen: Feld „Schritte" entfällt,
+`workflow:import --force` entfällt, der Import läuft immer, ein unveröffentlichter Workflow
+verschickt nichts mehr).
+
+### Hinzugefügt
+- **Quell-Einstellungen werden gesperrt, sobald Antworten vorliegen.** Tabellenblatt,
+  Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder lassen sich dann nicht
+  mehr ändern, ebensowenig lassen sich Formularfelder anlegen oder löschen — jede dieser
+  Änderungen würde beim nächsten Import die bereits erfassten Antworten überschreiben oder von
+  ihrer Frage trennen, obwohl auf ihrer Grundlage bereits Dokumente ausgestellt und versendet
+  wurden. Die betroffenen Felder sind in der Maske als gesperrt gekennzeichnet, mit Hinweis auf
+  die Auswege. Wortlaut, Dokumenttexte, Optionen, Briefpapier und Benachrichtigungen bleiben
+  frei änderbar.
+- **Die Quelldatei bleibt dabei austauschbar** — allerdings nur gegen eine Datei mit exakt
+  denselben Spalten. Genau das ist der Weg, mitten im Durchlauf Teilnehmer nachzumelden oder
+  Daten zu korrigieren: einfach den aktuellen Export hochladen. Weichen die Spalten ab, wird
+  das Speichern mit einer Meldung abgelehnt, die die Unterschiede benennt. Bereits beantwortete
+  Teilnehmer bleiben beim folgenden Import unverändert.
+- **Aktion „Alle Teilnehmer zurücksetzen"** in den Workflow-Einstellungen (eigener,
+  zugeklappter Abschnitt am Ende, mit Sicherheitsabfrage und Nennung der Anzahl). Sie ist der
+  Weg, eine Änderung **noch im laufenden Durchlauf** zu ermöglichen: alle Antworten verlieren
+  ihre Gültigkeit, die Sperre fällt. Erhalten bleiben die erfassten Daten, die Links der
+  Teilnehmer und die bisherigen Dokumente. Für den **nächsten Durchlauf** bleibt eine Kopie des
+  Workflows der vorgesehene Weg.
+- **Ein unveröffentlichter Workflow blockiert den Versand.** Bisher liefen Einladungen und
+  Erinnerungen anstandslos durch, und **alle** Empfänger bekamen beim Klick auf ihren Link
+  „ungültig" zu sehen — ein Fehler, der beim Versand unsichtbar blieb. Zusätzlich werden die
+  Versandvoraussetzungen jetzt auch serverseitig geprüft und nicht nur in der Übersicht
+  ausgeblendet.
+
+### Behoben
+- **Der Formular-Link eines Teilnehmers ließ sich nicht sauber kopieren.** Er stand als
+  Fließtext im Hilfetext des Token-Felds, sodass ein Doppelklick die umgebenden Worte mitnahm
+  und die Zeile mitten im Link umbrechen konnte. Er steht weiterhin an derselben Stelle, jetzt
+  aber als eigenes Element: **ein Klick markiert genau die URL und kopiert sie zugleich in die
+  Zwischenablage** (kurze Bestätigung „✓ kopiert"). Ohne Zwischenablage-Berechtigung bleibt die
+  URL markiert und lässt sich von Hand kopieren. Die beiden Hinweis-Popups, die Contao über
+  diesem Hilfetext einblendete – darunter eine funktionslose Kopie des Links, die beim
+  Daraufzubewegen verschwand –, entfallen; auf Tablets öffnete sich sonst beim Antippen das
+  Popup, statt den Link zu kopieren.
+- **Gesperrte Auswahlfelder ließen sich trotz Sperre noch bedienen.** Gespeichert wurde die
+  Änderung zwar nie, sie verschwand aber erst beim Speichern kommentarlos. Ursache waren zwei
+  Schichten oberhalb des Servers: das Chosen-Suchfeld ersetzt das Auswahlfeld durch eigenes
+  Markup, und die typabhängige Feldsteuerung der Formularfelder schaltete beim Umschalten alle
+  sichtbaren Felder wieder aktiv. Beide berücksichtigen die Sperre jetzt.
+- **Der Hinweis auf mehrdeutige Platzhalter erschien doppelt.** Wurde der Import aus der
+  Bearbeitungsmaske heraus angestoßen, meldeten ihn sowohl der Import als auch die Maske selbst
+  — inhaltlich identisch, nur anders formuliert. Der Import meldet ihn jetzt nur noch dann,
+  wenn er aus der Übersicht kommt; dort ist er die einzige Quelle, während die Maske ihn beim
+  Laden ohnehin je Gruppe anzeigt. Der Hinweis geht damit in keiner Situation verloren.
+- **Zurückgesetzte Teilnehmer fehlten in „Offene Vorgänge".** Wurde der Status eines
+  Teilnehmers im Backend zurückgesetzt, damit er das Formular erneut ausfüllen darf,
+  verschwand er aus der Liste — und zwar für den gesamten Wiederholungs-Vorgang. Ursache: die
+  Liste prüfte nur den Zustellungs-/Bestätigungszustand und **gar nicht den Status**, und der
+  Zeitstempel der bereits erzeugten Bestätigung bleibt beim Zurücksetzen erhalten. Die Liste
+  zeigt jetzt wie erwartet **alle Teilnehmer, die den letzten Schritt nicht fehlerfrei
+  erreicht haben**. Damit stimmt sie auch wieder mit dem Zähler „offen" überein.
+
+### Geändert
+- **Status-Reset räumt jetzt vollständig auf.** Wird der Status eines Eintrags unter
+  „Beantwortet" zurückgesetzt, werden zusätzlich Antwortzeitpunkt und Bestätigungsstatus
+  geleert. Vorher galt der Eintrag intern weiterhin als beantwortet: der Nachbearbeitungs-Cron
+  bzw. die Aktion „Bestätigung neu senden" hätten die **alte** Bestätigung erneut verschickt.
+  Die erfassten Antworten selbst bleiben als Vorbelegung des Formulars erhalten, ebenso Token
+  und damit der bereits versendete Link.
+- **Status ist jetzt ein Auswahlfeld** (mit den Schritt-Bezeichnungen des Workflows) statt
+  eines freien Zahlenfelds — es lässt sich kein Status mehr eintragen, den der Workflow gar
+  nicht kennt.
+- **Die Einträge-Liste zeigt die Schritt-Bezeichnung statt der Rohzahl** — also „Eingeladen"
+  statt „[Status 1]". Bezeichnung und Auswahlfeld stammen jetzt aus derselben Quelle.
+- **Das Feld „Schritte" entfällt in den Workflow-Einstellungen.** Die drei Zustände stehen
+  fest; die Liste konnte sie nur umbenennen — ihre Länge und Reihenfolge legten dabei aber
+  still fest, was die Zustände *bedeuten*. Ein vierter Schritt erklärte einen Zustand zum Ziel,
+  den nichts je erreicht (Zähler „erledigt"/„offen" dauerhaft falsch, „Bestätigungen senden"
+  ohne Empfänger, Import-Schutz ausgehebelt); ein Umsortieren beschriftete die Zustände
+  schlicht falsch. Die Bezeichnungen kommen jetzt aus einer zentralen Definition. Bestehende
+  Daten und das Konfigurations-Format bleiben unverändert.
+- **Beantwortete Teilnehmer werden beim Import nicht mehr überschrieben.** Bisher wurden nur
+  die Antwortspalten geschützt, alle übrigen Quellspalten eines abgeschlossenen Teilnehmers
+  aber überschrieben — obwohl auf deren Basis bereits ein PDF ausgestellt und versendet wurde.
+  Solche Einträge bleiben jetzt vollständig unangetastet (nur die Zeilennummer für die
+  Export-Sortierung wird nachgeführt), und die Import-Meldung weist sie eigens aus. Maßgeblich
+  ist der Antwortzeitpunkt statt des Status, der sich durch eine geänderte Schrittliste
+  nachträglich verschieben konnte. Ein zurückgesetzter Teilnehmer wird wieder frisch importiert.
+- **Import läuft immer, auch bei unveränderter Quelldatei.** Das erneute Einlesen ist der Weg,
+  die ursprünglichen Quelldaten wiederherzustellen; der bisherige Abbruch per Prüfsumme stand
+  dem im Weg. Die Prüfsumme wird weiterhin gepflegt und treibt unverändert den Hinweis
+  „Quelldatei geändert – Import nötig". Die Option `--force` von `workflow:import` entfällt
+  damit ersatzlos.
+
 ## [2.14.0] – 2026-07-17
 
 ### Hinzugefügt

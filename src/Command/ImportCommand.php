@@ -11,7 +11,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -30,10 +29,7 @@ class ImportCommand extends Command
 
     protected function configure(): void
     {
-        $this
-            ->addArgument('workflow', InputArgument::REQUIRED, 'The tl_workflow ID to import.')
-            ->addOption('force', null, InputOption::VALUE_NONE, 'Import even if the source file is unchanged.')
-        ;
+        $this->addArgument('workflow', InputArgument::REQUIRED, 'The tl_workflow ID to import.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -51,25 +47,19 @@ class ImportCommand extends Command
         }
 
         try {
-            $result = $this->importer->import($workflow, (bool) $input->getOption('force'));
+            $result = $this->importer->import($workflow);
         } catch (\Throwable $e) {
             $io->error('Import failed: '.$e->getMessage());
 
             return Command::FAILURE;
         }
 
-        if ($result['skipped']) {
-            $io->warning('Source file unchanged – import skipped (use --force to override).');
-            $this->warnCollisions($io, $result['collisions']);
-
-            return Command::SUCCESS;
-        }
-
         $io->success(sprintf(
-            'Workflow "%s": %d new, %d updated (total %d).',
+            'Workflow "%s": %d new, %d updated, %d left untouched (already answered) – total %d.',
             $workflow->title,
             $result['inserted'],
             $result['updated'],
+            $result['protected'],
             $result['total'],
         ));
 

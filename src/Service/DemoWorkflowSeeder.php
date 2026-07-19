@@ -68,7 +68,7 @@ class DemoWorkflowSeeder
         // Import the synthetic participants so the dashboard shows data. A failure here
         // must not prevent the (already configured) demo from existing.
         try {
-            $this->spreadsheetImporter->import($workflow, true);
+            $this->spreadsheetImporter->import($workflow);
         } catch (\Throwable) {
             // ignore – the workflow is configured, the user can re-run the import
         }
@@ -169,7 +169,7 @@ class DemoWorkflowSeeder
             'workflow' => [
                 'title'                => self::WORKFLOW_TITLE,
                 'published'            => true,
-                'steps'                => ['Importiert', 'Eingeladen', 'Beantwortet'],
+                'steps'                => WorkflowStatus::DEFAULT_STEPS,
                 'sourceSheet'          => '',
                 'headerRow'            => 1,
                 'emailField'           => 'E-Mail',

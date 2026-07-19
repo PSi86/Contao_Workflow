@@ -181,13 +181,17 @@ class DashboardModule extends BackendModule
         $hasAbteilung = false;
         $pending = [];
 
-        // "Offene Vorgänge": everything not fully finished. An entry drops out only once it
-        // is answered AND its confirmation was produced (resultDoneAt > 0) AND there is no
-        // send error / hard bounce. A not-yet-answered entry has resultDoneAt = 0 and is
-        // therefore included as well (the classic pending case).
+        // "Offene Vorgänge": everything that has not reached the final step cleanly. An entry
+        // drops out only once it is at the final status AND its confirmation was produced
+        // (resultDoneAt > 0) AND there is no send error / hard bounce.
+        //
+        // The status condition is what covers a manually reopened entry: resetting the status
+        // in the back end leaves the old resultDoneAt timestamp in place (it records that a
+        // confirmation was once produced), so without it such an entry would silently stay
+        // invisible for the whole re-do cycle.
         $entries = EntryModel::findBy(
-            ['pid=?', "(resultDoneAt=0 OR (sendError IS NOT NULL AND sendError!='') OR bounceHard!='')"],
-            [(int) $workflow->id],
+            ['pid=?', "(status<? OR resultDoneAt=0 OR (sendError IS NOT NULL AND sendError!='') OR bounceHard!='')"],
+            [(int) $workflow->id, $workflow->getFinalStatus()],
             ['order' => 'status, email'],
         );
 

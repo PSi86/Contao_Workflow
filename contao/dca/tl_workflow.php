@@ -6,6 +6,7 @@ use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\ResetButtonListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\WorkflowDeleteListener;
 
 $GLOBALS['TL_DCA']['tl_workflow'] = [
@@ -97,7 +98,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // content (heading + intro, shown in the FORM and the PDF) → the form
         // (page, signature, answer fields) → the PDF (stationery, file name,
         // body) → notifications.
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult',
+        // ... → notifications → the destructive participant reset, in its own collapsed
+        // section at the very end (see WorkflowLockListener, which points here).
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -122,11 +125,12 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['tl_class' => 'w50 m12', 'doNotCopy' => true],
             'sql'       => "char(1) NOT NULL default ''",
         ],
+        // Not in the palette: the status values are fixed (see WorkflowStatus), so a
+        // per-workflow list could only relabel them – while its length or order silently
+        // redefined what the numbers mean. The column stays for existing records and for the
+        // portable config format; the labels come from WorkflowStatus::DEFAULT_STEPS.
         'steps' => [
-            'exclude'   => true,
-            'inputType' => 'listWizard',
-            'eval'      => ['mandatory' => true, 'tl_class' => 'clr'],
-            'sql'       => 'blob NULL',
+            'sql' => 'blob NULL',
         ],
         'sourceFile' => [
             'exclude'   => true,
@@ -298,6 +302,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfPreview' => [
             'exclude'              => true,
             'input_field_callback' => [PreviewButtonListener::class, 'renderPdfButton'],
+            'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Read-only "reset all participants" button (no DB column). Sits alone in its own
+        // collapsed section: it is the documented way out of the edit lock, but it voids
+        // every answer, so it needs the extra deliberate click before the confirm dialog.
+        'resetEntries' => [
+            'exclude'              => true,
+            'input_field_callback' => [ResetButtonListener::class, 'renderResetButton'],
             'eval'                 => ['tl_class' => 'clr'],
         ],
         'pdfBodyTemplate' => [
