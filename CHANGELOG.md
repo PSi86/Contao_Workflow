@@ -34,9 +34,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ### Behoben
 - **Der Formular-Link eines Teilnehmers ließ sich nicht sauber kopieren.** Er stand als
-  Fließtext im Hilfetext des Token-Felds, sodass ein Doppelklick die halbe Zeile mitnahm. Er
-  steht jetzt in einem eigenen Feld „Formular-Link": ein Klick markiert ihn vollständig, ein
-  Knopf daneben kopiert ihn in die Zwischenablage.
+  Fließtext im Hilfetext des Token-Felds, sodass ein Doppelklick die umgebenden Worte mitnahm
+  und die Zeile mitten im Link umbrechen konnte. Er steht weiterhin an derselben Stelle, jetzt
+  aber als eigenes Element: **ein Klick markiert genau die URL und kopiert sie zugleich in die
+  Zwischenablage** (kurze Bestätigung „✓ kopiert"). Ohne Zwischenablage-Berechtigung bleibt die
+  URL markiert und lässt sich von Hand kopieren.
 - **Gesperrte Auswahlfelder ließen sich trotz Sperre noch bedienen.** Gespeichert wurde die
   Änderung zwar nie, sie verschwand aber erst beim Speichern kommentarlos. Ursache waren zwei
   Schichten oberhalb des Servers: das Chosen-Suchfeld ersetzt das Auswahlfeld durch eigenes

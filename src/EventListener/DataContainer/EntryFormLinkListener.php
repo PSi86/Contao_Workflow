@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
+use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\DataContainer;
+use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\LinkGenerator;
@@ -16,11 +18,10 @@ use Psimandl\WorkflowBundle\Service\LinkGenerator;
  * (alias, domain and URL suffix all come from that page). Resolving it here removes the
  * guesswork that previously led to 404s when the form page had a different alias.
  *
- * Rendered as its own read-only input rather than as the token field's help text: in a run of
- * prose the URL cannot be selected cleanly (a double click grabs the surrounding words, and
- * the line may wrap mid-URL). An input holds exactly the URL, selects itself on click and is
- * copied by the button next to it. Resolved via System::importStatic, so this must be a
- * public service.
+ * The link sits in the token field's help text, but as its own element rather than as running
+ * prose: "user-select: all" makes a single click select exactly the URL and nothing around it,
+ * and the click copies it to the clipboard on top of that. As plain text it could neither be
+ * selected cleanly (a double click grabs the surrounding words) nor survive a line wrap.
  */
 class EntryFormLinkListener
 {
@@ -30,12 +31,25 @@ class EntryFormLinkListener
     ) {
     }
 
-    public function renderFormLink(DataContainer $dc): string
+    /**
+     * load_callback for tl_workflow_entry.token: replaces the static field help with the
+     * actual form link (or a clear note when no valid form page is configured yet).
+     */
+    #[AsCallback(table: 'tl_workflow_entry', target: 'fields.token.load')]
+    public function showFormLink(mixed $value, DataContainer $dc): mixed
     {
-        $entryId = (int) ($dc->id ?? 0);
+        $title = (string) ($GLOBALS['TL_LANG']['tl_workflow_entry']['token'][0] ?? 'Token');
+        $GLOBALS['TL_DCA']['tl_workflow_entry']['fields']['token']['label'] = [$title, $this->buildHelp((int) ($dc->id ?? 0))];
+
+        return $value;
+    }
+
+    private function buildHelp(int $entryId): string
+    {
+        $fallback = 'Individueller Schlüssel für den persönlichen Formular-Link.';
 
         if ($entryId <= 0) {
-            return $this->note('Der Link steht zur Verfügung, sobald der Eintrag gespeichert ist.');
+            return $fallback;
         }
 
         $this->framework->initialize();
@@ -44,45 +58,32 @@ class EntryFormLinkListener
         $workflow = null !== $entry ? WorkflowModel::findByPk((int) $entry->pid) : null;
 
         if (null === $entry || null === $workflow) {
-            return $this->note('Der Eintrag gehört zu keinem gültigen Workflow.');
+            return $fallback;
         }
 
         try {
             $url = $this->linkGenerator->getFormLink($workflow, $entry);
         } catch (\Throwable) {
-            return $this->note(
-                'Am Workflow ist noch keine (gültige) Formularseite konfiguriert – ohne sie gibt es '
-                .'keinen Formular-Link.',
-            );
+            return 'Individueller Schlüssel. Am Workflow ist noch keine (gültige) Formularseite konfiguriert – '
+                .'ohne sie gibt es keinen Formular-Link.';
         }
 
-        $id = 'ctrl_wfFormLink';
+        $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
 
-        // Clipboard API where available (needs a secure context), otherwise the old
-        // execCommand path – the input is selected either way, so a manual copy always works.
-        $copy = "var i=document.getElementById('".$id."');i.focus();i.select();"
-            ."i.setSelectionRange(0,i.value.length);"
-            ."if(navigator.clipboard){navigator.clipboard.writeText(i.value)}else{document.execCommand('copy')}"
-            ."var b=this;b.textContent='Kopiert';setTimeout(function(){b.textContent='Kopieren'},1500);return false";
+        // Clipboard API where available (it needs a secure context); otherwise select the
+        // element and fall back to execCommand. Either way the URL ends up selected, so a
+        // manual copy always works too.
+        $copy = 'var t=this.textContent.trim();'
+            .'var r=document.createRange();r.selectNodeContents(this);'
+            .'var s=window.getSelection();s.removeAllRanges();s.addRange(r);'
+            ."if(navigator.clipboard){navigator.clipboard.writeText(t)}else{document.execCommand('copy')}"
+            ."var e=this;e.classList.add('wf-copied');"
+            ."setTimeout(function(){e.classList.remove('wf-copied')},1500)";
 
-        return '<div class="widget" style="clear:both">'
-            .'<h3><label for="'.$id.'">Formular-Link</label></h3>'
-            .'<div style="display:flex;gap:.5em;align-items:center">'
-            .'<input type="text" id="'.$id.'" class="tl_text" readonly'
-            .' value="'.htmlspecialchars($url, ENT_QUOTES).'"'
-            .' onclick="this.select()" style="flex:1;min-width:0">'
-            .'<button type="button" class="tl_submit" onclick="'.htmlspecialchars($copy, ENT_QUOTES).'">Kopieren</button>'
-            .'</div>'
-            .'<p class="tl_help" style="margin-top:.5em">Persönlicher Link dieses Teilnehmers. '
-            .'Ein Klick ins Feld markiert ihn vollständig.</p>'
-            .'</div>';
-    }
-
-    private function note(string $text): string
-    {
-        return '<div class="widget" style="clear:both">'
-            .'<h3>Formular-Link</h3>'
-            .'<p class="tl_help">'.htmlspecialchars($text, ENT_QUOTES).'</p>'
-            .'</div>';
+        return 'Formular-Link – klicken zum Kopieren:<br>'
+            .'<span class="wf-copylink" title="Klicken kopiert den Link in die Zwischenablage"'
+            .' onclick="'.StringUtil::specialchars($copy).'">'
+            .StringUtil::specialchars($url)
+            .'</span>';
     }
 }

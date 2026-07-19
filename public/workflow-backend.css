@@ -120,6 +120,40 @@
     color: #c0392b;
 }
 
+/* The participant's form link in the token field's help text. "user-select: all" is the
+   point of it: one click selects exactly the URL, never the words around it, and the same
+   click copies it. Generated content is never part of textContent, so the confirmation
+   below cannot end up in the clipboard. */
+.wf-copylink {
+    -webkit-user-select: all;
+    user-select: all;
+    cursor: pointer;
+    display: inline-block;
+    max-width: 100%;
+    padding: 1px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #fff;
+    font-family: monospace;
+    word-break: break-all;
+}
+
+.wf-copylink:hover {
+    border-color: #f47c00;
+}
+
+.wf-copylink::after {
+    -webkit-user-select: none;
+    user-select: none;
+    content: '';
+}
+
+.wf-copylink.wf-copied::after {
+    content: ' ✓ kopiert';
+    color: #2e7d32;
+    font-family: inherit;
+}
+
 /* Settings frozen because participants have already answered (see WorkflowLock). Muted
    rather than alarming: the state is intended, not an error the user has to fix. */
 .tw-locked input,

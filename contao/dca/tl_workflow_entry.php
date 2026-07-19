@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
-use Psimandl\WorkflowBundle\EventListener\DataContainer\EntryFormLinkListener;
 
 $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
     'config' => [
@@ -51,7 +50,7 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{personal_legend},email,status,token,formLink;{response_legend},signature;{data_legend},data;{document_legend},pdfPath',
+        'default' => '{personal_legend},email,status,token;{response_legend},signature;{data_legend},data;{document_legend},pdfPath',
     ],
     'fields' => [
         'id' => [
@@ -78,13 +77,6 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'inputType' => 'text',
             'eval'      => ['doNotCopy' => true, 'readonly' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(64) NOT NULL default ''",
-        ],
-        // Read-only "form link" display (no DB column): the resolved personal link in its own
-        // input, so it can be selected and copied cleanly – see EntryFormLinkListener.
-        'formLink' => [
-            'exclude'              => true,
-            'input_field_callback' => [EntryFormLinkListener::class, 'renderFormLink'],
-            'eval'                 => ['tl_class' => 'clr'],
         ],
         // Setting this back below "responded" reopens the form for the participant; the save
         // callback then also clears the response bookkeeping (see EntryListener). A select
