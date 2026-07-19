@@ -163,9 +163,8 @@ class WorkflowActionController
 
         // Import can be triggered from the workflow's edit mask (the "re-import needed" hint);
         // "return=edit" sends the user back there instead of to the overview.
-        $backTo = 'edit' === (string) $request->query->get('return')
-            ? $this->backToEdit($id)
-            : $this->backToDashboard();
+        $returnToEdit = 'edit' === (string) $request->query->get('return');
+        $backTo = $returnToEdit ? $this->backToEdit($id) : $this->backToDashboard();
 
         if ($redirect = $this->assertRunnable($workflow, $backTo)) {
             return $redirect;
@@ -184,7 +183,13 @@ class WorkflowActionController
                 $result['total'],
             ));
 
-            $this->reportSlugCollisions($result['collisions']);
+            // The edit mask states the very same thing on load, one message per collision
+            // group (WorkflowIntegrityListener::warnSlugCollisions) – saying it here as well
+            // would duplicate it verbatim. Coming from the overview that listener never runs,
+            // so there this is the only place the user would ever learn about it.
+            if (!$returnToEdit) {
+                $this->reportSlugCollisions($result['collisions']);
+            }
         } catch (\Throwable $e) {
             Message::addError('Import fehlgeschlagen: '.$e->getMessage());
         }

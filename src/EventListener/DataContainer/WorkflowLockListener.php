@@ -99,6 +99,10 @@ class WorkflowLockListener
 
         // A disabled field must not keep auto-submitting the mask on change.
         unset($eval['submitOnChange']);
+
+        // Chosen replaces the select with its own markup and ignores the disabled attribute,
+        // leaving the field fully operable. Without it the plain select is inert.
+        unset($eval['chosen']);
         unset($eval);
 
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';

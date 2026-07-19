@@ -33,6 +33,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   ausgeblendet.
 
 ### Behoben
+- **Der Hinweis auf mehrdeutige Platzhalter erschien doppelt.** Wurde der Import aus der
+  Bearbeitungsmaske heraus angestoßen, meldeten ihn sowohl der Import als auch die Maske selbst
+  — inhaltlich identisch, nur anders formuliert. Der Import meldet ihn jetzt nur noch dann,
+  wenn er aus der Übersicht kommt; dort ist er die einzige Quelle, während die Maske ihn beim
+  Laden ohnehin je Gruppe anzeigt. Der Hinweis geht damit in keiner Situation verloren.
 - **Zurückgesetzte Teilnehmer fehlten in „Offene Vorgänge".** Wurde der Status eines
   Teilnehmers im Backend zurückgesetzt, damit er das Formular erneut ausfüllen darf,
   verschwand er aus der Liste — und zwar für den gesamten Wiederholungs-Vorgang. Ursache: die
