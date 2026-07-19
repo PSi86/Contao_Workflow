@@ -120,6 +120,23 @@
     color: #c0392b;
 }
 
+/* Settings frozen because participants have already answered (see WorkflowLock). Muted
+   rather than alarming: the state is intended, not an error the user has to fix. */
+.tw-locked input,
+.tw-locked select,
+.tw-locked textarea,
+.tw-locked .tl_chosen,
+.tw-locked .chzn-container {
+    background: #f2f2f2;
+    border: 1px solid #b3b3b3 !important;
+    border-radius: 3px;
+    color: #6b6b6b;
+}
+
+.tw-locked label::after {
+    content: " 🔒";
+}
+
 /* Not-runnable badge. */
 .wf-badge {
     display: inline-block;

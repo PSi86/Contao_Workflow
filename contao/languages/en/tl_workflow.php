@@ -9,6 +9,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['content_legend']      = 'Content (form & doc
 $GLOBALS['TL_LANG']['tl_workflow']['form_legend']         = 'Form & form fields';
 $GLOBALS['TL_LANG']['tl_workflow']['pdf_legend']          = 'Document settings';
 $GLOBALS['TL_LANG']['tl_workflow']['notification_legend'] = 'Notifications';
+$GLOBALS['TL_LANG']['tl_workflow']['reset_legend']        = 'Reset';
 
 $GLOBALS['TL_LANG']['tl_workflow']['title']        = ['Title', 'Name of the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['published']    = ['Published', 'Only published workflows accept responses.'];

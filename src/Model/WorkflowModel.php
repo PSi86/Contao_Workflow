@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\Model;
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
+use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 
 /**
  * Reads and writes tl_workflow (a process definition).
@@ -55,11 +56,18 @@ class WorkflowModel extends Model
     }
 
     /**
-     * Index of the final step. Reaching this status means "answered".
+     * Status that counts as "answered".
+     *
+     * Deliberately a constant and not the last index of the step list: the steps are labels
+     * for the three status values the bundle actually writes (imported / invited / responded,
+     * see WorkflowStatus). Deriving it from the number of labels meant that merely adding a
+     * fourth label silently redefined "done" as status 3 — a value nothing ever writes. That
+     * left the completed/open counters stuck, made the confirmation send find no recipients,
+     * and disarmed the import's guard for already answered entries.
      */
     public function getFinalStatus(): int
     {
-        return max(0, \count($this->getSteps()) - 1);
+        return WorkflowStatus::STATUS_RESPONDED;
     }
 
     public function isSignatureRequired(): bool

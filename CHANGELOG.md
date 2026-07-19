@@ -6,6 +6,27 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Quell-Einstellungen werden gesperrt, sobald Antworten vorliegen.** Quelldatei,
+  Tabellenblatt, Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder lassen
+  sich dann nicht mehr ändern, ebensowenig lassen sich Formularfelder anlegen oder löschen —
+  jede dieser Änderungen würde beim nächsten Import die bereits erfassten Antworten
+  überschreiben oder von ihrer Frage trennen, obwohl auf ihrer Grundlage bereits Dokumente
+  ausgestellt und versendet wurden. Die betroffenen Felder sind in der Maske als gesperrt
+  gekennzeichnet, mit Hinweis auf die beiden Auswege. Wortlaut, Dokumenttexte, Optionen,
+  Briefpapier und Benachrichtigungen bleiben frei änderbar.
+- **Aktion „Alle Teilnehmer zurücksetzen"** in den Workflow-Einstellungen (eigener,
+  zugeklappter Abschnitt am Ende, mit Sicherheitsabfrage und Nennung der Anzahl). Sie ist der
+  Weg, eine Änderung **noch im laufenden Durchlauf** zu ermöglichen: alle Antworten verlieren
+  ihre Gültigkeit, die Sperre fällt. Erhalten bleiben die erfassten Daten, die Links der
+  Teilnehmer und die bisherigen Dokumente. Für den **nächsten Durchlauf** bleibt eine Kopie des
+  Workflows der vorgesehene Weg.
+- **Ein unveröffentlichter Workflow blockiert den Versand.** Bisher liefen Einladungen und
+  Erinnerungen anstandslos durch, und **alle** Empfänger bekamen beim Klick auf ihren Link
+  „ungültig" zu sehen — ein Fehler, der beim Versand unsichtbar blieb. Zusätzlich werden die
+  Versandvoraussetzungen jetzt auch serverseitig geprüft und nicht nur in der Übersicht
+  ausgeblendet.
+
 ### Behoben
 - **Zurückgesetzte Teilnehmer fehlten in „Offene Vorgänge".** Wurde der Status eines
   Teilnehmers im Backend zurückgesetzt, damit er das Formular erneut ausfüllen darf,
@@ -27,6 +48,12 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   nicht kennt.
 - **Die Einträge-Liste zeigt die Schritt-Bezeichnung statt der Rohzahl** — also „Eingeladen"
   statt „[Status 1]". Bezeichnung und Auswahlfeld stammen jetzt aus derselben Quelle.
+- **Die Schritt-Liste ist auf genau drei Einträge festgelegt** (die Bezeichnungen bleiben frei
+  wählbar). Sie beschriftet die drei Zustände, die der Workflow tatsächlich kennt; ihre Länge
+  bestimmt nicht mehr, was „fertig" bedeutet. Bisher genügte ein vierter Schritt, um still
+  einen Zustand zum Ziel zu erklären, den nichts je erreicht: Die Zähler „erledigt"/„offen"
+  standen dauerhaft falsch, „Bestätigungen senden" fand keine Empfänger mehr, und der Schutz
+  bereits beantworteter Einträge beim Import war ausgehebelt.
 - **Beantwortete Teilnehmer werden beim Import nicht mehr überschrieben.** Bisher wurden nur
   die Antwortspalten geschützt, alle übrigen Quellspalten eines abgeschlossenen Teilnehmers
   aber überschrieben — obwohl auf deren Basis bereits ein PDF ausgestellt und versendet wurde.

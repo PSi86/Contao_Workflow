@@ -13,6 +13,7 @@ use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
+use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 
 /**
  * Populates the back end field pickers of tl_workflow directly from the
@@ -20,8 +21,10 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
  */
 class WorkflowOptionsListener
 {
-    public function __construct(private readonly SpreadsheetInspector $inspector)
-    {
+    public function __construct(
+        private readonly SpreadsheetInspector $inspector,
+        private readonly QuestionParentResolver $questionParent,
+    ) {
     }
 
     /**
@@ -58,7 +61,7 @@ class WorkflowOptionsListener
     #[AsCallback(table: 'tl_workflow_question', target: 'fields.storageField.options')]
     public function getQuestionStorageOptions(DataContainer $dc): array
     {
-        $workflow = WorkflowModel::findByPk($this->resolveQuestionWorkflowId($dc));
+        $workflow = WorkflowModel::findByPk($this->questionParent->resolve($dc));
 
         return null === $workflow ? [] : $this->inspector->getHeaderOptions($workflow);
     }
@@ -83,6 +86,33 @@ class WorkflowOptionsListener
         return [] === StringUtil::deserialize($value, true)
             ? serialize(['Importiert', 'Eingeladen', 'Beantwortet'])
             : $value;
+    }
+
+    /**
+     * The step list holds the labels for the status values the bundle writes, so its length
+     * is fixed — the wording is free, the number is not. Without this, a fourth step would
+     * render a breakdown row that can never fill and suggest a stage no code can reach.
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'fields.steps.save')]
+    public function validateStepCount(mixed $value): mixed
+    {
+        $steps = array_filter(
+            array_map('trim', StringUtil::deserialize($value, true)),
+            static fn ($label) => '' !== $label,
+        );
+
+        $expected = WorkflowStatus::STATUS_RESPONDED + 1;
+
+        if ($expected !== \count($steps)) {
+            throw new \RuntimeException(sprintf(
+                'Es müssen genau %d Schritte angegeben sein (importiert, eingeladen, beantwortet) – '
+                .'gefunden: %d. Die Bezeichnungen sind frei wählbar, die Anzahl nicht.',
+                $expected,
+                \count($steps),
+            ));
+        }
+
+        return $value;
     }
 
     /**
@@ -201,37 +231,4 @@ class WorkflowOptionsListener
         return WorkflowModel::findByPk((int) $dc->id);
     }
 
-    /**
-     * Resolves the parent workflow id of the answer field currently being edited
-     * or created. On edit "id" is the question; on create "pid" is either the
-     * parent workflow (PASTE_INTO) or a sibling question (PASTE_AFTER, mode 1).
-     */
-    private function resolveQuestionWorkflowId(DataContainer $dc): int
-    {
-        if (isset($dc->activeRecord->pid) && (int) $dc->activeRecord->pid > 0) {
-            return (int) $dc->activeRecord->pid;
-        }
-
-        if ($dc->id && 'create' !== Input::get('act')) {
-            $question = QuestionModel::findByPk((int) $dc->id);
-
-            if (null !== $question) {
-                return (int) $question->pid;
-            }
-        }
-
-        $pid = (int) Input::get('pid');
-
-        if ($pid < 1) {
-            return 0;
-        }
-
-        if (1 === (int) Input::get('mode')) {
-            $sibling = QuestionModel::findByPk($pid);
-
-            return null !== $sibling ? (int) $sibling->pid : 0;
-        }
-
-        return $pid;
-    }
 }

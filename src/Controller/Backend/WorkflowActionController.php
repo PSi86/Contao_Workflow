@@ -11,6 +11,7 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
@@ -27,6 +28,7 @@ use Psimandl\WorkflowBundle\Service\WorkflowConfigImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowMailer;
 use Psimandl\WorkflowBundle\Service\WorkflowPreviewData;
+use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -67,6 +69,7 @@ class WorkflowActionController
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
         private readonly SubmissionProcessor $submissionProcessor,
+        private readonly Connection $connection,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -91,6 +94,63 @@ class WorkflowActionController
         ));
 
         return $backTo ?? $this->backToDashboard();
+    }
+
+    /**
+     * Blocks a mail run whose prerequisites are missing (no form page, no notification, not
+     * published). The overview already hides the send dialog in that case, but that is a UI
+     * gate only — the route has to refuse it as well, or a stale tab still sends.
+     */
+    private function assertSendable(WorkflowModel $workflow): ?RedirectResponse
+    {
+        $blockers = $this->validator->getSendBlockers($workflow);
+
+        if ([] === $blockers) {
+            return null;
+        }
+
+        Message::addError(sprintf(
+            'Workflow „%s": Versand nicht möglich – %s',
+            StringUtil::specialchars((string) $workflow->title),
+            StringUtil::specialchars(implode('; ', $blockers)),
+        ));
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * Voids every recorded answer of a workflow, which is what releases the edit lock on the
+     * source settings (see WorkflowLock). GET like the other edit-mask actions – a nested
+     * <form> is not possible inside the DCA form – but guarded by the request token, the
+     * module check and a confirm dialog in the button.
+     *
+     * Deliberately keeps the answer data, the tokens and the stored PDFs: the participants
+     * fill in the same prefilled form again through their existing link, and the document is
+     * overwritten on re-submission. Only the bookkeeping that marks them as answered goes.
+     */
+    #[Route('/reset-entries/{id}', name: 'workflow_reset_entries', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function resetEntries(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        $affected = (int) $this->connection->executeStatement(
+            'UPDATE tl_workflow_entry '
+            ."SET status = ?, respondedAt = 0, resultDoneAt = 0, resultError = '', tstamp = ? "
+            .'WHERE pid = ? AND respondedAt > 0',
+            [WorkflowStatus::STATUS_IMPORTED, time(), $id],
+        );
+
+        Message::addConfirmation(sprintf(
+            '%d Teilnehmer von „%s" zurückgesetzt. Die Quell-Einstellungen sind wieder änderbar; '
+            .'bitte anschließend den Import erneut ausführen, um die Originaldaten zu laden.',
+            $affected,
+            StringUtil::specialchars((string) $workflow->title),
+        ));
+
+        return $this->backToEdit($id);
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -463,6 +523,13 @@ class WorkflowActionController
         // that there is no answer data to build the PDF from.
         if ('confirmation' === $type) {
             return $this->sendConfirmations($workflow, $ids);
+        }
+
+        // Only invitations and reminders carry the form link, so only they depend on the form
+        // page, the invite/reminder notification and the workflow being published. A
+        // confirmation just ships the finished PDF and is checked above.
+        if ($redirect = $this->assertSendable($workflow)) {
+            return $redirect;
         }
 
         $reminder = 'reminder' === $type;

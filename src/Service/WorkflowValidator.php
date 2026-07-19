@@ -339,6 +339,13 @@ class WorkflowValidator
             $blockers[] = 'keine (gültige) Formularseite zugeordnet – ohne sie kann kein Einladungslink erzeugt werden';
         }
 
+        // Without this an unpublished workflow mails out links that every recipient then finds
+        // "ungültig" (WorkflowFormController checks published before anything else) – a mistake
+        // that is invisible at send time and only surfaces through participants asking.
+        if (!$workflow->published) {
+            $blockers[] = 'der Workflow ist nicht veröffentlicht – die versendeten Links würden allen Teilnehmern als „ungültig" angezeigt';
+        }
+
         // Require an EXISTING notification, not just a non-zero id: a deleted
         // notification (dangling id) would otherwise pass and fail at send time.
         if (!$this->recordExists('tl_nc_notification', (int) $workflow->ncInvite)
