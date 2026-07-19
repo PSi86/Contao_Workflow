@@ -169,7 +169,7 @@ class DemoWorkflowSeeder
             'workflow' => [
                 'title'                => self::WORKFLOW_TITLE,
                 'published'            => true,
-                'steps'                => ['Importiert', 'Eingeladen', 'Beantwortet'],
+                'steps'                => WorkflowStatus::DEFAULT_STEPS,
                 'sourceSheet'          => '',
                 'headerRow'            => 1,
                 'emailField'           => 'E-Mail',

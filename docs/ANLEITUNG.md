@@ -132,35 +132,34 @@ nicht mehr im Workflow.
 
 ### 3 b. Workflow anlegen & konfigurieren
 **Workflow → Workflows → Neu.** Die **gesamte** Konfiguration liegt in
-**„Bearbeiten"** (in Abschnitte gegliedert: *Allgemein · Schritte · Quelldaten ·
+**„Bearbeiten"** (in Abschnitte gegliedert: *Allgemein · Quelldaten ·
 Inhalt (Formular & Dokument) · Formular & Formularfelder · Dokument-Einstellungen · Dokument-Texte ·
-Benachrichtigungen*). In der Workflow-Liste
+Benachrichtigungen · Zurücksetzen*). In der Workflow-Liste
 gibt es pro Zeile **Bearbeiten** (Konfiguration), **Einträge** (Antworten/Daten) und
 **Konfiguration herunterladen** (JSON-Export).
 Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Datei):
 
 1. **Titel**, **Veröffentlicht** ankreuzen.
-2. **Schritte:** z. B. `Importiert`, `Eingeladen`, `Beantwortet`.
-3. **Quelldatei** auswählen → **Speichern** (jetzt liest das System die Datei ein).
-4. **Tabellenblatt** wählen (z. B. `Übungsleiter`) und **Kopfzeile** (i. d. R. `1`).
+2. **Quelldatei** auswählen → **Speichern** (jetzt liest das System die Datei ein).
+3. **Tabellenblatt** wählen (z. B. `Übungsleiter`) und **Kopfzeile** (i. d. R. `1`).
    Beide lösen ein automatisches Neuladen aus.
-5. **E-Mail-Spalte** wählen (z. B. `eMail`).
-6. **Inhalt (Formular & Dokument):** die **Überschrift** und der optionale
+4. **E-Mail-Spalte** wählen (z. B. `eMail`).
+5. **Inhalt (Formular & Dokument):** die **Überschrift** und der optionale
    **Einleitungstext** erscheinen **identisch im Formular und im PDF** (oben, vor den
    Feldern bzw. dem Dokument-Text). Platzhalter wie `##data_vorname##` oder `##letterhead_verein##`
    und `{{Insert-Tags}}` sind erlaubt; der Einleitungstext unterstützt zusätzlich die
    **Textauszeichnung** `[b]fett[/b]` / `[i]kursiv[/i]` / `[u]unterstrichen[/u]` (die Überschrift nicht).
    So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
-7. **Unterschrift benötigt:** ankreuzen, wenn der Trainer im Formular unterschreiben
+6. **Unterschrift benötigt:** ankreuzen, wenn der Trainer im Formular unterschreiben
    muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option erscheinen
    **darunter** zusätzlich **Datum** und **Ort für die Unterschriftszeile** – je ein **Datenfeld** (z. B. ein
    „Aktuelle Zeit"-Formularfeld als Datum, die Spalte `Wohnort` als Ort). So steht im PDF
    genau der gespeicherte Wert (PDF == DB == Export). Sonst entfällt das Unterschriftsfeld.
-8. **Formularseite** = die Seite aus Abschnitt 1.
-9. **Formularfelder** anlegen (Abschnitt 3 b‑1) – auch schreibgeschützte Anzeige-Felder
+7. **Formularseite** = die Seite aus Abschnitt 1.
+8. **Formularfelder** anlegen (Abschnitt 3 b‑1) – auch schreibgeschützte Anzeige-Felder
    (z. B. Name, Vorname, Abteilung zur Kontrolle) sind jetzt normale Formularfelder mit der
    Option **„Schreibgeschützt"**.
-10. **Dokument-Einstellungen:**
+9. **Dokument-Einstellungen:**
     - **Briefkopf-Vorlage** (Master) auswählen – sie bringt **Logo + Variablen + Layout**
       mit (vorausgewählt, falls nur einer existiert). Logo/Variablen werden **nicht**
       hier, sondern unter „Briefkopf-Vorlagen" gepflegt (Abschnitt 2b).
@@ -189,8 +188,8 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         eigene Logik** → **die Dokument-Texte entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
     - Header (Logo), Unterschrift und Footer kommen aus der gewählten **Briefkopf-Vorlage**;
       die Briefkopf-Variablen (`##letterhead_verein##`, `##letterhead_ort##`, …) stammen ebenfalls von dort.
-11. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
-12. **Speichern.**
+10. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
+11. **Speichern.**
 
 ### 3 b‑1. Formularfelder  *(Abschnitt „Formular & Formularfelder" in „Bearbeiten")*
 

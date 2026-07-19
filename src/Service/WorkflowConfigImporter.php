@@ -435,7 +435,7 @@ class WorkflowConfigImporter
     private function createWorkflow(array $wf, int $masterId, array $nc, int $formPage, array $importIssues, ?string $sourceUuid): int
     {
         $steps = array_values(array_filter(array_map('trim', (array) ($wf['steps'] ?? []))));
-        $steps = $steps ?: ['Importiert', 'Eingeladen', 'Beantwortet'];
+        $steps = $steps ?: WorkflowStatus::DEFAULT_STEPS;
 
         $this->connection->executeStatement(
             'INSERT INTO tl_workflow '

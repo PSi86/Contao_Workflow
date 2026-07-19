@@ -52,7 +52,7 @@ class WorkflowModel extends Model
             static fn ($label) => '' !== $label,
         ));
 
-        return $steps ?: ['Importiert', 'Eingeladen', 'Beantwortet'];
+        return $steps ?: WorkflowStatus::DEFAULT_STEPS;
     }
 
     /**

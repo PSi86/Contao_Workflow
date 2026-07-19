@@ -27,8 +27,13 @@ class WorkflowLockListener
     /**
      * Settings that decide which source column an answer belongs to. Changing any of them
      * after an answer exists rewrites or orphans that answer on the next import.
+     *
+     * sourceFile is deliberately NOT among them: swapping in a fresh export of the same
+     * report is the normal way to add or correct participants mid-run. It is guarded by a
+     * column-identity check instead (see SourceFileGuardListener), which keeps exactly the
+     * property these locked fields rely on.
      */
-    private const LOCKED_SOURCE_FIELDS = ['sourceFile', 'sourceSheet', 'headerRow', 'emailField'];
+    private const LOCKED_SOURCE_FIELDS = ['sourceSheet', 'headerRow', 'emailField'];
 
     public function __construct(
         private readonly WorkflowLock $lock,
@@ -74,8 +79,13 @@ class WorkflowLockListener
     }
 
     /**
-     * Marks a field read-only and flags it visually, reusing the outline the integrity
-     * checks already use for fields that need attention.
+     * Disables a field and flags it visually.
+     *
+     * "disabled" rather than "readonly": both clear the widget's submitInput() and therefore
+     * stop the value from being written, but SelectMenu and FileTree contain no readonly
+     * handling at all, so a read-only select stayed fully operable and silently discarded the
+     * change on save. "disabled" is emitted as a real HTML attribute by every widget that
+     * renders getAttributes(), so the field is inert in the browser as well.
      */
     private function freeze(string $table, string $field): void
     {
@@ -84,8 +94,11 @@ class WorkflowLockListener
         }
 
         $eval = &$GLOBALS['TL_DCA'][$table]['fields'][$field]['eval'];
-        $eval['readonly'] = true;
+        $eval['disabled'] = true;
         $eval['tl_class'] = trim(((string) ($eval['tl_class'] ?? '')).' tw-locked');
+
+        // A disabled field must not keep auto-submitting the mask on change.
+        unset($eval['submitOnChange']);
         unset($eval);
 
         $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
@@ -94,16 +107,19 @@ class WorkflowLockListener
     private function notice(int $answered): string
     {
         return sprintf(
-            'Für diesen Workflow liegen bereits <strong>%d Antwort(en)</strong> vor. Quelldatei, '
+            'Für diesen Workflow liegen bereits <strong>%d Antwort(en)</strong> vor. '
             .'Tabellenblatt, Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder '
             .'sind deshalb gesperrt, ebenso das Anlegen und Löschen von Formularfeldern – eine '
             .'Änderung würde die bereits erfassten Antworten zerstören oder von den Daten '
             .'trennen, auf deren Grundlage bereits Dokumente ausgestellt wurden.<br>'
+            .'Die <strong>Quelldatei lässt sich weiterhin austauschen</strong>, solange die neue '
+            .'Datei exakt dieselben Spalten enthält – so lassen sich Teilnehmer nachmelden oder '
+            .'Daten korrigieren. Bereits beantwortete Teilnehmer bleiben dabei unverändert.<br>'
             .'Für den <strong>nächsten Durchlauf</strong> eine Kopie dieses Workflows anlegen und '
-            .'dort anpassen. Soll die Änderung <strong>noch in diesem Durchlauf</strong> gelten, '
-            .'müssen zuvor alle Teilnehmer zurückgesetzt werden (Abschnitt „Zurücksetzen“ am Ende '
-            .'dieser Seite) – dabei werden alle bisherigen Antworten und die bereits '
-            .'ausgestellten Dokumente ungültig.',
+            .'dort anpassen. Soll eine gesperrte Einstellung <strong>noch in diesem Durchlauf</strong> '
+            .'geändert werden, müssen zuvor alle Teilnehmer zurückgesetzt werden (Abschnitt '
+            .'„Zurücksetzen“ am Ende dieser Seite) – dabei werden alle bisherigen Antworten und die '
+            .'bereits ausgestellten Dokumente ungültig.',
             $answered,
         );
     }

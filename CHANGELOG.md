@@ -7,14 +7,19 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 ### Hinzugefügt
-- **Quell-Einstellungen werden gesperrt, sobald Antworten vorliegen.** Quelldatei,
-  Tabellenblatt, Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder lassen
-  sich dann nicht mehr ändern, ebensowenig lassen sich Formularfelder anlegen oder löschen —
-  jede dieser Änderungen würde beim nächsten Import die bereits erfassten Antworten
-  überschreiben oder von ihrer Frage trennen, obwohl auf ihrer Grundlage bereits Dokumente
-  ausgestellt und versendet wurden. Die betroffenen Felder sind in der Maske als gesperrt
-  gekennzeichnet, mit Hinweis auf die beiden Auswege. Wortlaut, Dokumenttexte, Optionen,
-  Briefpapier und Benachrichtigungen bleiben frei änderbar.
+- **Quell-Einstellungen werden gesperrt, sobald Antworten vorliegen.** Tabellenblatt,
+  Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder lassen sich dann nicht
+  mehr ändern, ebensowenig lassen sich Formularfelder anlegen oder löschen — jede dieser
+  Änderungen würde beim nächsten Import die bereits erfassten Antworten überschreiben oder von
+  ihrer Frage trennen, obwohl auf ihrer Grundlage bereits Dokumente ausgestellt und versendet
+  wurden. Die betroffenen Felder sind in der Maske als gesperrt gekennzeichnet, mit Hinweis auf
+  die Auswege. Wortlaut, Dokumenttexte, Optionen, Briefpapier und Benachrichtigungen bleiben
+  frei änderbar.
+- **Die Quelldatei bleibt dabei austauschbar** — allerdings nur gegen eine Datei mit exakt
+  denselben Spalten. Genau das ist der Weg, mitten im Durchlauf Teilnehmer nachzumelden oder
+  Daten zu korrigieren: einfach den aktuellen Export hochladen. Weichen die Spalten ab, wird
+  das Speichern mit einer Meldung abgelehnt, die die Unterschiede benennt. Bereits beantwortete
+  Teilnehmer bleiben beim folgenden Import unverändert.
 - **Aktion „Alle Teilnehmer zurücksetzen"** in den Workflow-Einstellungen (eigener,
   zugeklappter Abschnitt am Ende, mit Sicherheitsabfrage und Nennung der Anzahl). Sie ist der
   Weg, eine Änderung **noch im laufenden Durchlauf** zu ermöglichen: alle Antworten verlieren
@@ -48,12 +53,13 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   nicht kennt.
 - **Die Einträge-Liste zeigt die Schritt-Bezeichnung statt der Rohzahl** — also „Eingeladen"
   statt „[Status 1]". Bezeichnung und Auswahlfeld stammen jetzt aus derselben Quelle.
-- **Die Schritt-Liste ist auf genau drei Einträge festgelegt** (die Bezeichnungen bleiben frei
-  wählbar). Sie beschriftet die drei Zustände, die der Workflow tatsächlich kennt; ihre Länge
-  bestimmt nicht mehr, was „fertig" bedeutet. Bisher genügte ein vierter Schritt, um still
-  einen Zustand zum Ziel zu erklären, den nichts je erreicht: Die Zähler „erledigt"/„offen"
-  standen dauerhaft falsch, „Bestätigungen senden" fand keine Empfänger mehr, und der Schutz
-  bereits beantworteter Einträge beim Import war ausgehebelt.
+- **Das Feld „Schritte" entfällt in den Workflow-Einstellungen.** Die drei Zustände stehen
+  fest; die Liste konnte sie nur umbenennen — ihre Länge und Reihenfolge legten dabei aber
+  still fest, was die Zustände *bedeuten*. Ein vierter Schritt erklärte einen Zustand zum Ziel,
+  den nichts je erreicht (Zähler „erledigt"/„offen" dauerhaft falsch, „Bestätigungen senden"
+  ohne Empfänger, Import-Schutz ausgehebelt); ein Umsortieren beschriftete die Zustände
+  schlicht falsch. Die Bezeichnungen kommen jetzt aus einer zentralen Definition. Bestehende
+  Daten und das Konfigurations-Format bleiben unverändert.
 - **Beantwortete Teilnehmer werden beim Import nicht mehr überschrieben.** Bisher wurden nur
   die Antwortspalten geschützt, alle übrigen Quellspalten eines abgeschlossenen Teilnehmers
   aber überschrieben — obwohl auf deren Basis bereits ein PDF ausgestellt und versendet wurde.

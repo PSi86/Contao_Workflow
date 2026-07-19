@@ -13,7 +13,6 @@ use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
-use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 
 /**
  * Populates the back end field pickers of tl_workflow directly from the
@@ -77,43 +76,6 @@ class WorkflowOptionsListener
         return Controller::getTemplateGroup('pdf_body_');
     }
 
-    /**
-     * Pre-fills the steps when empty (new workflow), so the field is not blank.
-     */
-    #[AsCallback(table: 'tl_workflow', target: 'fields.steps.load')]
-    public function defaultSteps(mixed $value): mixed
-    {
-        return [] === StringUtil::deserialize($value, true)
-            ? serialize(['Importiert', 'Eingeladen', 'Beantwortet'])
-            : $value;
-    }
-
-    /**
-     * The step list holds the labels for the status values the bundle writes, so its length
-     * is fixed — the wording is free, the number is not. Without this, a fourth step would
-     * render a breakdown row that can never fill and suggest a stage no code can reach.
-     */
-    #[AsCallback(table: 'tl_workflow', target: 'fields.steps.save')]
-    public function validateStepCount(mixed $value): mixed
-    {
-        $steps = array_filter(
-            array_map('trim', StringUtil::deserialize($value, true)),
-            static fn ($label) => '' !== $label,
-        );
-
-        $expected = WorkflowStatus::STATUS_RESPONDED + 1;
-
-        if ($expected !== \count($steps)) {
-            throw new \RuntimeException(sprintf(
-                'Es müssen genau %d Schritte angegeben sein (importiert, eingeladen, beantwortet) – '
-                .'gefunden: %d. Die Bezeichnungen sind frei wählbar, die Anzahl nicht.',
-                $expected,
-                \count($steps),
-            ));
-        }
-
-        return $value;
-    }
 
     /**
      * Offers the available PDF body templates (all "pdf_body_*" templates) so the

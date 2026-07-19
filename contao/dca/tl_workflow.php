@@ -100,7 +100,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{steps_legend},steps;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -125,11 +125,12 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'      => ['tl_class' => 'w50 m12', 'doNotCopy' => true],
             'sql'       => "char(1) NOT NULL default ''",
         ],
+        // Not in the palette: the status values are fixed (see WorkflowStatus), so a
+        // per-workflow list could only relabel them – while its length or order silently
+        // redefined what the numbers mean. The column stays for existing records and for the
+        // portable config format; the labels come from WorkflowStatus::DEFAULT_STEPS.
         'steps' => [
-            'exclude'   => true,
-            'inputType' => 'listWizard',
-            'eval'      => ['mandatory' => true, 'tl_class' => 'clr'],
-            'sql'       => 'blob NULL',
+            'sql' => 'blob NULL',
         ],
         'sourceFile' => [
             'exclude'   => true,
