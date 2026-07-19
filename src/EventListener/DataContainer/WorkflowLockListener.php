@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
+use Contao\Controller;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Environment;
@@ -54,6 +55,13 @@ class WorkflowLockListener
             $this->freeze('tl_workflow', $field);
         }
 
+        // The answer fields are embedded here as a dcaWizard. It hides its "new" button when
+        // the child table is notCreatable, but it reads that flag while rendering THIS mask —
+        // at which point the child table's own onload has not run (it only loads the DCA
+        // file). Without this the button stayed visible and clicking it produced a bare
+        // "not creatable" error page instead of simply not being offered.
+        $this->lockAnswerFieldTable();
+
         if ($this->isEditMask()) {
             Message::addInfo($this->notice($this->lock->answeredCount($id)));
         }
@@ -71,11 +79,29 @@ class WorkflowLockListener
         // answer on the next import. The wording, the document text and the options stay
         // editable — they do not change what the stored data means.
         $this->freeze('tl_workflow_question', 'storageField');
+        $this->lockAnswerFieldTable();
+    }
 
-        $config = &$GLOBALS['TL_DCA']['tl_workflow_question']['config'];
-        $config['notCreatable'] = true;
-        $config['notDeletable'] = true;
-        unset($config);
+    /**
+     * Bars adding and deleting answer fields, and takes the row operation for deleting out of
+     * the list.
+     *
+     * notCreatable/notDeletable alone only make DC_Table refuse the action — which surfaces as
+     * an error page. dcaWizard hides its "new" button on notCreatable, but the per-row delete
+     * icon comes from list.operations and is rendered regardless, so it has to go as well;
+     * otherwise the icon is offered and the click ends in the same error.
+     *
+     * The DCA is loaded explicitly first: this also runs from the parent mask, where the child
+     * table may not be loaded yet, and loading it afterwards would overwrite the flags.
+     */
+    private function lockAnswerFieldTable(): void
+    {
+        Controller::loadDataContainer('tl_workflow_question');
+
+        $dca = &$GLOBALS['TL_DCA']['tl_workflow_question'];
+        $dca['config']['notCreatable'] = true;
+        $dca['config']['notDeletable'] = true;
+        unset($dca['list']['operations']['delete'], $dca['list']['operations']['copy'], $dca);
     }
 
     /**
