@@ -124,28 +124,58 @@
    point of it: one click selects exactly the URL, never the words around it, and the same
    click copies it. Generated content is never part of textContent, so the confirmation
    below cannot end up in the clipboard. */
+/* Contao clamps every field help to one 15px line (.tl_tip: height/overflow/nowrap), which
+   would cut the link box off entirely – only its top border stayed visible, looking like a
+   stray underline. The clamp is lifted for the one field that carries the link. */
+.tw-linkhelp .tl_help {
+    height: auto;
+    overflow: visible;
+    white-space: normal;
+    cursor: default;
+}
+
 .wf-copylink {
     -webkit-user-select: all;
     user-select: all;
     cursor: pointer;
     display: inline-block;
     max-width: 100%;
-    padding: 1px 4px;
-    border: 1px solid #ccc;
+    margin-top: .3em;
+    padding: .35em .6em;
+    border: 1px solid var(--form-border, #aaa);
     border-radius: 3px;
-    background: #fff;
+    /* Theme variables, not fixed colours: the back end also runs in dark mode
+       (html[data-color-scheme=dark]), where a hard-coded white background combined with the
+       inherited light help colour made the link invisible. The form variables are used so it
+       reads like the input above it – which is exactly the affordance we want here. */
+    background: var(--form-bg, #fff);
+    color: var(--text, #222);
     font-family: monospace;
+    font-size: 1em;
+    line-height: 1.4;
     word-break: break-all;
 }
 
 .wf-copylink:hover {
     border-color: #f47c00;
+    color: #f47c00;
+}
+
+.wf-copylink::before {
+    -webkit-user-select: none;
+    user-select: none;
+    content: '⧉ ';
+    color: var(--info, #666);
 }
 
 .wf-copylink::after {
     -webkit-user-select: none;
     user-select: none;
     content: '';
+}
+
+.wf-copylink.wf-copied {
+    border-color: #2e7d32;
 }
 
 .wf-copylink.wf-copied::after {

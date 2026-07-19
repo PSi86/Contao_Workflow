@@ -39,7 +39,22 @@ class EntryFormLinkListener
     public function showFormLink(mixed $value, DataContainer $dc): mixed
     {
         $title = (string) ($GLOBALS['TL_LANG']['tl_workflow_entry']['token'][0] ?? 'Token');
-        $GLOBALS['TL_DCA']['tl_workflow_entry']['fields']['token']['label'] = [$title, $this->buildHelp((int) ($dc->id ?? 0))];
+        $help = $this->buildHelp((int) ($dc->id ?? 0));
+        $field = &$GLOBALS['TL_DCA']['tl_workflow_entry']['fields']['token'];
+
+        $field['label'] = [$title, $help];
+
+        // Contao renders every field help as <p class="tl_help tl_tip">, and tl_tip clamps it
+        // to a single 15px line with overflow:hidden – a multi-line help is simply cut off.
+        // The class cannot be set on that <p>, but it can be set on the wrapper via tl_class,
+        // which is where the stylesheet lifts the clamp for this one field.
+        if (str_contains($help, 'wf-copylink')) {
+            $eval = &$field['eval'];
+            $eval['tl_class'] = trim(((string) ($eval['tl_class'] ?? '')).' tw-linkhelp');
+            unset($eval);
+        }
+
+        unset($field);
 
         return $value;
     }
