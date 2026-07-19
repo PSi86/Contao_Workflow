@@ -6,6 +6,15 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.0.0] – 2026-07-19
+
+Diese Version schützt erfasste Antworten konsequent gegen nachträgliche Änderungen an der
+Konfiguration. Der Sprung auf eine neue Hauptversion ergibt sich daraus, dass Einstellungen,
+die bisher jederzeit änderbar waren, nun gesperrt sein können, und dass sich das Verhalten von
+Import und Versand geändert hat – siehe „Geändert" (im Einzelnen: Feld „Schritte" entfällt,
+`workflow:import --force` entfällt, der Import läuft immer, ein unveröffentlichter Workflow
+verschickt nichts mehr).
+
 ### Hinzugefügt
 - **Quell-Einstellungen werden gesperrt, sobald Antworten vorliegen.** Tabellenblatt,
   Kopfzeile, E-Mail-Spalte und die Speicherspalten der Formularfelder lassen sich dann nicht
