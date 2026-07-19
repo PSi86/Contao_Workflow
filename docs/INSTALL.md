@@ -47,19 +47,19 @@ aus der `composer.json` und legt `composer.json` an die Wurzel):
 
 ```bash
 # im Bundle-Ordner (dort liegt die composer.json)
-composer archive --format=zip --dir=../dist --file=psimandl-contao-workflow-2.0.0
-# -> ../dist/psimandl-contao-workflow-2.0.0.zip
+composer archive --format=zip --dir=../dist --file=psimandl-contao-workflow-3.0.0
+# -> ../dist/psimandl-contao-workflow-3.0.0.zip
 ```
 
 Ohne Composer zur Hand tut es auch ein einfaches ZIP des Ordnerinhalts (composer.json
 muss an der ZIP-Wurzel liegen, `vendor/` weglassen):
 
 ```powershell
-Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-2.12.0.zip -Force
+Compress-Archive -Path contao-workflow\* -DestinationPath psimandl-contao-workflow-3.0.0.zip -Force
 ```
 
 Das ZIP enthält dank der festen `"version"` in der `composer.json` eine auflösbare Version –
-der Dateiname muss zu ihr passen (hier `2.12.0`). Bequemer und weniger fehleranfällig ist
+der Dateiname muss zu ihr passen (hier `3.0.0`). Bequemer und weniger fehleranfällig ist
 `scripts/build-bundle.ps1`: das Skript liest die Version aus der `composer.json` und schließt
 `vendor/`, `tests/` usw. automatisch aus.
 
@@ -82,7 +82,7 @@ composer config repositories.workflow vcs https://github.com/<user>/contao-workf
 **Schritt 2 – Paket installieren** (zieht NC, mPDF, PhpSpreadsheet mit):
 
 ```bash
-composer require psimandl/contao-workflow:^2.0 terminal42/notification_center:^2.0
+composer require psimandl/contao-workflow:^3.0 terminal42/notification_center:^2.0
 ```
 
 **Schritt 3 – Datenbank + Assets:**
@@ -116,7 +116,7 @@ hochladen:
         "workflow": { "type": "artifact", "url": "packages" }
     },
     "require": {
-        "psimandl/contao-workflow": "^2.0",
+        "psimandl/contao-workflow": "^3.0",
         "terminal42/notification_center": "^2.0"
     }
 }
@@ -153,7 +153,9 @@ Installiert ist erst die Software. Es fehlt die fachliche Einrichtung:
 1. **Notification Center:** E-Mail-Gateway + Notifications anlegen ([ANLEITUNG.md](ANLEITUNG.md) Abschnitt 2).
 2. **Formularseite + Modul** „Workflow-Formular" ([ANLEITUNG.md](ANLEITUNG.md) Abschnitt 1).
 3. **Mail-Worker/Cron** aktiv ([DEPLOYMENT.md](DEPLOYMENT.md)).
-4. **Ersten Workflow** anlegen ([ANLEITUNG.md](ANLEITUNG.md) Abschnitt 3).
+4. **Ersten Workflow** anlegen ([ANLEITUNG.md](ANLEITUNG.md) Abschnitt 3) und **veröffentlichen** –
+   ohne den Haken *Veröffentlicht* weist die Übersicht den Versand ab (die Links würden den
+   Empfängern sonst als „ungültig" angezeigt).
 
 Prüfen: Im Backend erscheint links die Modulgruppe **„Workflow"** mit
 „Übersicht" und „Workflows".
@@ -175,7 +177,7 @@ Seiten/Layouts/Dateien zu verändern.
 composer update psimandl/contao-workflow
 vendor/bin/contao-console contao:migrate --no-interaction
 ```
-**Ohne CLI:** neues Artefakt-ZIP (höhere Version, z. B. `…-2.1.0.zip`) nach
+**Ohne CLI:** neues Artefakt-ZIP (höhere Version, z. B. `…-3.1.0.zip`) nach
 `packages/` hochladen, Versionsconstraint in `composer.json` ggf. anpassen, im
 Contao-Manager „Update" ausführen, danach Install-Tool → „Datenbank aktualisieren".
 
@@ -188,7 +190,7 @@ Contao-Manager „Update" ausführen, danach Install-Tool → „Datenbank aktua
 | Symptom | Ursache / Lösung |
 |---|---|
 | Manager/Composer findet das Paket nicht | `repositories`-Eintrag in `composer.json` prüfen; ZIP wirklich in `packages/`? Dateiname/Version korrekt? |
-| „Could not find a version …" | feste `"version"` im Bundle vorhanden? Constraint `^2.0` passend? |
+| „Could not find a version …" | feste `"version"` im Bundle vorhanden? Constraint `^3.0` passend? |
 | Backend-Module fehlen nach Install | Migration nicht gelaufen → Install-Tool „Datenbank aktualisieren" bzw. `contao:migrate`. |
 | Formular ohne Stil / Signaturfeld lädt nicht | Assets nicht veröffentlicht → `contao:setup` bzw. Manager-Update erneut; Ordner `public/bundles/contaoworkflow/` vorhanden? |
 | PDF-Fehler (mPDF) | PHP-Erweiterung **`gd`** aktivieren (all-inkl: passende PHP-Version wählen). |

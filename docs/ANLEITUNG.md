@@ -50,7 +50,7 @@ Seiten:
 3. **Modul auf die Seite:** in dieser Seite einen **Artikel** in der **Hauptspalte** anlegen →
    darin ein **Inhaltselement „Modul"** einfügen und das „Workflow-Formular"-Modul auswählen.
    Speichern.
-4. Am Workflow diese Seite als **Formularseite** wählen (Abschnitt 3 b, Punkt 8).
+4. Am Workflow diese Seite als **Formularseite** wählen (Abschnitt 3 b, Punkt 7).
 
 Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `/formular/<token>`),
 **nicht** zwangsläufig `/workflow/…`. Den exakten Link zeigt jeder **Eintrag** beim Feld *Token*.
@@ -119,7 +119,7 @@ nicht mehr im Workflow.
 > **Übersicht** unter *„Workflow-Konfiguration importieren"* eine exportierte/bereitgestellte
 > **`.json`-Datei** hochladen und optional **Briefpapier** + **E-Mail-Vorlagen** mit anlegen lassen. Der so erzeugte Workflow ist noch **ohne Quelldatei** und damit „nicht
 > ausführbar" – es bleibt also nur Schritt 3 a (Quelldatei hochladen) + die Spalten-Zuordnung
-> (3 b, Punkte 3–6). **Es wird nichts überschrieben:** Briefpapier oder E-Mail-Vorlagen mit
+> (3 b, Punkte 3–4). **Es wird nichts überschrieben:** Briefpapier oder E-Mail-Vorlagen mit
 > **bereits vergebenem Namen** werden **übersprungen** und nach dem Import namentlich gemeldet
 > (vorhandenes umbenennen oder Namen in der JSON ändern und erneut importieren); ein bereits
 > vergebener **Workflow-Titel** bricht den Import ab. Umgekehrt lädt *„Konfiguration
@@ -139,7 +139,9 @@ gibt es pro Zeile **Bearbeiten** (Konfiguration), **Einträge** (Antworten/Daten
 **Konfiguration herunterladen** (JSON-Export).
 Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Datei):
 
-1. **Titel**, **Veröffentlicht** ankreuzen.
+1. **Titel**, **Veröffentlicht** ankreuzen. *Veröffentlicht* ist Voraussetzung für den Versand:
+   Solange der Haken fehlt, weist die Übersicht den Versand von Einladungen und Erinnerungen ab
+   – die Links würden den Empfängern sonst als „ungültig" angezeigt.
 2. **Quelldatei** auswählen → **Speichern** (jetzt liest das System die Datei ein).
 3. **Tabellenblatt** wählen (z. B. `Übungsleiter`) und **Kopfzeile** (i. d. R. `1`).
    Beide lösen ein automatisches Neuladen aus.
@@ -191,6 +193,35 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 10. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
 11. **Speichern.**
 
+> ### Gesperrte Einstellungen, sobald Antworten vorliegen
+>
+> Antwortet der erste Teilnehmer, werden die Einstellungen gesperrt, die festlegen **was die
+> gespeicherten Daten bedeuten**: **Tabellenblatt**, **Kopfzeile**, **E-Mail-Spalte** und das
+> **Speicherfeld** der Formularfelder; außerdem lassen sich **keine Formularfelder mehr anlegen
+> oder löschen**. Eine Änderung würde die erfassten Antworten überschreiben oder von ihrer Frage
+> trennen – obwohl auf ihrer Grundlage bereits Dokumente ausgestellt und versendet wurden. Die
+> betroffenen Felder sind ausgegraut und mit einem Schloss markiert, oben erscheint ein Hinweis
+> mit der Anzahl der Antworten.
+>
+> **Frei änderbar bleiben** Wortlaut, Überschrift, Einleitungs- und Dokument-Texte, Optionen,
+> Briefpapier, Dateiname und Benachrichtigungen – sie ändern nicht, was die Daten bedeuten.
+>
+> **Die Quelldatei bleibt austauschbar**, aber nur gegen eine mit **exakt denselben Spalten**.
+> Genau so werden Teilnehmer mitten im Durchlauf nachgemeldet oder Daten korrigiert: den
+> aktuellen Export hochladen und **Import ausführen**. Weichen die Spalten ab, wird das
+> Speichern mit Nennung der Unterschiede abgelehnt.
+>
+> **Zwei Wege, eine gesperrte Einstellung doch zu ändern:**
+> 1. Für den **nächsten Durchlauf** eine **Kopie** des Workflows anlegen (Workflow-Liste →
+>    Kopieren) und dort anpassen. Die Kopie startet unveröffentlicht, ohne Quelldatei und ohne
+>    Teilnehmer – die Formularfelder und Dokument-Texte kommen mit.
+> 2. **Noch im laufenden Durchlauf:** Abschnitt **„Zurücksetzen"** ganz unten in der
+>    Bearbeitungsmaske aufklappen → **„Alle N Teilnehmer zurücksetzen"**. Das verwirft
+>    **sämtliche erfassten Antworten** und macht die bereits ausgestellten Dokumente ungültig;
+>    danach sind die Einstellungen wieder frei. Erhalten bleiben die importierten Daten, die
+>    Links der Teilnehmer und die bisherigen PDF-Dateien (sie werden beim erneuten Absenden
+>    überschrieben). Anschließend **Import erneut ausführen**, um die Originaldaten zu laden.
+
 ### 3 b‑1. Formularfelder  *(Abschnitt „Formular & Formularfelder" in „Bearbeiten")*
 
 Im Abschnitt **Formularfelder** mit **„Neu"** ein Feld anlegen, mit **„Bearbeiten"** im Dialog
@@ -207,8 +238,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
   der Quellspalte,
 - **Speicherfeld:** die **Quellspalte**, in die der Wert geschrieben wird –
   fließt in Export und PDF-Tokens. Bei Eingabefeldern sinnvollerweise gesetzt (ohne
-  Speicherfeld wird die Antwort nicht gespeichert); bei **„Erklärung"** entfällt es,
-
+  Speicherfeld wird die Antwort nicht gespeichert); bei **„Erklärung"** entfällt es.
+  **Sobald Antworten vorliegen, ist es gesperrt** – ebenso das Anlegen und Löschen von
+  Formularfeldern (siehe „Gesperrte Einstellungen" in 3 b),
 - **Pflichtfeld:** muss im Formular ausgefüllt werden,
 - **Mit Wert aus den Daten vorbelegen:** das Feld startet mit dem gespeicherten Wert
   (aus der Quelldatei bzw. einer früheren Antwort) und bleibt **editierbar** –
@@ -237,7 +269,7 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 - **Erklärung**: ein **statischer Text-Absatz** – **kein** Eingabefeld und **ohne**
   Speicherfeld. Der Text wird im **Dokument-Text** des Felds eingegeben, erscheint im
   Formular als **Fließtext** und wird ins Dokument übernommen – dort, wo `##text_all##`
-  bzw. `##text_*##` steht (siehe Abschnitt 3 b-3).
+  bzw. `##text_*##` steht (siehe Abschnitt 3 b‑3).
 - **Aktuelle Zeit**: wird beim Absenden **automatisch** mit dem aktuellen Datum gefüllt
   (kein Eingabefeld). Mit **„Feld im Formular ausblenden"** erscheint es gar nicht im
   Formular; „Pflichtfeld" entfällt. Ideal als Datums­quelle für die Unterschriftszeile.
@@ -265,7 +297,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > auch nicht rechnerisch weiterverwenden.
 >
 > Die Prüfung meldet sich außerdem beim Bearbeiten des Workflows, falls die Quelldatei später
-> gegen eine mit anderer Formatierung getauscht wird.
+> gegen eine mit anderer Formatierung getauscht wird. Liegen bereits Antworten vor, wird ein
+> Tausch gegen eine Datei mit **anderen Spalten** nicht nur gemeldet, sondern **abgelehnt** –
+> mit Nennung der Unterschiede (siehe „Gesperrte Einstellungen" in 3 b).
 >
 > **Anzeige:** Zahlen erscheinen im Formular, in der Live-Vorschau, im PDF und im Export in
 > **deutscher Schreibweise** und identisch – so, wie sie in der Quelldatei formatiert sind
@@ -356,13 +390,25 @@ gleichwertig unterstützt; die Regel-Variante ist für einfache Fälle transpare
 
 ### 3 c. Import
 **Workflow → Übersicht** → beim Workflow **„Import ausführen"**.
-Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen mit **Status 0**.
+Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
+**„Importiert"**.
+
+> **Der Import läuft immer** – auch dann, wenn die Quelldatei unverändert ist. Genau das ist
+> der Weg, die ursprünglichen Quelldaten nach einem Zurücksetzen wieder einzulesen. Die
+> Prüfsumme der Datei wird weiterhin gepflegt und treibt unverändert den Hinweis
+> „Quelldatei geändert – Import nötig".
+>
+> **Bereits beantwortete Teilnehmer bleiben vollständig unangetastet** (nur ihre Zeilennummer
+> für die Export-Sortierung wird nachgeführt) – ihre Daten sind die Grundlage eines bereits
+> ausgestellten Dokuments. Die Meldung nach dem Import weist sie eigens aus, z. B.
+> „Import: 3 neu hinzugefügt, 12 aktualisiert, 5 unverändert (bereits beantwortet)".
+> Ein zuvor zurückgesetzter Teilnehmer zählt nicht dazu und wird frisch eingelesen.
 
 ### 3 d. Einladungen senden
 **Übersicht → „Einladungen senden"** → pro Person wird eine Einladungsmail mit individuellem
-Link **zum Versand eingereiht**. Der Status wechselt **erst nach dem tatsächlichen Versand** auf
-**1 (eingeladen)**; ein **fehlgeschlagener** Versand lässt den Status auf **0** und wird in der
-Übersicht als **„Versandfehler"** angezeigt.
+Link **zum Versand eingereiht**. Der Schritt wechselt **erst nach dem tatsächlichen Versand**
+auf **„Eingeladen"**; ein **fehlgeschlagener** Versand lässt ihn auf **„Importiert"** und wird
+in der Übersicht als **„Versandfehler"** angezeigt.
 *(Es muss also ein Worker/Cron laufen, damit die Mail rausgeht **und** der Status umspringt – Abschnitt 6.)*
 
 ---
@@ -382,13 +428,15 @@ Der Trainer öffnet den Link aus der Einladungsmail (`…/workflow-formular/<tok
    *Unterschrift benötigt* aktiv ist; „Unterschrift löschen" korrigiert,
 4. klickt **„Absenden"** → Bestätigungsseite „Vielen Dank…".
 
-Folge: Status → **2**; das **PDF** wird erzeugt und sicher gespeichert; eine
+Folge: Schritt → **„Beantwortet"**; das **PDF** wird erzeugt und sicher gespeichert; eine
 **Ergebnis-Mail mit PDF-Anhang** wird eingereiht. Ein bereits beantworteter Link
-zeigt „bereits übermittelt".
+zeigt „bereits übermittelt" – bis der Schritt des Teilnehmers zurückgesetzt wird
+(siehe 5 a), dann ist derselbe Link wieder gültig.
 
 ### 4 b. Ohne Mail an den Link kommen (zum Testen)
-**Workflows → (Workflow) → Einträge → (Eintrag öffnen):** beim Feld **„Token"** wird direkt
-der **fertige Formular-Link** angezeigt (zum Kopieren). Die URL ist immer
+**Workflows → (Workflow) → Einträge → (Eintrag öffnen):** unter dem Feld **„Token"** steht der
+**fertige Formular-Link**. Ein **Klick darauf markiert ihn vollständig und kopiert ihn** in die
+Zwischenablage (kurze Bestätigung „✓ kopiert"). Die URL ist immer
 `<URL deiner Formularseite>/<Token>` – also der **Alias deiner Formularseite** (nicht
 zwangsläufig `/workflow/…`) plus Token, **ohne** abschließenden Slash. Einfach den
 angezeigten Link öffnen.
@@ -406,12 +454,15 @@ angezeigten Link öffnen.
 - Zähler **eingegangen / offen / gesamt**. Ist die Quelldatei geladen, aber **noch nicht
   importiert** (0 Antworten), erscheint ein Hinweis. Nicht ausführbare Workflows (fehlende
   oder unpassende Quelldatei) sind mit Badge markiert und ihre Aktionen gesperrt.
-- die **Liste der ausstehenden Personen** – mit Name/Vorname (falls vorhanden), **je Spalte
+- die Liste **„Offene Vorgänge"** – mit Name/Vorname (falls vorhanden), **je Spalte
   sortierbar**, **Checkbox je Zeile**, „Alle"/„Alle aufheben" und je Schritt einem Auswahl-Button.
+  Sie zeigt **alle Teilnehmer, die den letzten Schritt nicht fehlerfrei erreicht haben** – also
+  auch solche mit Zustellproblem und solche, deren Schritt zurückgesetzt wurde. Damit deckt sie
+  sich mit dem Zähler „offen".
 - **„E-Mails senden"** öffnet einen Dialog: **Automatisch** (Adressaten nach Status) oder
   **Manuelle Auswahl** (die markierten Personen), darunter **„Einladungen senden"** bzw.
   **„Erinnerungen senden"** (mit Anzahl) und einem **Bestätigungsschritt** mit der konkreten
-  Empfängerliste. Einladungen gehen an Status 0, Erinnerungen an Status 1.
+  Empfängerliste. Einladungen gehen an Teilnehmer im Schritt „Importiert", Erinnerungen an „Eingeladen".
 - **„Export (XLSX)" / „Export (CSV)"** → die **Quellspalten in Originalreihenfolge**,
   gefüllt mit den aktuellen Daten (inkl. der gespeicherten Antwortwerte). Auch die **Zeilen**
   stehen in der Reihenfolge der Quelldatei, der Export lässt sich also direkt dagegen
@@ -423,6 +474,29 @@ angezeigten Link öffnen.
 - **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
   betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein
   späterer erfolgreicher Versand räumt die Markierung automatisch wieder ab.
+
+### 5 a. Einen einzelnen Teilnehmer erneut antworten lassen
+
+Kommt jemand nach dem Absenden und meldet einen Fehler, muss der Vorgang nicht neu aufgesetzt
+werden: **Workflows → (Workflow) → Einträge → (Eintrag bearbeiten)** → Feld **„Schritt"**
+(Auswahlfeld) auf **„Importiert"** oder **„Eingeladen"** zurückstellen → **Speichern**.
+
+Was dabei passiert:
+
+- Antwortzeitpunkt und Bestätigungsstatus werden mitgeleert. Ohne das würde der Eintrag intern
+  weiterhin als beantwortet gelten – die automatische Nachbearbeitung bzw. „Bestätigung neu
+  senden" würde die **alte** Bestätigung erneut verschicken.
+- Der Teilnehmer erreicht sein Formular über **seinen unveränderten Link** wieder; eine neue
+  Einladung ist nicht nötig (schadet aber auch nicht).
+- Die **erfassten Daten bleiben erhalten** und füllen das Formular vor. Werden stattdessen die
+  **Originalwerte aus der Quelldatei** gebraucht, danach **Import ausführen** – zurückgesetzte
+  Teilnehmer werden dabei wieder frisch eingelesen.
+- Das bisherige PDF bleibt zunächst liegen und wird beim erneuten Absenden überschrieben.
+- Der Teilnehmer taucht sofort wieder in **„Offene Vorgänge"** auf.
+
+> Sollen **alle** Teilnehmer zurückgesetzt werden – etwa um eine gesperrte Quell-Einstellung zu
+> ändern –, führt der Weg über den Abschnitt **„Zurücksetzen"** in der Bearbeitungsmaske des
+> Workflows (siehe 3 b), nicht über die Einträge einzeln.
 
 ---
 
@@ -458,11 +532,11 @@ Web-Roots, nur über die Backend-Routen abrufbar).
 
 1. [ ] Quelldatei hochladen (3 a)
 2. [ ] Workflow anlegen & konfigurieren (3 b) → **Speichern**
-3. [ ] **Import ausführen** → Einträge mit Status 0 (3 c)
-4. [ ] **Einladungen senden** → Status 1 (3 d)
+3. [ ] **Import ausführen** → Einträge im Schritt „Importiert" (3 c)
+4. [ ] **Einladungen senden** → Schritt „Eingeladen" (3 d)
 5. [ ] Worker/Cron → **Posteingang**: Einladung mit Link (6)
 6. [ ] Link öffnen → Daten prüfen → Option wählen → unterschreiben → **Absenden** (4)
-7. [ ] Eintrag steht auf Status 2; PDF unter `var/workflow_pdfs/…`
+7. [ ] Eintrag steht im Schritt „Beantwortet"; PDF unter `var/workflow_pdfs/…`
 8. [ ] Worker/Cron → **Posteingang**: Ergebnis-Mail **mit PDF-Anhang**
 9. [ ] **Übersicht**: Zähler stimmen; **Export** + **PDFs-ZIP** herunterladen
 10. [ ] **Erinnerung senden** → nur offene Personen erhalten eine Mail

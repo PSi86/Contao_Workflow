@@ -10,7 +10,7 @@ Ablage, Versand über das Notification Center und eine Admin-Übersicht mit Expo
 > Datenfeldern, und **dieselben Platzhalter** gelten überall (DB/Export, PDF, E-Mail).
 >
 > Alle Änderungen sind im **[CHANGELOG.md](CHANGELOG.md)** dokumentiert (zuletzt
-> 2.0.0 – Umbenennung Trainer→Workflow inkl. Paket/Namespace/DB-Tabellen).
+> 3.0.0 – Schutz bereits erfasster Antworten vor nachträglichen Konfigurationsänderungen).
 
 ## Anforderungen
 - Contao 5.3+ / PHP 8.1+
@@ -81,14 +81,22 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    am Workflow auswählen.
 3. **Workflow** (Backend → Workflow → Workflows → **Bearbeiten**).
    Die *gesamte* Konfiguration liegt auf einer Seite, in Abschnitte gegliedert
-   (in der Liste gibt es pro Zeile nur *Bearbeiten* = Konfiguration und *Einträge* = Antworten):
-   - **Allgemein:** Titel, *Veröffentlicht*
+   (in der Liste gibt es pro Zeile *Bearbeiten* = Konfiguration, *Einträge* = Antworten und
+   *Konfiguration herunterladen* = JSON-Export):
+   - **Allgemein:** Titel, *Veröffentlicht* – Letzteres ist Voraussetzung für den Versand:
+     ein unveröffentlichter Workflow verschickt nichts, weil die Links den Empfängern sonst
+     als „ungültig“ angezeigt würden.
    - **Quelldaten:** Quelldatei, Tabellenblatt, Kopfzeile, E-Mail-Spalte. Beim Import werden
      Datums- sowie Währungs-/Zahlenzellen **deutsch lokalisiert** übernommen (z. B. `17.12.1955`,
      eine „Währung“-Zelle `3000` → `3.000,00 €`). Eine Zelle im Format „Standard“ behält ihre
      eigenen Stellen – `3000` bleibt `3000`, `3000.5` wird zu `3000,5` (so zeigt deutsches Excel
      sie auch). Formatiert wird **genau einmal**, beim Import bzw. beim Speichern einer Antwort;
      Formular, Live-Vorschau, PDF und Export zeigen danach denselben Wert.
+     **Sobald der erste Teilnehmer geantwortet hat**, sind Tabellenblatt, Kopfzeile und
+     E-Mail-Spalte gesperrt – eine Änderung würde die erfassten Antworten von den Daten
+     trennen, auf deren Grundlage bereits Dokumente ausgestellt wurden. Die **Quelldatei
+     selbst bleibt austauschbar**, aber nur gegen eine mit exakt denselben Spalten; genau so
+     werden Teilnehmer mitten im Durchlauf nachgemeldet oder Daten korrigiert.
    - **Inhalt (Formular & Dokument):** **Überschrift** und optionaler **Einleitungstext** –
      erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt;
      der Einleitungstext zusätzlich mit **Textauszeichnung** `[b]`/`[i]`/`[u]`, die Überschrift ohne).
@@ -96,7 +104,8 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
      eingebetteten **Formularfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
      pro Feld **Überschrift**, Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen,
-     **Aktuelle Zeit**, **Erklärung**), Speicherfeld (Quellspalte), *Pflichtfeld*,
+     **Aktuelle Zeit**, **Erklärung**), Speicherfeld (Quellspalte – **gesperrt**, sobald
+     Antworten vorliegen, ebenso das Anlegen und Löschen von Feldern), *Pflichtfeld*,
      *Mit Wert aus den Daten vorbelegen* (editierbar vorausgefüllt) und *Schreibgeschützt*
      (reines Anzeige-Feld). Optional eine **Beschreibung** (erscheint **nur im Formular**
      unter der Überschrift, nie im Dokument; Platzhalter, `{{Insert-Tags}}` und **Textauszeichnung**
@@ -134,21 +143,29 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
        Überschrift bleibt ohne Auszeichnung. Nur Vorlagentexte werden formatiert,
        importierte Daten nicht.
    - **Benachrichtigungen:** die drei Notifications zuordnen.
+   - **Zurücksetzen** (zugeklappt, am Ende): **Alle Teilnehmer zurücksetzen** – verwirft
+     sämtliche erfassten Antworten und gibt die gesperrten Quell-Einstellungen wieder frei.
+     Erhalten bleiben die importierten Daten, die Links der Teilnehmer und die bisherigen
+     Dokumente. Der Weg, eine gesperrte Einstellung **noch im laufenden Durchlauf** zu ändern;
+     für den nächsten Durchlauf ist eine **Kopie** des Workflows vorgesehen.
 
 ## Verifikation (End-to-End)
 1. `contao:migrate` läuft fehlerfrei; Backend zeigt „Übersicht“ und „Workflows“.
-2. In der Übersicht **Import ausführen** → Einträge mit Status 0, Token, E-Mail, Daten.
+2. In der Übersicht **Import ausführen** → Einträge mit Schritt „Importiert“, Token, E-Mail,
+   Daten. Der Import läuft **immer**, auch bei unveränderter Quelldatei; bereits beantwortete
+   Teilnehmer bleiben dabei vollständig unangetastet und werden in der Meldung ausgewiesen.
 3. **E-Mails senden → Automatisch → Einladungen senden** (Empfänger bestätigen) → Mail
-   (Mailpit) mit `##link##`; Status → 1, `sentAt` gesetzt.
+   (Mailpit) mit `##link##`; Schritt → „Eingeladen“, `sentAt` gesetzt.
 4. Link öffnen → Formular vorausgefüllt; Antwortfelder ausfüllen + (falls aktiv)
    unterschreiben → absenden.
-5. Eintrag: Status 2, Antwortwerte (in den Speicherfeldern) und ggf. `signature`
+5. Eintrag: Schritt „Beantwortet“, Antwortwerte (in den Speicherfeldern) und ggf. `signature`
    gesetzt; PDF unter `var/workflow_pdfs/<id>/<dateiname>.pdf` (Name aus `pdfFileName`);
    Ergebnis-Mail mit PDF-Anhang.
-6. Übersicht: Zähler (eingegangen/offen) + die sortierbare, auswählbare Liste der
-   ausstehenden Antworten.
+6. Übersicht: Zähler (eingegangen/offen) + die sortierbare, auswählbare Liste
+   **„Offene Vorgänge“** – sie zeigt alle Teilnehmer, die den letzten Schritt nicht
+   fehlerfrei erreicht haben, und deckt sich damit mit dem Zähler „offen“.
 7. **Export (XLSX/CSV)** lädt herunter; **PDFs herunterladen** liefert ZIP.
-8. **E-Mails senden → Erinnerungen senden** → nur Einträge mit Status 1 erhalten eine Erinnerung.
+8. **E-Mails senden → Erinnerungen senden** → nur Einträge im Schritt „Eingeladen" erhalten eine Erinnerung.
 
 ## Hinweise
 - **PDF-Vorlagen (Master/Body) erstellen** – Syntax, Variablen und mPDF-Regeln:
@@ -159,7 +176,16 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
   `tl_message_queue`). Der Klick reiht die Mail nur **ein**; der Teilnehmer-Status wechselt
   **erst nach dem tatsächlichen Versand** auf „eingeladen", ein Fehlversand wird als
   **„Versandfehler"** angezeigt. Ohne laufenden Worker/Cron (`contao:cron` bzw.
-  `messenger:consume`) wird nichts zugestellt – und der Status bleibt dann auf **0**.
+  `messenger:consume`) wird nichts zugestellt – und der Schritt bleibt dann auf
+  **„Importiert"**.
+- **Einen einzelnen Teilnehmer erneut antworten lassen:** im Eintrag den **Schritt**
+  (Auswahlfeld) auf „Importiert" oder „Eingeladen" zurückstellen. Antwortzeitpunkt und
+  Bestätigungsstatus werden dabei mitgeleert, sodass der Teilnehmer sein Formular über
+  **seinen unveränderten Link** erneut ausfüllen kann; das alte PDF wird beim erneuten
+  Absenden überschrieben. Die erfassten Daten bleiben als Vorbelegung erhalten – wer die
+  Originalwerte zurückhaben will, führt danach den Import erneut aus.
+- Im Eintrag steht unter dem Token der **persönliche Formular-Link**: ein Klick markiert ihn
+  vollständig und kopiert ihn in die Zwischenablage.
 - Generierte PDFs liegen unter `%kernel.project_dir%/var/workflow_pdfs/` (nicht
   öffentlich) und werden nur über die authentifizierten Backend-Routen gestreamt.
 - **Quelldateien & Datenschutz:** Die hochgeladene Quelltabelle enthält personenbezogene
