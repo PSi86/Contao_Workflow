@@ -33,6 +33,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   ausgeblendet.
 
 ### Behoben
+- **Gesperrte Auswahlfelder ließen sich trotz Sperre noch bedienen.** Gespeichert wurde die
+  Änderung zwar nie, sie verschwand aber erst beim Speichern kommentarlos. Ursache waren zwei
+  Schichten oberhalb des Servers: das Chosen-Suchfeld ersetzt das Auswahlfeld durch eigenes
+  Markup, und die typabhängige Feldsteuerung der Formularfelder schaltete beim Umschalten alle
+  sichtbaren Felder wieder aktiv. Beide berücksichtigen die Sperre jetzt.
 - **Der Hinweis auf mehrdeutige Platzhalter erschien doppelt.** Wurde der Import aus der
   Bearbeitungsmaske heraus angestoßen, meldeten ihn sowohl der Import als auch die Maske selbst
   — inhaltlich identisch, nur anders formuliert. Der Import meldet ihn jetzt nur noch dann,
