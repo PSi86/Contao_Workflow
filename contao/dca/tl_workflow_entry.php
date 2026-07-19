@@ -78,11 +78,18 @@ $GLOBALS['TL_DCA']['tl_workflow_entry'] = [
             'eval'      => ['doNotCopy' => true, 'readonly' => true, 'tl_class' => 'w50'],
             'sql'       => "varchar(64) NOT NULL default ''",
         ],
+        // Setting this back below "responded" reopens the form for the participant; the save
+        // callback then also clears the response bookkeeping (see EntryListener). A select
+        // rather than a free number field, so no unreachable status can be typed in.
+        //
+        // isAssociative is required: the options are keyed by the status integer starting at
+        // 0, which Contao would otherwise take for a plain value list and store the label
+        // instead of the key (ArrayUtil::isAssoc() is false for a gapless 0-based array).
         'status' => [
             'exclude'   => true,
             'filter'    => true,
-            'inputType' => 'text',
-            'eval'      => ['rgxp' => 'natural', 'tl_class' => 'w50'],
+            'inputType' => 'select',
+            'eval'      => ['isAssociative' => true, 'includeBlankOption' => false, 'tl_class' => 'w50'],
             'sql'       => "int(10) unsigned NOT NULL default 0",
         ],
         'email' => [

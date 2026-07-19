@@ -114,16 +114,15 @@ class WorkflowActionController
         try {
             $result = $this->importer->import($workflow);
 
-            if ($result['skipped']) {
-                Message::addInfo('Quelldatei unverändert – kein erneuter Import nötig.');
-            } else {
-                Message::addConfirmation(sprintf(
-                    'Import: %d neu hinzugefügt, %d aktualisiert (gesamt %d).',
-                    $result['inserted'],
-                    $result['updated'],
-                    $result['total'],
-                ));
-            }
+            Message::addConfirmation(sprintf(
+                'Import: %d neu hinzugefügt, %d aktualisiert%s (gesamt %d).',
+                $result['inserted'],
+                $result['updated'],
+                $result['protected'] > 0
+                    ? sprintf(', %d unverändert (bereits beantwortet)', $result['protected'])
+                    : '',
+                $result['total'],
+            ));
 
             $this->reportSlugCollisions($result['collisions']);
         } catch (\Throwable $e) {

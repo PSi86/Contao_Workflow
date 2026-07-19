@@ -15,10 +15,14 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
 /**
  * Imports the configured sheet of a workflow's source file into tl_workflow_entry.
  *
- * The import is idempotent: rows are matched to existing entries by e-mail and
- * UPDATED in place (never duplicated). Already answered entries keep their
- * response (status, signature and the stored answer columns). A re-import of an
- * unchanged file is skipped (checksum comparison); pass $force to override.
+ * The import is idempotent: rows are matched to existing entries by e-mail and UPDATED in
+ * place (never duplicated). Entries that have already answered are left alone entirely —
+ * their data backs an already issued PDF. Clearing respondedAt (a manual status reset)
+ * releases such an entry for a full re-import.
+ *
+ * It always runs, even when the source file is unchanged: re-importing is how the original
+ * source values are restored after a reset. The file checksum is still recorded, but only to
+ * drive the "source changed, re-import needed" hint (see WorkflowValidator::isReimportNeeded).
  */
 class SpreadsheetImporter
 {
@@ -33,11 +37,11 @@ class SpreadsheetImporter
     }
 
     /**
-     * @return array{skipped: bool, inserted: int, updated: int, total: int, collisions: array<string, array<int, string>>}
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
-    public function import(WorkflowModel $workflow, bool $force = false): array
+    public function import(WorkflowModel $workflow): array
     {
         $this->framework->initialize();
 
@@ -57,15 +61,8 @@ class SpreadsheetImporter
 
         $existing = $this->indexExistingByEmail((int) $workflow->id);
 
-        // Skip a redundant re-import of an unchanged file (but always run the
-        // very first import, even if a stale hash happens to match).
-        if (!$force && [] !== $existing && $hash === (string) $workflow->sourceHash) {
-            return ['skipped' => true, 'inserted' => 0, 'updated' => 0, 'total' => \count($existing), 'collisions' => $collisions];
-        }
-
         $emailHeader = $this->resolveEmailHeader($workflow, $headers);
         $finalStatus = $workflow->getFinalStatus();
-        $outputColumns = $workflow->getStorageFields();
 
         $sheetName = (string) $workflow->sourceSheet;
         $headerRow = max(1, (int) $workflow->headerRow);
@@ -80,6 +77,7 @@ class SpreadsheetImporter
         $highestRow = $sheet->getHighestDataRow();
         $inserted = 0;
         $updated = 0;
+        $protected = 0;
         $seen = [];
 
         for ($r = $headerRow + 1; $r <= $highestRow; ++$r) {
@@ -107,14 +105,18 @@ class SpreadsheetImporter
             if (isset($existing[$key])) {
                 $entry = $existing[$key];
 
-                // Preserve response-derived output columns of answered entries.
-                if ((int) $entry->status >= $finalStatus && $finalStatus > 0) {
-                    $old = $entry->getData();
-                    foreach ($outputColumns as $col) {
-                        if (isset($old[$col])) {
-                            $data[$col] = $old[$col];
-                        }
-                    }
+                // An answered entry is frozen: its data is what the already issued PDF was
+                // built from, so a later source-file edit must not rewrite it. The row number
+                // still follows the current file, otherwise the export order drifts apart.
+                // respondedAt is the honest marker here — unlike the status it cannot be
+                // invalidated by editing the workflow's step list. The status is kept as a
+                // fallback for entries predating respondedAt.
+                if ((int) $entry->respondedAt > 0 || ($finalStatus > 0 && (int) $entry->status >= $finalStatus)) {
+                    $entry->sourceRow = $r;
+                    $entry->save();
+                    ++$protected;
+
+                    continue;
                 }
 
                 $entry->email = $email;
@@ -144,9 +146,9 @@ class SpreadsheetImporter
         $workflow->save();
 
         return [
-            'skipped'    => false,
             'inserted'   => $inserted,
             'updated'    => $updated,
+            'protected'  => $protected,
             'total'      => \count($existing) + $inserted,
             'collisions' => $collisions,
         ];

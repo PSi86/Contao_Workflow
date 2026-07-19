@@ -6,6 +6,40 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Zurückgesetzte Teilnehmer fehlten in „Offene Vorgänge".** Wurde der Status eines
+  Teilnehmers im Backend zurückgesetzt, damit er das Formular erneut ausfüllen darf,
+  verschwand er aus der Liste — und zwar für den gesamten Wiederholungs-Vorgang. Ursache: die
+  Liste prüfte nur den Zustellungs-/Bestätigungszustand und **gar nicht den Status**, und der
+  Zeitstempel der bereits erzeugten Bestätigung bleibt beim Zurücksetzen erhalten. Die Liste
+  zeigt jetzt wie erwartet **alle Teilnehmer, die den letzten Schritt nicht fehlerfrei
+  erreicht haben**. Damit stimmt sie auch wieder mit dem Zähler „offen" überein.
+
+### Geändert
+- **Status-Reset räumt jetzt vollständig auf.** Wird der Status eines Eintrags unter
+  „Beantwortet" zurückgesetzt, werden zusätzlich Antwortzeitpunkt und Bestätigungsstatus
+  geleert. Vorher galt der Eintrag intern weiterhin als beantwortet: der Nachbearbeitungs-Cron
+  bzw. die Aktion „Bestätigung neu senden" hätten die **alte** Bestätigung erneut verschickt.
+  Die erfassten Antworten selbst bleiben als Vorbelegung des Formulars erhalten, ebenso Token
+  und damit der bereits versendete Link.
+- **Status ist jetzt ein Auswahlfeld** (mit den Schritt-Bezeichnungen des Workflows) statt
+  eines freien Zahlenfelds — es lässt sich kein Status mehr eintragen, den der Workflow gar
+  nicht kennt.
+- **Die Einträge-Liste zeigt die Schritt-Bezeichnung statt der Rohzahl** — also „Eingeladen"
+  statt „[Status 1]". Bezeichnung und Auswahlfeld stammen jetzt aus derselben Quelle.
+- **Beantwortete Teilnehmer werden beim Import nicht mehr überschrieben.** Bisher wurden nur
+  die Antwortspalten geschützt, alle übrigen Quellspalten eines abgeschlossenen Teilnehmers
+  aber überschrieben — obwohl auf deren Basis bereits ein PDF ausgestellt und versendet wurde.
+  Solche Einträge bleiben jetzt vollständig unangetastet (nur die Zeilennummer für die
+  Export-Sortierung wird nachgeführt), und die Import-Meldung weist sie eigens aus. Maßgeblich
+  ist der Antwortzeitpunkt statt des Status, der sich durch eine geänderte Schrittliste
+  nachträglich verschieben konnte. Ein zurückgesetzter Teilnehmer wird wieder frisch importiert.
+- **Import läuft immer, auch bei unveränderter Quelldatei.** Das erneute Einlesen ist der Weg,
+  die ursprünglichen Quelldaten wiederherzustellen; der bisherige Abbruch per Prüfsumme stand
+  dem im Weg. Die Prüfsumme wird weiterhin gepflegt und treibt unverändert den Hinweis
+  „Quelldatei geändert – Import nötig". Die Option `--force` von `workflow:import` entfällt
+  damit ersatzlos.
+
 ## [2.14.0] – 2026-07-17
 
 ### Hinzugefügt
