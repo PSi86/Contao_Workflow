@@ -15,6 +15,13 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
   Zahlenfeld tragen (z. B. gemischte Nachkommastellen), behält das Feld sein bisheriges Format
   und der Import benennt das Problem, statt still weiterzurechnen.
 
+- **Ein Formularfeld auf „Zahl" umzustellen warnt jetzt sofort**, wenn die Speicherspalte das
+  nicht hergibt (etwa weil sie in Excel als Text formatiert ist). Bisher meldete sich das nur
+  beim Speichern der Speicherfeld-Auswahl — und die ist gesperrt, sobald Antworten vorliegen,
+  sodass die Warnung ausblieb. Die Meldung blockiert das Speichern **nicht**: Bei gesperrter
+  Spalte hilft nur ein anderer Feldtyp oder eine Änderung in der Quelldatei, ein Speicherverbot
+  würde nur den Weg dorthin versperren.
+
 ### Behoben
 - **Zahlenfelder verloren die Nachkommastellen.** Aus `11,56` wurde `12`, und `0` bzw. `100`
   wurden nicht zu `0,00` bzw. `100,00` ergänzt. Ursache war ein fehlender Formatschnappschuss

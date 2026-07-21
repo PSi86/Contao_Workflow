@@ -103,7 +103,11 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                     .'"currentTime":["storageField","hideInForm","pdfStatement"],'
                     .'"explanation":["pdfStatement"]}}',
             ],
-            'sql'       => "varchar(16) NOT NULL default 'text'",
+            // Warns when the chosen type does not fit the storage column. The strict check
+            // sits on storageField, but that field is locked once answers exist and then
+            // never posted – without this the mismatch would only surface at import time.
+            'save_callback' => [[AnswerConfigListener::class, 'warnOnTypeMismatch']],
+            'sql'           => "varchar(16) NOT NULL default 'text'",
         ],
         // Not "mandatory": the "Erklärung" type hides this field (it stores nothing),
         // and Contao would otherwise fail validation on the hidden/disabled field.
