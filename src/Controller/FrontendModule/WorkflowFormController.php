@@ -281,9 +281,11 @@ class WorkflowFormController extends AbstractFrontendModuleController
             return null;
         }
 
-        $format = $question->getNumberFormat()
-            ?? $this->valueParser->inferFormat($storedValue)
-            ?? NumberFormat::number(0);
+        // Same rule as WorkflowFormView::numberFormat(): the field's own snapshot, otherwise
+        // "General" – which keeps the decimals the entered value carries. Guessing from this
+        // participant's stored value made the field behave differently per participant, and
+        // falling back to integers silently rounded away what was typed.
+        $format = $question->getNumberFormat() ?? NumberFormat::general();
 
         return $this->valueFormatter->format($number, $format);
     }

@@ -55,7 +55,12 @@
      * Renders a number the way ValueFormatter does: grouping ".", decimal ",".
      */
     function formatNumber(value, decimals, grouping) {
-        var fixed = Math.abs(value).toFixed(decimals);
+        // decimals === null is "General": keep the decimals the value carries instead of
+        // forcing a count. Mirrors ValueFormatter, where a null decimals prints the value
+        // as-is – forcing 0 here would round 11,56 to 12.
+        var fixed = null === decimals || undefined === decimals
+            ? String(Math.abs(value))
+            : Math.abs(value).toFixed(decimals);
         var parts = fixed.split('.');
         var integer = parts[0];
 
@@ -84,9 +89,14 @@
             return raw;
         }
 
+        // No data-wf-decimals means "General" – see the template. "|| 0" would have turned a
+        // missing attribute into "no decimals" and silently rounded the input.
+        var raw10 = input.getAttribute('data-wf-decimals');
+        var decimals = null === raw10 || '' === raw10 ? null : parseInt(raw10, 10);
+
         return formatNumber(
             number,
-            parseInt(input.getAttribute('data-wf-decimals'), 10) || 0,
+            isNaN(decimals) ? null : decimals,
             input.getAttribute('data-wf-grouping') === '1'
         );
     }

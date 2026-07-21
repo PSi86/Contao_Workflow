@@ -120,9 +120,13 @@ class WorkflowFormView
      */
     private function numberFormat(QuestionModel $question, string $storedValue): NumberFormat
     {
-        return $question->getNumberFormat()
-            ?? $this->valueParser->inferFormat($storedValue)
-            ?? NumberFormat::number(0);
+        // The snapshot is the only per-FIELD answer; it is refreshed on every import
+        // (SpreadsheetImporter::refreshNumberFormats). Without one, the format used to be
+        // guessed from this one participant's value, which made the same field behave
+        // differently per participant – 2 decimals for "3.000,00 €", none for an empty or
+        // round value – and then fall back to integers, silently dropping what was typed.
+        // "General" keeps whatever decimals the value carries and forces nothing.
+        return $question->getNumberFormat() ?? NumberFormat::general();
     }
 
     /**

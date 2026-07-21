@@ -63,6 +63,13 @@ class ImportCommand extends Command
             $result['total'],
         ));
 
+        if ([] !== $result['formatProblems']) {
+            $io->warning(
+                "Number format not adopted – the affected fields keep their previous format:\n"
+                .implode("\n", $result['formatProblems']),
+            );
+        }
+
         $this->warnCollisions($io, $result['collisions']);
 
         return Command::SUCCESS;

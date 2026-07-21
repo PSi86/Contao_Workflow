@@ -183,6 +183,16 @@ class WorkflowActionController
                 $result['total'],
             ));
 
+            // A number column the import could not adopt the format of: the field keeps its
+            // previous format, which is a silent trap if nobody says so.
+            if ([] !== $result['formatProblems']) {
+                Message::addError(sprintf(
+                    'Zahlenformat nicht übernommen – die betroffenen Felder rechnen weiter mit ihrem '
+                    .'bisherigen Format: %s',
+                    StringUtil::specialchars(implode(' | ', $result['formatProblems'])),
+                ));
+            }
+
             // The edit mask states the very same thing on load, one message per collision
             // group (WorkflowIntegrityListener::warnSlugCollisions) – saying it here as well
             // would duplicate it verbatim. Coming from the overview that listener never runs,
