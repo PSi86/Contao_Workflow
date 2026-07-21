@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\DataContainer;
 use Contao\Input;
+use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
 use Psimandl\WorkflowBundle\Excel\ColumnCompatibility;
@@ -477,6 +478,53 @@ class AnswerConfigListener
      * Runs as save_callback on storageField: "type" sits before it in the palette, so its
      * posted value is already available.
      */
+    /**
+     * Warns – without blocking – when a field is switched to "number" although its storage
+     * column cannot back one.
+     *
+     * The strict check lives on storageField and refuses the save. That is the right
+     * instrument while the column can still be changed. Once answers exist, storageField is
+     * locked and therefore never posted, so that check cannot run: the mismatch would only
+     * show up at the next import. Blocking would be wrong here as well – with the column
+     * locked, the only remedies are a different field type or a change in the source file,
+     * and refusing the save would just trap the user. So this reports and lets the save
+     * through; the import reports it again and keeps the previous format.
+     */
+    public function warnOnTypeMismatch(mixed $value, DataContainer $dc): mixed
+    {
+        // storageField posted means the strict check runs anyway – no second opinion needed.
+        if ('number' !== (string) $value || null !== Input::post('storageField')) {
+            return $value;
+        }
+
+        $question = QuestionModel::findByPk((int) ($dc->id ?? 0));
+        $column = trim((string) ($question->storageField ?? ''));
+        $workflow = null !== $question ? WorkflowModel::findByPk((int) $question->pid) : null;
+
+        if ('' === $column || null === $workflow) {
+            return $value;
+        }
+
+        $container = System::getContainer();
+        $result = $container->get(ColumnCompatibility::class)->checkNumberColumn(
+            $column,
+            $container->get(ColumnFormatAnalyzer::class)->analyze($workflow, $column),
+        );
+
+        if (!$result->isCompatible()) {
+            // ENT_NOQUOTES, not specialchars(): the text lands in the message body, not in an
+            // attribute, so escaping the quotes would print „Spalte &quot;Name&quot;" at the
+            // user. Column names still come from the source file, so the angle brackets and
+            // ampersands do get escaped.
+            Message::addError(sprintf(
+                'Feldtyp „Zahl" passt nicht zur Spalte: %s',
+                htmlspecialchars(implode(' ', $result->problems), ENT_NOQUOTES),
+            ));
+        }
+
+        return $value;
+    }
+
     public function validateNumberColumn(mixed $value, DataContainer $dc): mixed
     {
         $column = trim((string) $value);
