@@ -66,7 +66,13 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
         $req = $q['mandatory'] ? ' required' : '';
         $star = $q['mandatory'] ? ' <span class="tw-required">*</span>' : '';
         // Read-only fields show the stored value and never submit it back.
-        $roInput = $ro ? ' readonly' : '';
+        //
+        // Date fields get "disabled" rather than "readonly": mobile browsers ignore readonly
+        // on <input type="date"> and still open the native picker, so the value looked
+        // editable while the server discarded it (read-only answers are never read from the
+        // request, see WorkflowFormController) – the shown value and the stored one drifted
+        // apart. Choice fields need disabled for the same reason and always have.
+        $roInput = $ro ? ('date' === $q['type'] ? ' disabled' : ' readonly') : '';
         $roChoice = $ro ? ' disabled' : '';
         // Statement hint ("So erscheint dies im Dokument") only when a document
         // text was explicitly configured; ##answer## is substituted live by JS

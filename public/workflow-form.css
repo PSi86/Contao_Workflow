@@ -28,9 +28,17 @@
 .mod_workflow_form textarea,
 .mod_workflow_form select { padding: .5rem; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
 
+/* Read-only fields use "readonly" for text and "disabled" for dates and choices (see
+   mod_workflow_form.html5). Browsers grey disabled controls out on their own and to differing
+   degrees, so the appearance is pinned here – both variants have to look the same. */
 .mod_workflow_form .tw-field--readonly input,
 .mod_workflow_form .tw-field--readonly textarea,
-.mod_workflow_form .tw-field--readonly select { background: #f3f3f3; color: #555; }
+.mod_workflow_form .tw-field--readonly select {
+    background: #f3f3f3;
+    color: #555;
+    opacity: 1;
+    -webkit-text-fill-color: #555; /* iOS greys disabled text out regardless of "color" */
+}
 
 .mod_workflow_form .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
 .mod_workflow_form .tw-option input { margin-right: .4rem; }

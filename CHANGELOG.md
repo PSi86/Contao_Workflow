@@ -6,6 +6,14 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Behoben
+- **Schreibgeschützte Datumsfelder waren auf Mobilgeräten trotzdem änderbar.** Mobile Browser
+  ignorieren die Schreibsperre bei Datumsfeldern und öffnen den Datumswähler dennoch. Gespeichert
+  wurde die Änderung nie – der Server verwirft die Werte gesperrter Felder grundsätzlich –, aber
+  im Formular sah es aus, als wäre die Eingabe übernommen worden, und im Dokument stand
+  anschließend der alte Wert. Solche Felder sind jetzt echt gesperrt, wie die
+  Auswahlfelder es bereits waren.
+
 ## [3.0.2] – 2026-07-21
 
 ### Behoben
