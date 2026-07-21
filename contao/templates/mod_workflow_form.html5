@@ -110,8 +110,14 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
             $numAttr = '';
 
             if ('number' === $q['type'] && null !== $q['numberFormat']) {
+                // decimals === null means "General": as many decimals as the value carries.
+                // Casting that to 0 would have turned "no fixed number of decimals" into
+                // "no decimals at all" and rounded 11,56 to 12 – the attribute is left out
+                // instead, and the script then keeps what was typed.
+                $decimals = $q['numberFormat']['decimals'];
+
                 $numAttr = ' inputmode="decimal" data-wf-number'
-                    .' data-wf-decimals="'.(int) $q['numberFormat']['decimals'].'"'
+                    .(null === $decimals ? '' : ' data-wf-decimals="'.(int) $decimals.'"')
                     .' data-wf-grouping="'.($q['numberFormat']['grouping'] ? '1' : '0').'"';
             }
           ?>

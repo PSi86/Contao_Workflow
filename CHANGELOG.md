@@ -6,7 +6,23 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+### Geändert
+- **Das Zahlenformat einer Spalte wird jetzt beim Import übernommen**, nicht mehr nur beim
+  Speichern des Formularfelds im Backend. Das Format beschreibt die Daten, also folgt es den
+  Daten. Damit verhält sich das **Überschreiben der Quelldatei genauso wie das Auswählen einer
+  neu benannten Datei** mit gleichem Inhalt — bisher wurde das Format nur im zweiten Fall
+  aufgefrischt, weil dabei nebenbei der Workflow gespeichert wurde. Kann eine Spalte kein
+  Zahlenfeld tragen (z. B. gemischte Nachkommastellen), behält das Feld sein bisheriges Format
+  und der Import benennt das Problem, statt still weiterzurechnen.
+
 ### Behoben
+- **Zahlenfelder verloren die Nachkommastellen.** Aus `11,56` wurde `12`, und `0` bzw. `100`
+  wurden nicht zu `0,00` bzw. `100,00` ergänzt. Ursache war ein fehlender Formatschnappschuss
+  am Feld: Er wurde ausschließlich beim Speichern der Speicherfeld-Auswahl geschrieben — und
+  genau die ist gesperrt, sobald Antworten vorliegen. Ohne Schnappschuss wurde das Format aus
+  dem Wert **eines einzelnen Teilnehmers** geraten (wodurch dasselbe Feld je Teilnehmer anders
+  rechnete) und fiel andernfalls auf „ganzzahlig" zurück. Ein unbekanntes Format bedeutet jetzt
+  „so viele Nachkommastellen wie eingegeben" statt „keine".
 - **Schreibgeschützte Datumsfelder waren auf Mobilgeräten trotzdem änderbar.** Mobile Browser
   ignorieren die Schreibsperre bei Datumsfeldern und öffnen den Datumswähler dennoch. Gespeichert
   wurde die Änderung nie – der Server verwirft die Werte gesperrter Felder grundsätzlich –, aber

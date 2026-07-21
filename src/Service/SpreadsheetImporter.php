@@ -7,7 +7,10 @@ namespace Psimandl\WorkflowBundle\Service;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Excel\CellReader;
+use Psimandl\WorkflowBundle\Excel\ColumnCompatibility;
+use Psimandl\WorkflowBundle\Excel\ColumnFormatAnalyzer;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 
@@ -31,12 +34,15 @@ class SpreadsheetImporter
         private readonly SpreadsheetInspector $inspector,
         private readonly PlaceholderResolver $placeholderResolver,
         private readonly CellReader $cellReader,
+        private readonly ColumnFormatAnalyzer $formatAnalyzer,
+        private readonly ColumnCompatibility $columnCompatibility,
+        private readonly Connection $connection,
         private readonly string $projectDir,
     ) {
     }
 
     /**
-     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>}
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
@@ -60,6 +66,14 @@ class SpreadsheetImporter
         // first is reachable via ##data_<slug>##, the rest are reported so the
         // user can disambiguate them in the source file.
         $collisions = $this->placeholderResolver->slugCollisions($headers);
+
+        // The number columns are re-read here, not when the back end field is saved. The
+        // format belongs to the DATA, so it has to be refreshed whenever the data enters the
+        // system – otherwise overwriting the source file in place behaves differently from
+        // picking a newly named file (the latter saves the workflow and thereby happened to
+        // refresh the snapshot), and a workflow whose settings are locked never got a
+        // refreshed format at all.
+        $formatProblems = $this->refreshNumberFormats($workflow, $headers);
 
         $path = $this->resolveSourcePath($workflow);
         $hash = (string) md5_file($path);
@@ -150,14 +164,68 @@ class SpreadsheetImporter
         $workflow->save();
 
         return [
-            'inserted'   => $inserted,
-            'updated'    => $updated,
-            'protected'  => $protected,
-            'total'      => \count($existing) + $inserted,
-            'collisions' => $collisions,
+            'inserted'       => $inserted,
+            'updated'        => $updated,
+            'protected'      => $protected,
+            'total'          => \count($existing) + $inserted,
+            'collisions'     => $collisions,
+            'formatProblems' => $formatProblems,
         ];
     }
 
+
+    /**
+     * Re-reads the Excel format of every "number" question's column and stores it on the
+     * question, so form, live preview, PDF and export all render the value the same way.
+     *
+     * Deliberately here and not only in the back end: the format describes the DATA, so it has
+     * to follow the data. Doing it only in the field's save callback made the result depend on
+     * whether someone happened to save the workflow — and once the source settings are locked
+     * (answers exist), that callback cannot run at all.
+     *
+     * A column that cannot back a number field keeps its previous format and is reported; the
+     * import itself must not fail over a formatting question, the participants' data is the
+     * point of it.
+     *
+     * @param array<int, string> $headers
+     *
+     * @return array<int, string> problems, one per unusable column
+     */
+    private function refreshNumberFormats(WorkflowModel $workflow, array $headers): array
+    {
+        $problems = [];
+
+        foreach ($workflow->getQuestions() as $question) {
+            if (!$question->isNumber()) {
+                continue;
+            }
+
+            $column = trim((string) $question->storageField);
+
+            if ('' === $column || !\in_array($column, $headers, true)) {
+                continue;
+            }
+
+            $result = $this->columnCompatibility->checkNumberColumn(
+                $column,
+                $this->formatAnalyzer->analyze($workflow, $column),
+            );
+
+            if (!$result->isCompatible() || null === $result->format) {
+                $problems[] = sprintf('Feld „%s": %s', (string) $question->label, implode(' ', $result->problems));
+
+                continue;
+            }
+
+            $this->connection->update(
+                'tl_workflow_question',
+                ['numberFormat' => json_encode($result->format->toArray(), JSON_THROW_ON_ERROR)],
+                ['id' => (int) $question->id],
+            );
+        }
+
+        return $problems;
+    }
 
     /**
      * Refuses the import when the configured sheet is not in the file, naming the sheets that
