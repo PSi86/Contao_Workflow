@@ -6,6 +6,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.1.0] – 2026-07-21
+
+Schwerpunkt: Zahlen- und Datumsfelder im Formular. Die Nachkommastellen gingen verloren, und
+schreibgeschützte Datumsfelder waren mobil trotzdem änderbar.
+
 ### Geändert
 - **Das Zahlenformat einer Spalte wird jetzt beim Import übernommen**, nicht mehr nur beim
   Speichern des Formularfelds im Backend. Das Format beschreibt die Daten, also folgt es den

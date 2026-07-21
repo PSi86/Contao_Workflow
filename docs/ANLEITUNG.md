@@ -281,8 +281,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 >
 > Ein Zahlenfeld zeigt den gespeicherten Wert, lässt ihn bearbeiten und schreibt ihn zurück.
 > Das funktioniert nur, wenn sich die Formatierung der Spalte **reproduzieren** lässt – sonst
-> würde der Wert beim Zurückschreiben still verändert. Beim **Speichern des Feldes** wird die
-> gewählte Spalte deshalb über alle importierten Zeilen geprüft:
+> würde der Wert beim Zurückschreiben still verändert. Die gewählte Spalte wird deshalb über
+> alle importierten Zeilen geprüft, sowohl beim **Speichern des Feldes** als auch bei jedem
+> **Import**:
 >
 > - **Erlaubt:** keine oder genau **zwei** Nachkommastellen. Tausendertrennung ist egal, das
 >   **Währungssymbol** ebenfalls (es wird bei der Eingabe ignoriert und bleibt auf dem
@@ -295,6 +296,17 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > Passt die Spalte nicht, ist **„Freitext"** die Alternative: dort wird das Format nicht
 > geprüft und der Wert unverändert übernommen (z. B. `1.234,56 €`) – er lässt sich dann aber
 > auch nicht rechnerisch weiterverwenden.
+>
+> **Das Format kommt aus der Quelldatei, nicht aus dem Backend.** Jeder Import liest es neu
+> ein und hinterlegt es am Feld – ein Überschreiben der Quelldatei wirkt damit genauso wie das
+> Auswählen einer neu benannten Datei. Kann eine Spalte kein Zahlenfeld tragen, behält das Feld
+> sein bisheriges Format und der Import benennt das Problem.
+>
+> Soll ein Betrag **stets zwei Nachkommastellen** zeigen (`0,00` statt `0`), muss die Spalte in
+> Excel als **Währung oder Zahl mit zwei Nachkommastellen** formatiert sein. Ist sie dort als
+> **Text** formatiert, gibt es kein Format, das ergänzt werden könnte – der Wert bleibt dann so
+> stehen, wie er eingegeben wurde. Beim Umstellen des Feldtyps auf „Zahl" weist eine Meldung
+> darauf hin.
 >
 > Die Prüfung meldet sich außerdem beim Bearbeiten des Workflows, falls die Quelldatei später
 > gegen eine mit anderer Formatierung getauscht wird. Liegen bereits Antworten vor, wird ein

@@ -512,13 +512,11 @@ class AnswerConfigListener
         );
 
         if (!$result->isCompatible()) {
-            // ENT_NOQUOTES, not specialchars(): the text lands in the message body, not in an
-            // attribute, so escaping the quotes would print „Spalte &quot;Name&quot;" at the
-            // user. Column names still come from the source file, so the angle brackets and
-            // ampersands do get escaped.
+            // Fully escaped: Contao embeds the message raw into the page, and the problems
+            // carry column names straight from the source file.
             Message::addError(sprintf(
                 'Feldtyp „Zahl" passt nicht zur Spalte: %s',
-                htmlspecialchars(implode(' ', $result->problems), ENT_NOQUOTES),
+                StringUtil::specialchars(implode(' ', $result->problems)),
             ));
         }
 

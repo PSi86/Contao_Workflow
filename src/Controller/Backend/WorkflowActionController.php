@@ -186,12 +186,10 @@ class WorkflowActionController
             // A number column the import could not adopt the format of: the field keeps its
             // previous format, which is a silent trap if nobody says so.
             if ([] !== $result['formatProblems']) {
-                // ENT_NOQUOTES: message body, not an attribute – escaping the quotes would
-                // print „Spalte &quot;Name&quot;" at the user.
                 Message::addError(sprintf(
                     'Zahlenformat nicht übernommen – die betroffenen Felder rechnen weiter mit ihrem '
                     .'bisherigen Format: %s',
-                    htmlspecialchars(implode(' | ', $result['formatProblems']), ENT_NOQUOTES),
+                    StringUtil::specialchars(implode(' | ', $result['formatProblems'])),
                 ));
             }
 
