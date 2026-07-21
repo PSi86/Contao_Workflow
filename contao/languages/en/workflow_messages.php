@@ -69,6 +69,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
 $GLOBALS['TL_LANG']['workflow_validator'] = [
     'no_source'          => 'No source file selected – the workflow can only run after a source file has been loaded.',
     'source_unreadable'  => 'The source file is not readable or contains no columns.',
+    'sheet_missing'      => 'The configured worksheet "%s" does not exist in the source file. Available: "%s". Please adjust the worksheet.',
     'no_email_col'       => 'No e-mail column selected.',
     'email_col_missing'  => 'The e-mail column “%s” is missing from the source file.',
     'storage_missing'    => 'The storage field “%s” (form field “%s”) is missing from the source file.',

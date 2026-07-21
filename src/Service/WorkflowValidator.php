@@ -48,6 +48,16 @@ class WorkflowValidator
             return [$this->msg('no_source')];
         }
 
+        // A named sheet that the file does not contain is the most likely reason for "no
+        // columns" after the source file was swapped – say so instead of the generic message.
+        $sheet = trim((string) $workflow->sourceSheet);
+        $sheets = $this->inspector->getSheetNames($workflow);
+
+        if ('' !== $sheet && [] !== $sheets && !\in_array($sheet, $sheets, true)) {
+            // Joined without quotes: the message supplies them, and they differ per language.
+            return [sprintf($this->msg('sheet_missing'), $sheet, implode(', ', $sheets))];
+        }
+
         $headers = array_keys($this->inspector->getHeaderOptions($workflow));
 
         if ([] === $headers) {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Excel;
 
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
@@ -46,10 +45,13 @@ class ColumnFormatAnalyzer
         $sheetName = (string) $workflow->sourceSheet;
         $headerRow = max(1, (int) $workflow->headerRow);
 
-        $reader = IOFactory::createReaderForFile($path);
+        // Not read-data-only: this class exists to look at the number formats. Null means the
+        // configured sheet is not in the file – nothing to analyse, and the validator reports
+        // the missing sheet on its own.
+        $reader = $this->inspector->readerFor($path, $sheetName, false);
 
-        if ('' !== $sheetName) {
-            $reader->setLoadSheetsOnly([$sheetName]);
+        if (null === $reader) {
+            return [];
         }
 
         $sheet = $this->inspector->sheetOf($reader->load($path), $sheetName);

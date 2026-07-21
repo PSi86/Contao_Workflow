@@ -3,7 +3,7 @@
     "type": "contao-bundle",
     "description": "Contao 5.3 bundle for a token-based query workflow: CSV/XLSX import, individual prefilled forms with signature, PDF generation and admin overview.",
     "license": "proprietary",
-    "version": "3.0.1",
+    "version": "3.0.2",
     "authors": [
         {
             "name": "Peter Simandl",

@@ -8,6 +8,7 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\IReader;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -43,6 +44,38 @@ class SpreadsheetInspector
     }
 
     /**
+     * A reader for $path, restricted to $sheetName – but only when the file actually contains
+     * that sheet. Returns null when it does not.
+     *
+     * Restricting to a sheet the file does not have makes PhpSpreadsheet load *zero*
+     * worksheets and then fail deep inside the reader ("You tried to set a sheet active by the
+     * out of bounds index: 0"). That is reachable with a plain configuration mistake – swap
+     * the source file for one whose sheet is named differently – and must not surface as a
+     * crash. listWorksheetNames() only reads the workbook index, not the cells, so checking
+     * first is cheap.
+     *
+     * $dataOnly must stay false wherever number formats are needed (import, format analysis);
+     * with it, PhpSpreadsheet drops the formats and every number would be re-interpreted.
+     */
+    public function readerFor(string $path, string $sheetName, bool $dataOnly): ?IReader
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly($dataOnly);
+
+        if ('' === $sheetName) {
+            return $reader;
+        }
+
+        if (!\in_array($sheetName, $reader->listWorksheetNames($path), true)) {
+            return null;
+        }
+
+        $reader->setLoadSheetsOnly([$sheetName]);
+
+        return $reader;
+    }
+
+    /**
      * Column index (1-based) => header name, in column order, empty headers
      * skipped and duplicates de-duplicated ("Name", "Name (2)", …).
      *
@@ -57,12 +90,11 @@ class SpreadsheetInspector
         }
 
         $sheetName = (string) $workflow->sourceSheet;
+        $reader = $this->readerFor($path, $sheetName, true);
 
-        $reader = IOFactory::createReaderForFile($path);
-        $reader->setReadDataOnly(true);
-
-        if ('' !== $sheetName) {
-            $reader->setLoadSheetsOnly([$sheetName]);
+        // Configured sheet not in the file – the validator reports that as its own problem.
+        if (null === $reader) {
+            return [];
         }
 
         return $this->headersOf($this->sheetOf($reader->load($path), $sheetName), max(1, (int) $workflow->headerRow));
