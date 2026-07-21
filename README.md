@@ -91,7 +91,9 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      eine „Währung“-Zelle `3000` → `3.000,00 €`). Eine Zelle im Format „Standard“ behält ihre
      eigenen Stellen – `3000` bleibt `3000`, `3000.5` wird zu `3000,5` (so zeigt deutsches Excel
      sie auch). Formatiert wird **genau einmal**, beim Import bzw. beim Speichern einer Antwort;
-     Formular, Live-Vorschau, PDF und Export zeigen danach denselben Wert.
+     Formular, Live-Vorschau, PDF und Export zeigen danach denselben Wert. Das Format einer
+     Spalte wird bei **jedem Import** neu eingelesen und am Formularfeld hinterlegt – ein
+     Überschreiben der Quelldatei wirkt damit genauso wie das Auswählen einer neu benannten.
      **Sobald der erste Teilnehmer geantwortet hat**, sind Tabellenblatt, Kopfzeile und
      E-Mail-Spalte gesperrt – eine Änderung würde die erfassten Antworten von den Daten
      trennen, auf deren Grundlage bereits Dokumente ausgestellt wurden. Die **Quelldatei
