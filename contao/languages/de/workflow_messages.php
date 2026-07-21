@@ -69,6 +69,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
 $GLOBALS['TL_LANG']['workflow_validator'] = [
     'no_source'          => 'Es ist keine Quelldatei ausgewählt – der Workflow kann erst nach dem Laden einer Quelldatei ausgeführt werden.',
     'source_unreadable'  => 'Die Quelldatei ist nicht lesbar oder enthält keine Spalten.',
+    'sheet_missing'      => 'Das eingestellte Tabellenblatt „%s" gibt es in der Quelldatei nicht. Vorhanden ist: „%s". Bitte das Tabellenblatt anpassen.',
     'no_email_col'       => 'Es ist keine E-Mail-Spalte gewählt.',
     'email_col_missing'  => 'Die E-Mail-Spalte „%s“ fehlt in der Quelldatei.',
     'storage_missing'    => 'Das Speicherfeld „%s“ (Formularfeld „%s“) fehlt in der Quelldatei.',

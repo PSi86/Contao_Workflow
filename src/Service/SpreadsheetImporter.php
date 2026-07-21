@@ -7,7 +7,6 @@ namespace Psimandl\WorkflowBundle\Service;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Psimandl\WorkflowBundle\Excel\CellReader;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -45,6 +44,12 @@ class SpreadsheetImporter
     {
         $this->framework->initialize();
 
+        // Checked before the columns: a sheet that is not in the file yields no columns
+        // either, and "no columns" would send the user looking in the wrong place. This is
+        // the case after the source file was overwritten in place with an export whose sheet
+        // is named differently — the setting still points at the old name.
+        $this->assertSheetExists($workflow);
+
         $headers = $this->inspector->getHeaders($workflow);
 
         if ([] === $headers) {
@@ -67,10 +72,9 @@ class SpreadsheetImporter
         $sheetName = (string) $workflow->sourceSheet;
         $headerRow = max(1, (int) $workflow->headerRow);
 
-        $reader = IOFactory::createReaderForFile($path);
-        if ('' !== $sheetName) {
-            $reader->setLoadSheetsOnly([$sheetName]);
-        }
+        // Not read-data-only: the number formats are needed (see CellReader). Cannot be null
+        // here – assertSheetExists() has already ruled out the only case that returns null.
+        $reader = $this->inspector->readerFor($path, $sheetName, false);
         $spreadsheet = $reader->load($path);
         $sheet = ('' !== $sheetName ? $spreadsheet->getSheetByName($sheetName) : null) ?? $spreadsheet->getActiveSheet();
 
@@ -154,6 +158,32 @@ class SpreadsheetImporter
         ];
     }
 
+
+    /**
+     * Refuses the import when the configured sheet is not in the file, naming the sheets that
+     * are — otherwise the user only learns that no columns could be read.
+     */
+    private function assertSheetExists(WorkflowModel $workflow): void
+    {
+        $sheetName = trim((string) $workflow->sourceSheet);
+
+        if ('' === $sheetName) {
+            return;
+        }
+
+        $available = $this->inspector->getSheetNames($workflow);
+
+        if ([] === $available || \in_array($sheetName, $available, true)) {
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Das eingestellte Tabellenblatt „%s" gibt es in der Quelldatei nicht. Vorhanden ist: '
+            .'„%s". Bitte das Tabellenblatt in den Workflow-Einstellungen anpassen.',
+            $sheetName,
+            implode(', ', $available),
+        ));
+    }
 
     /**
      * @return array<string, EntryModel> lower-cased e-mail => entry

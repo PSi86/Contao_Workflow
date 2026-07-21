@@ -6,6 +6,18 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.0.2] – 2026-07-21
+
+### Behoben
+- **Absturz, wenn das eingestellte Tabellenblatt in der Quelldatei fehlte.** Statt einer
+  Meldung erschien eine technische Fehlerseite („You tried to set a sheet active by the out of
+  bounds index: 0"), und der Workflow ließ sich weder speichern noch importieren. Ausgelöst
+  wurde das vor allem dadurch, dass die **Quelldatei an Ort und Stelle überschrieben** wurde:
+  Trägt der neue Export ein anders benanntes Tabellenblatt, zeigt die Einstellung weiterhin auf
+  den alten Namen — anders als beim Hochladen einer neuen Datei, wo die Blatt-Auswahl ohnehin
+  neu getroffen wird. Jetzt nennt die Meldung das fehlende Blatt **und die tatsächlich
+  vorhandenen**, sowohl beim Speichern als auch beim Import.
+
 ## [3.0.1] – 2026-07-19
 
 Fehlerkorrektur zu 3.0.0; ersetzt diese vollständig.
