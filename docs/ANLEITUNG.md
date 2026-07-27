@@ -241,6 +241,11 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
   Speicherfeld wird die Antwort nicht gespeichert); bei **„Erklärung"** entfällt es.
   **Sobald Antworten vorliegen, ist es gesperrt** – ebenso das Anlegen und Löschen von
   Formularfeldern (siehe „Gesperrte Einstellungen" in 3 b),
+- **Nachkommastellen** (nur beim Typ **Zahl**): leer = aus der Quellspalte übernehmen
+  (deren Zellformat). Ein gesetzter Wert (0–4) legt die Nachkommastellen fest und gilt
+  **vor** dem Format der Quelldatei – der richtige Weg, wenn die Spalte dort uneinheitlich
+  formatiert ist. Tausenderpunkt und Währungszeichen kommen weiterhin aus der Quelldatei.
+  Siehe den Kasten „Feldtyp „Zahl"" weiter unten,
 - **Pflichtfeld:** muss im Formular ausgefüllt werden,
 - **Mit Wert aus den Daten vorbelegen:** das Feld startet mit dem gespeicherten Wert
   (aus der Quelldatei bzw. einer früheren Antwort) und bleibt **editierbar** –
@@ -291,7 +296,11 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > - **Abgelehnt:** Prozent-, Datums-, Bruch- und wissenschaftliche Formate, Text in einer
 >   Zahlenspalte sowie **gemischte** Nachkommastellen. Die Meldung nennt Zeile, Wert und
 >   Excel-Format.
-> - **Summenzeilen** (Zeilen ohne E-Mail) bleiben außen vor – sie werden auch nicht importiert.
+> - **Summenzeilen** (Zeilen ohne E-Mail) und **ausgeblendete Zeilen** bleiben außen vor –
+>   sie werden auch nicht importiert.
+> - Ist am Feld **„Nachkommastellen"** ein Wert gesetzt, entfallen die Regeln zu den
+>   Nachkommastellen (auch die zu gemischten): dann ist die Frage beantwortet. Text-,
+>   Prozent- und Datumsformate bleiben unzulässig – daran ändert keine Einstellung etwas.
 >
 > Passt die Spalte nicht, ist **„Freitext"** die Alternative: dort wird das Format nicht
 > geprüft und der Wert unverändert übernommen (z. B. `1.234,56 €`) – er lässt sich dann aber
@@ -302,11 +311,13 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > Auswählen einer neu benannten Datei. Kann eine Spalte kein Zahlenfeld tragen, behält das Feld
 > sein bisheriges Format und der Import benennt das Problem.
 >
-> Soll ein Betrag **stets zwei Nachkommastellen** zeigen (`0,00` statt `0`), muss die Spalte in
-> Excel als **Währung oder Zahl mit zwei Nachkommastellen** formatiert sein. Ist sie dort als
-> **Text** formatiert, gibt es kein Format, das ergänzt werden könnte – der Wert bleibt dann so
-> stehen, wie er eingegeben wurde. Beim Umstellen des Feldtyps auf „Zahl" weist eine Meldung
-> darauf hin.
+> Soll ein Betrag **stets zwei Nachkommastellen** zeigen (`0,00` statt `0`), gibt es zwei
+> Wege: die Spalte in Excel als **Währung oder Zahl mit zwei Nachkommastellen** formatieren –
+> das gilt **auch für eine Spalte, die noch leer ist**, denn das Zellformat leerer Zellen wird
+> gelesen –, oder am Feld **„Nachkommastellen" = 2** setzen. Ist die Spalte in Excel als
+> **Text** formatiert und am Feld nichts eingestellt, gibt es kein Format, das ergänzt werden
+> könnte – der Wert bleibt dann so stehen, wie er eingegeben wurde. Beim Umstellen des
+> Feldtyps auf „Zahl" weist eine Meldung darauf hin.
 >
 > Die Prüfung meldet sich außerdem beim Bearbeiten des Workflows, falls die Quelldatei später
 > gegen eine mit anderer Formatierung getauscht wird. Liegen bereits Antworten vor, wird ein
@@ -401,9 +412,43 @@ Dann steckt die gesamte Entscheidung **im Template** (Beispiel `pdf_body_verzich
 gleichwertig unterstützt; die Regel-Variante ist für einfache Fälle transparenter.
 
 ### 3 c. Import
-**Workflow → Übersicht** → beim Workflow **„Import ausführen"**.
+**Workflow → Übersicht** → beim Workflow **„Import ausführen"**. Der Dialog fragt den
+**Modus** – er gilt nur für diesen einen Lauf:
+
+- **Additiv** (Vorauswahl): neue Zeilen anlegen, vorhandene aktualisieren, **nichts löschen**.
+  Einträge, deren Zeile ausgeblendet ist oder in der Datei fehlt, bleiben bestehen und werden
+  weiterhin angeschrieben.
+- **Absolut**: die Quelldatei bestimmt die Teilnehmer. Einträge, deren Zeile ausgeblendet ist
+  oder in der Datei fehlt, werden **gelöscht** – samt bereits erzeugter PDFs, auch wenn sie
+  schon geantwortet haben. Bereits beantwortete Einträge, die in der Datei **stehen**, bleiben
+  wie im additiven Modus unverändert.
+
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
 **„Importiert"**.
+
+> **Ausgeblendete Zeilen werden nicht importiert.** Zeilen in Excel auszublenden (von Hand
+> oder per Autofilter) ist damit der Weg, eine Quelldatei auf die Teilnehmer eines Laufs
+> einzugrenzen – dieselbe Datei kann mehrfach mit unterschiedlichen ausgeblendeten Zeilen
+> importiert werden. Die Reihenfolge im Export bleibt dabei die der Datei; ausgelassene Zeilen
+> hinterlassen nur Lücken in der internen Zeilenzählung. **XLSX und XLS** tragen diese
+> Information, **ODS und CSV** nicht – dort gilt jede Zeile als sichtbar.
+>
+> **Formeln werden nicht nachgerechnet.** Übernommen wird das Ergebnis, das Excel bzw.
+> LibreOffice selbst in die Datei geschrieben hat – also genau das, was in der Tabelle zu
+> sehen ist. Gibt es keines (oder steht dort ein Fehlerwert wie `#NV`), wird das Feld **leer**
+> importiert und die Meldung nennt Spalte und Zeile. In dem Fall die Quelldatei öffnen, neu
+> berechnen lassen und speichern – die Werte müssen nicht von Hand „festgeschrieben" werden.
+>
+> Nach dem Import benennt eine Meldung, was ausgelassen wurde: ausgeblendete Zeilen (und wie
+> viele davon schon importiert waren), Zeilen mit **mehrfach vorkommender E-Mail-Adresse**
+> (nur die erste wird importiert – die Adresse ist das Erkennungsmerkmal) und Einträge, die in
+> der Datei nicht mehr sichtbar vorkommen.
+>
+> ⚠ **Eine in der Quelldatei geänderte E-Mail-Adresse gilt als neue Person**: Der bisherige
+> Eintrag wird nicht wiedergefunden, es entsteht ein zweiter. Im additiven Modus bleiben dann
+> beide (die Meldung weist den alten als „nicht mehr auffindbar" aus), im absoluten Modus
+> ersetzt der neue Eintrag den alten – mit **neuem Link**. Adressen also möglichst im Backend
+> korrigieren (**Einträge → Eintrag bearbeiten**), nicht in der Quelldatei.
 
 > **Der Import läuft immer** – auch dann, wenn die Quelldatei unverändert ist. Genau das ist
 > der Weg, die ursprünglichen Quelldaten nach einem Zurücksetzen wieder einzulesen. Die
@@ -431,6 +476,11 @@ in der Übersicht als **„Versandfehler"** angezeigt.
 Der Trainer öffnet den Link aus der Einladungsmail (`…/workflow-formular/<token>`) und:
 1. sieht oben die **Überschrift** und den **Einleitungstext** des Workflows – exakt wie
    später im PDF – sowie seine **schreibgeschützten Daten** (zur Kontrolle),
+   > Die **E-Mail-Adresse** ist kein eingebautes Feld (mehr): Soll sie im Formular stehen,
+   > wird sie wie jede andere Angabe als **Formularfeld** angelegt – Typ „Freitext",
+   > Speicherfeld = E-Mail-Spalte, Haken **„Schreibgeschützt"**. Damit sind Position,
+   > Überschrift und Beschreibung frei wählbar. (Verwendet ein Dokument-Text
+   > `##text_all##`, erscheint ein solches Feld dann auch im Dokument – siehe 3 b‑3.)
 2. füllt die **Formularfelder** aus (je nach Konfiguration Auswahl, Freitext, Zahl,
    Datum …; **vorbelegte** Felder zeigen den importierten Wert und können korrigiert
    werden). Hat ein Feld einen eigenen **Dokument-Text**, erscheint darunter live der
@@ -475,13 +525,14 @@ angezeigten Link öffnen.
   **Manuelle Auswahl** (die markierten Personen), darunter **„Einladungen senden"** bzw.
   **„Erinnerungen senden"** (mit Anzahl) und einem **Bestätigungsschritt** mit der konkreten
   Empfängerliste. Einladungen gehen an Teilnehmer im Schritt „Importiert", Erinnerungen an „Eingeladen".
-- **„Export (XLSX)" / „Export (CSV)"** → die **Quellspalten in Originalreihenfolge**,
-  gefüllt mit den aktuellen Daten (inkl. der gespeicherten Antwortwerte). Auch die **Zeilen**
-  stehen in der Reihenfolge der Quelldatei, der Export lässt sich also direkt dagegen
-  vergleichen. Dateiname: `<Workflow>_<Datum>_<Uhrzeit>.xlsx`.
-- **„PDFs herunterladen"** → ZIP der erzeugten PDFs (nur die dieses Workflows). Dateiname:
-  `<Workflow>_<Datum>_<Uhrzeit>_<Anzahl>-PDFs.zip`, z. B.
-  `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip`.
+- **„Datendownload"** öffnet einen Dialog mit drei Möglichkeiten:
+  - **Excel (XLSX)** bzw. **CSV** → die **Quellspalten in Originalreihenfolge**, gefüllt mit
+    den aktuellen Daten (inkl. der gespeicherten Antwortwerte). Auch die **Zeilen** stehen in
+    der Reihenfolge der Quelldatei, der Export lässt sich also direkt dagegen vergleichen.
+    Dateiname: `<Workflow>_<Datum>_<Uhrzeit>.xlsx`.
+  - **PDFs als ZIP** (mit Anzahl) → alle erzeugten PDFs dieses Workflows. Dateiname:
+    `<Workflow>_<Datum>_<Uhrzeit>_<Anzahl>-PDFs.zip`, z. B.
+    `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip`.
 - **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
 - **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
   betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein
@@ -530,6 +581,7 @@ SMTP, SPF/DKIM/DMARC): siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 **CLI-Alternativen** zu den Übersicht-Buttons (`<id>` = Workflow-ID):
 ```bash
 vendor/bin/contao-console workflow:import <id>
+vendor/bin/contao-console workflow:import <id> --mode=absolute  # nicht sichtbare Einträge löschen
 vendor/bin/contao-console workflow:send <id>             # Einladungen
 vendor/bin/contao-console workflow:send <id> --reminder  # Erinnerungen
 vendor/bin/contao-console workflow:export <id> --out=export.xlsx

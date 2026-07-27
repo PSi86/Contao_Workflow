@@ -166,7 +166,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 6. Übersicht: Zähler (eingegangen/offen) + die sortierbare, auswählbare Liste
    **„Offene Vorgänge“** – sie zeigt alle Teilnehmer, die den letzten Schritt nicht
    fehlerfrei erreicht haben, und deckt sich damit mit dem Zähler „offen“.
-7. **Export (XLSX/CSV)** lädt herunter; **PDFs herunterladen** liefert ZIP.
+7. **Datendownload** öffnet den Dialog mit Excel (XLSX), CSV und den PDFs als ZIP.
 8. **E-Mails senden → Erinnerungen senden** → nur Einträge im Schritt „Eingeladen" erhalten eine Erinnerung.
 
 ## Hinweise
