@@ -313,6 +313,10 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
 }
 .wf-dialog-box h3 { margin-top: 0; }
+/* The import log carries five columns of prose; it needs the room. */
+.wf-dialog-box--wide { width: min(1000px, 100%); }
+.wf-dialog-box--wide .wf-import-log-table { font-size: .9em; }
+.wf-dialog-box--wide .wf-import-log-table td { vertical-align: top; }
 .wf-dialog-close {
     position: absolute;
     top: .4em;

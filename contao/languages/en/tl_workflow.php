@@ -5,6 +5,7 @@ declare(strict_types=1);
 $GLOBALS['TL_LANG']['tl_workflow']['title_legend']        = 'Title';
 $GLOBALS['TL_LANG']['tl_workflow']['steps_legend']        = 'Steps / status';
 $GLOBALS['TL_LANG']['tl_workflow']['source_legend']       = 'Source data';
+$GLOBALS['TL_LANG']['tl_workflow']['importlog_legend']   = 'Import log';
 $GLOBALS['TL_LANG']['tl_workflow']['content_legend']      = 'Content (form & document)';
 $GLOBALS['TL_LANG']['tl_workflow']['form_legend']         = 'Form & form fields';
 $GLOBALS['TL_LANG']['tl_workflow']['pdf_legend']          = 'Document settings';

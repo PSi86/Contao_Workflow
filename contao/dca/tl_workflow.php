@@ -101,7 +101,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField,importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -306,7 +306,8 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval'                 => ['tl_class' => 'clr'],
         ],
         // Read-only import log (no DB column): the runs of this workflow, newest first.
-        // Sits in the source section – it is about where the data came from.
+        // Has its own collapsed section – it is a record to consult, not a setting to
+        // read past on the way to the next field.
         'importLog' => [
             'exclude'              => true,
             'input_field_callback' => [ImportLogListener::class, 'render'],

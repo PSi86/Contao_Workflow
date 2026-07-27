@@ -13,8 +13,10 @@ falsch formatiert (oder gar nicht) an, und eine leere Zahlenspalte verlor ihre
 Nachkommastellen.
 
 ### Hinzugefügt
-- **Importprotokoll**: jeder Lauf wird festgehalten und steht in der Bearbeitungsmaske des
-  Workflows unter „Quelldaten" – Zeitpunkt, Modus, auslösende Person, **welche Datei**
+- **Importprotokoll**: jeder Lauf wird festgehalten – erreichbar über den Button
+  „Importprotokoll" in der **Übersicht** und in der Bearbeitungsmaske im gleichnamigen,
+  eingeklappten Abschnitt zwischen „Quelldaten" und „Inhalt". Je Lauf: Zeitpunkt, Modus,
+  auslösende Person, **welche Datei**
   (Name, Tabellenblatt und Prüfsumme, womit zwei Läufe gegen denselben Dateinamen mit
   unterschiedlichem Inhalt unterscheidbar werden), die Zahlen des Laufs und dieselben
   Meldungen, die damals angezeigt wurden. **Gescheiterte Läufe** stehen mit ihrer

@@ -62,6 +62,11 @@ services:
     Psimandl\WorkflowBundle\Service\PdfStorage:
         public: true
 
+    # Renders the import log for the (non-service) back end dashboard module – the same
+    # table the edit mask shows.
+    Psimandl\WorkflowBundle\Service\ImportLogRenderer:
+        public: true
+
     # DCA callback class for the answer-field / PDF-rule child tables, referenced
     # by class name in tl_workflow*.php and resolved via System::importStatic() by
     # Contao core, MultiColumnWizard and dcaWizard. Must be public, otherwise

@@ -10,6 +10,7 @@ use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
@@ -50,6 +51,8 @@ class DashboardModule extends BackendModule
         $nameResolver = $container->get(PersonNameResolver::class);
         /** @var PdfStorage $pdfStorage */
         $pdfStorage = $container->get(PdfStorage::class);
+        /** @var ImportLogRenderer $importLogRenderer */
+        $importLogRenderer = $container->get(ImportLogRenderer::class);
         $router = $container->get('router');
         $csrf = $container->get('contao.csrf.token_manager');
         $rt = $csrf->getDefaultTokenValue();
@@ -119,6 +122,8 @@ class DashboardModule extends BackendModule
                     ],
                     // Shown at the PDF checkbox, which is disabled while there are none.
                     'pdfCount'      => $pdfStorage->countWorkflowPdfs($id),
+                    // The import log, rendered by the same service the edit mask uses.
+                    'importLog'     => $importLogRenderer->render($id),
                 ];
             }
         }

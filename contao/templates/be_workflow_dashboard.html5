@@ -102,6 +102,19 @@ $l = $this->dash;
           <span class="tl_submit wf-disabled"><?= $l['btn_send'] ?></span>
         <?php endif; ?>
         <button type="button" class="tl_submit wf-open-download"><?= $l['btn_download'] ?></button>
+        <button type="button" class="tl_submit wf-open-log"><?= $l['btn_log'] ?></button>
+      </div>
+
+      <?php // The import log: what each run did, so a state can be explained afterwards.
+            // Same table as in the workflow's edit mask (ImportLogRenderer). ?>
+      <div class="wf-dialog wf-dialog--log" hidden>
+        <div class="wf-dialog-box wf-dialog-box--wide">
+          <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+          <h3><?= $l['btn_log'] ?> – <?= $esc($wf['title']) ?></h3>
+          <p class="wf-choice-lead"><?= $l['log_hint'] ?></p>
+          <?php // Safe HTML: built server-side by ImportLogRenderer, every value escaped. ?>
+          <?= $wf['importLog'] ?>
+        </div>
       </div>
 
       <?php // Import dialog: the mode is chosen per run, never stored. ?>

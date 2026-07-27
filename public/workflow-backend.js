@@ -216,8 +216,10 @@
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
-            // The import dialog offers plain links, so it needs nothing beyond open/close.
+            // The import dialog offers plain links and the log dialog is read-only, so both
+            // need nothing beyond open/close.
             wireDialog(box, '.wf-dialog--import', '.wf-open-import');
+            wireDialog(box, '.wf-dialog--log', '.wf-open-log');
             setupDownload(wireDialog(box, '.wf-dialog--download', '.wf-open-download'));
         });
     });

@@ -431,8 +431,9 @@ geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
 **„Importiert"**.
 
-> **Importprotokoll.** Jeder Lauf wird festgehalten – in der Bearbeitungsmaske des Workflows
-> unter **Quelldaten → „Importprotokoll"**: Zeitpunkt, Modus, wer ihn ausgelöst hat,
+> **Importprotokoll.** Jeder Lauf wird festgehalten – in der **Übersicht** über den Button
+> **„Importprotokoll"** und in der Bearbeitungsmaske im gleichnamigen (eingeklappten)
+> Abschnitt zwischen „Quelldaten" und „Inhalt": Zeitpunkt, Modus, wer ihn ausgelöst hat,
 > **welche Datei** (Name, Tabellenblatt und **Prüfsumme** – daran erkennt man zwei Läufe gegen
 > denselben Dateinamen mit unterschiedlichem Inhalt), die Zahlen des Laufs und dieselben
 > Meldungen, die damals angezeigt wurden. **Auch gescheiterte Läufe** stehen dort, mit ihrer
@@ -559,6 +560,9 @@ angezeigten Link öffnen.
   - **mehreres zusammen** → ein `<Workflow>_<Datum>_<Uhrzeit>.zip`; die Dokumente liegen darin
     im Unterordner `PDFs/`, damit die beiden Tabellen nicht zwischen hunderten PDFs
     verschwinden.
+- **„Importprotokoll"** → zeigt die letzten Läufe dieses Workflows (Zeitpunkt, Modus,
+  auslösende Person, Quelldatei samt Prüfsumme, Zahlen und Meldungen; auch gescheiterte
+  Läufe). Siehe Abschnitt 3 c.
 - **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
 - **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
   betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein
