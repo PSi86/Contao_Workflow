@@ -6,6 +6,68 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.2.0] – 2026-07-27
+
+Schwerpunkt: der Import. Ausgeblendete Zeilen wurden trotzdem übernommen, Formeln kamen
+falsch formatiert (oder gar nicht) an, und eine leere Zahlenspalte verlor ihre
+Nachkommastellen.
+
+### Hinzugefügt
+- **Ausgeblendete Zeilen der Quelldatei werden nicht mehr importiert.** Zeilen in Excel
+  auszublenden – von Hand oder per Autofilter – ist damit der Weg, eine Datei auf die
+  Teilnehmer eines Laufs einzugrenzen; dieselbe Datei lässt sich mehrfach mit
+  unterschiedlichen ausgeblendeten Zeilen importieren. Die Reihenfolge im Export bleibt die
+  der Quelldatei. XLSX und XLS tragen die Information, ODS und CSV nicht – dort gilt jede
+  Zeile als sichtbar.
+- **Importmodus, pro Lauf wählbar** (Dialog am Button „Import ausführen"; CLI `--mode`):
+  *additiv* legt an und aktualisiert, löscht nichts – Einträge, deren Zeile ausgeblendet ist
+  oder fehlt, bleiben bestehen und werden weiterhin angeschrieben. *absolut* lässt die
+  Quelldatei über die Teilnehmer entscheiden: solche Einträge werden gelöscht, samt bereits
+  erzeugter PDFs. Bereits beantwortete Einträge, die in der Datei stehen, bleiben in beiden
+  Modi unverändert – ihre Daten sind die Grundlage eines ausgestellten Dokuments.
+- **Der Import benennt, was er ausgelassen hat.** Bisher geschah das lautlos: übersprungene
+  ausgeblendete Zeilen (und wie viele davon schon importiert waren), Zeilen mit mehrfach
+  vorkommender E-Mail-Adresse, Einträge ohne sichtbare Zeile in der Datei – und doppelt
+  belegte Zeilennummern, die einzige Stelle, an der die Exportreihenfolge von der Datei
+  abweichen kann.
+- **Nachkommastellen je Formularfeld** (Typ „Zahl", leer = aus der Quelldatei). Ein gesetzter
+  Wert gilt vor dem Format der Quelldatei und hebt die Regel „nur 0 oder 2 Nachkommastellen"
+  auf – sie schützt gespeicherte Werte, und wer die Stellen selbst festlegt, hat die Frage
+  beantwortet. Text-, Prozent- und Datumsformate bleiben unzulässig.
+- **Ein Dialog „Datendownload"** ersetzt die drei Buttons „Export (XLSX)", „Export (CSV)" und
+  „PDFs herunterladen". Die PDF-Option nennt die Anzahl, ein leeres Archiv ist damit vorab
+  erkennbar.
+
+### Geändert
+- **Das eingebaute E-Mail-Feld im Formular entfällt.** Die Adresse ist eine Quellspalte wie
+  jede andere: Soll sie im Formular stehen, wird dafür ein Formularfeld angelegt (Typ
+  „Freitext", Speicherfeld = E-Mail-Spalte, Haken „Schreibgeschützt"). Position, Überschrift
+  und Beschreibung sind dann frei wählbar. **Bestehende Workflows zeigen die Adresse nach dem
+  Update nicht mehr**, bis ein solches Feld angelegt wurde.
+- Konfigurations-Export/-Import kennen das Feld „Nachkommastellen" (Format-Version 6);
+  ältere Konfigurationen lassen sich unverändert importieren.
+
+### Behoben
+- **Formeln in der Quelldatei.** Eine Formelzelle landete im Textzweig des Imports: ihr
+  Währungsergebnis kam als `3,000.00 €` (englisch) herein statt `3.000,00 €`, ein
+  Datumsergebnis als `12/17/1955`, und eine Zahlenspalte mit Formeln galt als „Text statt
+  einer Zahl" – ein Zahlenfeld war darauf praktisch nicht nutzbar. Eine Formel, die
+  PhpSpreadsheet nicht kennt, konnte den Import sogar mit einer Fehlerseite abbrechen. Jetzt
+  wird das **in der Datei gespeicherte Ergebnis** übernommen – genau das, was in der Tabelle
+  zu sehen ist – und läuft durch dieselbe Zahl- und Datumsaufbereitung wie ein fest
+  eingetragener Wert. Gibt es kein verwertbares Ergebnis (keines gespeichert oder ein
+  Fehlerwert wie `#NV`), wird das Feld leer importiert und die Zeile gemeldet. Formeln müssen
+  vor dem Import also nicht mehr in Werte umgewandelt werden.
+- **Eine leere Zahlenspalte verlor ihr Format.** Die Formatprüfung übersprang leere Zellen
+  vollständig – und eine Antwortspalte ist in der Quelldatei leer, die Teilnehmer füllen sie
+  ja erst. Von „Währung mit zwei Nachkommastellen" blieb dadurch nichts übrig: das Feld
+  rechnete ganzzahlig, aus eingegebenen `25,25` wurde `25`, das Währungszeichen fehlte. Leere
+  Zellen können weiterhin keine Spalte durchfallen lassen, liefern aber jetzt die
+  Formatierung, wenn kein gefüllter Wert sie festlegt. Bereits als `25` gespeicherte Werte
+  lassen sich nicht zurückholen – die Nachkommastellen waren beim Speichern verloren.
+- Eine ausgeblendete Zeile mit abweichender Formatierung kann keine Spalte mehr für ein
+  Zahlenfeld disqualifizieren – sie wird ja nicht importiert.
+
 ## [3.1.0] – 2026-07-21
 
 Schwerpunkt: Zahlen- und Datumsfelder im Formular. Die Nachkommastellen gingen verloren, und

@@ -38,3 +38,6 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['edit']   = ['Edit', 'Edit form fiel
 $GLOBALS['TL_LANG']['tl_workflow_question']['copy']   = ['Copy', 'Copy form field.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['delete'] = ['Delete', 'Delete form field.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['show']   = ['Details', 'Show form field.'];
+
+// Blank option of the "Decimals" select.
+$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'] = 'automatic (from the source file)';

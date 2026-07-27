@@ -139,7 +139,11 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'exclude'   => true,
             'inputType' => 'select',
             'options'   => ['0', '1', '2', '3', '4'],
-            'eval'      => ['includeBlankOption' => true, 'tl_class' => 'w50'],
+            'eval'      => [
+                'includeBlankOption' => true,
+                'blankOptionLabel'   => &$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'],
+                'tl_class'           => 'w50',
+            ],
             'sql'       => "varchar(2) NOT NULL default ''",
         ],
         'mandatory' => [

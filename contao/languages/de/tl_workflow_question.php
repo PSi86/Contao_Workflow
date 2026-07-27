@@ -38,3 +38,6 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['edit']   = ['Bearbeiten', 'Formular
 $GLOBALS['TL_LANG']['tl_workflow_question']['copy']   = ['Kopieren', 'Formularfeld kopieren.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['delete'] = ['Löschen', 'Formularfeld löschen.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['show']   = ['Details', 'Formularfeld anzeigen.'];
+
+// Leer-Option des Auswahlfelds „Nachkommastellen".
+$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'] = 'automatisch (aus der Quelldatei)';
