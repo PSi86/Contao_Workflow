@@ -113,11 +113,11 @@ class DashboardModule extends BackendModule
                         // Same route, deleting mode: entries whose row is hidden or gone are
                         // removed afterwards (SpreadsheetImporter::MODE_ABSOLUTE).
                         'importAbsolute' => $base('workflow_import').'&mode='.SpreadsheetImporter::MODE_ABSOLUTE,
-                        'exportXlsx'     => $base('workflow_export'),
-                        'exportCsv'      => $base('workflow_export').'&format=csv',
-                        'pdfs'           => $base('workflow_download_pdfs'),
+                        // Without the token: the download dialog is a GET form, whose fields
+                        // replace the whole query string – the token travels as a field.
+                        'download'       => $router->generate('workflow_download', ['id' => $id]),
                     ],
-                    // Shown on the PDF download so an empty bundle is recognisable up front.
+                    // Shown at the PDF checkbox, which is disabled while there are none.
                     'pdfCount'      => $pdfStorage->countWorkflowPdfs($id),
                 ];
             }

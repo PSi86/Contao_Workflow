@@ -318,8 +318,8 @@
 .wf-dialog-close:hover { color: #c0392b; }
 .wf-confirm-list li { margin: 2px 0; }
 
-/* One option of a plain choice dialog (import mode, data download): the action first,
-   its consequence right next to it – the choice is the point, not the button. */
+/* One option of a choice dialog (import mode, data download): the action or check box
+   first, its consequence right next to it – the choice is the point, not the button. */
 .wf-choice {
     display: flex;
     align-items: baseline;
@@ -327,6 +327,24 @@
     margin: .8em 0;
 }
 .wf-choice .tl_submit { flex: 0 0 auto; }
+.wf-choice > label {
+    flex: 0 0 11em;
+    cursor: pointer;
+}
+
+/* The download button plus the resulting file kind, separated from the selection. */
+.wf-download-run {
+    display: flex;
+    align-items: baseline;
+    gap: .8em;
+    margin: 1.2em 0 0;
+    padding-top: .8em;
+    border-top: 1px solid var(--content-border, #ddd);
+}
+.wf-download-run .tl_submit[disabled] {
+    opacity: .5;
+    cursor: not-allowed;
+}
 .wf-choice-hint {
     font-size: .85em;
     line-height: 1.4;

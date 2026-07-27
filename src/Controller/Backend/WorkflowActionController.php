@@ -49,6 +49,12 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 #[Route('/contao/workflow', defaults: ['_scope' => 'backend', '_token_check' => false])]
 class WorkflowActionController
 {
+    /**
+     * What the data download can contain, in the order it is offered and packed. The list is
+     * the whitelist for the request: anything else in "parts" is dropped.
+     */
+    private const DOWNLOAD_PARTS = ['xlsx', 'csv', 'pdfs'];
+
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly SpreadsheetImporter $importer,
@@ -707,15 +713,58 @@ class WorkflowActionController
         return $this->backToDashboard();
     }
 
-    #[Route('/export/{id}', name: 'workflow_export', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function export(int $id, Request $request): Response
+    /**
+     * The data download: any combination of the spreadsheet exports and the generated PDFs,
+     * picked with check boxes in the overview dialog.
+     *
+     * The container follows the selection instead of being fixed: one spreadsheet comes as
+     * that file, plain (packing a single XLSX into an archive only adds a step for the
+     * person opening it). Everything else needs one – the PDFs are many files, and several
+     * selections need something to travel in.
+     */
+    #[Route('/download/{id}', name: 'workflow_download', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function download(int $id, Request $request): Response
     {
         $this->framework->initialize();
         $this->assertToken($request);
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
-        $format = 'csv' === $request->query->get('format') ? 'csv' : 'xlsx';
+        // Fixed order, unknown values dropped: the selection comes from check boxes, so it
+        // arrives in whatever order the browser sends and must not steer anything else.
+        // Read off the raw query rather than via all('parts'), which throws on a hand-typed
+        // "?parts=xlsx" (Symfony insists on the array shape) – a wrong URL should produce a
+        // message, not a 400.
+        $requested = $request->query->all()['parts'] ?? [];
+        $parts = array_values(array_intersect(
+            self::DOWNLOAD_PARTS,
+            array_filter(\is_array($requested) ? $requested : [$requested], 'is_string'),
+        ));
+
+        if ([] === $parts) {
+            Message::addInfo('Es war nichts zum Herunterladen ausgewählt.');
+
+            return $this->backToDashboard();
+        }
+
+        if (['pdfs'] === $parts && 0 === $this->pdfStorage->countWorkflowPdfs((int) $workflow->id)) {
+            Message::addInfo('Es sind noch keine PDF-Dokumente vorhanden.');
+
+            return $this->backToDashboard();
+        }
+
+        if (['xlsx'] === $parts || ['csv'] === $parts) {
+            return $this->spreadsheetResponse($workflow, $parts[0]);
+        }
+
+        return $this->bundleResponse($workflow, $parts);
+    }
+
+    /**
+     * One spreadsheet, as the file itself.
+     */
+    private function spreadsheetResponse(WorkflowModel $workflow, string $format): Response
+    {
         $result = $this->exporter->export($workflow, $format);
 
         $response = new Response($result['content']);
@@ -728,34 +777,41 @@ class WorkflowActionController
         return $response;
     }
 
-    #[Route('/pdfs/{id}', name: 'workflow_download_pdfs', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function downloadPdfs(int $id, Request $request): Response
+    /**
+     * Several selections (or the PDFs) as one archive. PDFs sit in their own folder as soon
+     * as they share the archive with a spreadsheet, so a bundle of 200 documents does not
+     * bury the two files someone actually opens first.
+     *
+     * @param array<int, string> $parts subset of self::DOWNLOAD_PARTS, in that order
+     */
+    private function bundleResponse(WorkflowModel $workflow, array $parts): Response
     {
-        $this->framework->initialize();
-        $this->assertToken($request);
-        $this->assertAccess();
-        $workflow = $this->getWorkflow($id);
-
-        $dir = $this->pdfStorage->getWorkflowDir((int) $workflow->id);
-        $files = is_dir($dir) ? glob($dir.'/*.pdf') : [];
-
-        if (!$files) {
-            Message::addInfo('Es sind noch keine PDF-Dokumente vorhanden.');
-
-            return $this->backToDashboard();
-        }
-
-        $zipPath = (string) tempnam(sys_get_temp_dir(), 'tw_pdfs_');
+        $zipPath = (string) tempnam(sys_get_temp_dir(), 'tw_dl_');
         $zip = new \ZipArchive();
         $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-        foreach ($files as $file) {
-            $zip->addFile($file, basename($file));
+        foreach (array_intersect(['xlsx', 'csv'], $parts) as $format) {
+            $result = $this->exporter->export($workflow, $format);
+            $zip->addFromString($result['filenameFallback'], $result['content']);
+        }
+
+        $files = [];
+
+        if (\in_array('pdfs', $parts, true)) {
+            $dir = $this->pdfStorage->getWorkflowDir((int) $workflow->id);
+            $files = is_dir($dir) ? (glob($dir.'/*.pdf') ?: []) : [];
+            $folder = ['pdfs'] === $parts ? '' : 'PDFs/';
+
+            foreach ($files as $file) {
+                $zip->addFile($file, $folder.basename($file));
+            }
         }
 
         $zip->close();
 
-        [$name, $fallback] = $this->pdfBundleName($workflow, \count($files));
+        [$name, $fallback] = ['pdfs'] === $parts
+            ? $this->pdfBundleName($workflow, \count($files))
+            : $this->downloadName((string) $workflow->title, '_'.date('Ymd_His').'.zip', 'Workflow');
 
         $response = new BinaryFileResponse($zipPath);
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $name, $fallback);

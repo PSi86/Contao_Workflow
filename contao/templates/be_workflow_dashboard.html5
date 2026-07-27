@@ -123,26 +123,40 @@ $l = $this->dash;
         </div>
       <?php endif; ?>
 
-      <div class="wf-dialog wf-dialog--download" hidden>
+      <?php // Data download: pick what goes in, one button. The container follows the
+            // selection (see the hint below the button), so the form only submits the
+            // selection itself – a GET form, hence the token as a field. ?>
+      <div class="wf-dialog wf-dialog--download" hidden
+           data-hint-xlsx="<?= $esc($l['download_result_xlsx']) ?>"
+           data-hint-csv="<?= $esc($l['download_result_csv']) ?>"
+           data-hint-zip="<?= $esc($l['download_result_zip']) ?>"
+           data-hint-none="<?= $esc($l['download_result_none']) ?>">
         <div class="wf-dialog-box">
           <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
           <h3><?= $l['btn_download'] ?></h3>
-          <p class="wf-choice">
-            <a class="tl_submit" href="<?= $esc($wf['urls']['exportXlsx']) ?>"><?= $l['btn_export_xlsx'] ?></a>
-            <span class="wf-choice-hint"><?= $l['download_data_hint'] ?></span>
-          </p>
-          <p class="wf-choice">
-            <a class="tl_submit" href="<?= $esc($wf['urls']['exportCsv']) ?>"><?= $l['btn_export_csv'] ?></a>
-            <span class="wf-choice-hint"><?= $l['download_csv_hint'] ?></span>
-          </p>
-          <p class="wf-choice">
-            <?php if ((int) $wf['pdfCount'] > 0): ?>
-              <a class="tl_submit" href="<?= $esc($wf['urls']['pdfs']) ?>"><?= $l['btn_pdfs'] ?> (<?= (int) $wf['pdfCount'] ?>)</a>
-            <?php else: ?>
-              <span class="tl_submit wf-disabled"><?= $l['btn_pdfs'] ?> (0)</span>
-            <?php endif; ?>
-            <span class="wf-choice-hint"><?= $l['download_pdfs_hint'] ?></span>
-          </p>
+
+          <form method="get" action="<?= $esc($wf['urls']['download']) ?>" class="wf-download">
+            <input type="hidden" name="rt" value="<?= $esc($wf['rt']) ?>">
+
+            <p class="wf-choice">
+              <label><input type="checkbox" name="parts[]" value="xlsx" checked> <?= $l['btn_export_xlsx'] ?></label>
+              <span class="wf-choice-hint"><?= $l['download_data_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <label><input type="checkbox" name="parts[]" value="csv"> <?= $l['btn_export_csv'] ?></label>
+              <span class="wf-choice-hint"><?= $l['download_csv_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <?php // Nothing to pack while no document exists – the count says so. ?>
+              <label><input type="checkbox" name="parts[]" value="pdfs"<?= 0 === (int) $wf['pdfCount'] ? ' disabled' : '' ?>> <?= $l['btn_pdfs'] ?> (<?= (int) $wf['pdfCount'] ?>)</label>
+              <span class="wf-choice-hint"><?= $l['download_pdfs_hint'] ?></span>
+            </p>
+
+            <p class="wf-download-run">
+              <button type="submit" class="tl_submit"><?= $l['download_run'] ?></button>
+              <span class="wf-choice-hint" data-download-result><?= $l['download_result_xlsx'] ?></span>
+            </p>
+          </form>
         </div>
       </div>
 

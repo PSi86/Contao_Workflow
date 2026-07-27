@@ -525,14 +525,23 @@ angezeigten Link öffnen.
   **Manuelle Auswahl** (die markierten Personen), darunter **„Einladungen senden"** bzw.
   **„Erinnerungen senden"** (mit Anzahl) und einem **Bestätigungsschritt** mit der konkreten
   Empfängerliste. Einladungen gehen an Teilnehmer im Schritt „Importiert", Erinnerungen an „Eingeladen".
-- **„Datendownload"** öffnet einen Dialog mit drei Möglichkeiten:
+- **„Datendownload"** öffnet einen Dialog: **ankreuzen, was mit soll**, dann **„Herunterladen"**.
+  Zur Auswahl stehen
   - **Excel (XLSX)** bzw. **CSV** → die **Quellspalten in Originalreihenfolge**, gefüllt mit
     den aktuellen Daten (inkl. der gespeicherten Antwortwerte). Auch die **Zeilen** stehen in
     der Reihenfolge der Quelldatei, der Export lässt sich also direkt dagegen vergleichen.
-    Dateiname: `<Workflow>_<Datum>_<Uhrzeit>.xlsx`.
-  - **PDFs als ZIP** (mit Anzahl) → alle erzeugten PDFs dieses Workflows. Dateiname:
-    `<Workflow>_<Datum>_<Uhrzeit>_<Anzahl>-PDFs.zip`, z. B.
-    `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip`.
+  - **PDFs** (mit Anzahl; nicht ankreuzbar, solange keine erzeugt wurden) → alle bisher für
+    diesen Workflow erzeugten Dokumente.
+
+  **Die Verpackung folgt der Auswahl** – der Hinweis neben dem Button sagt vorab, was
+  herauskommt:
+  - nur **Excel** → `<Workflow>_<Datum>_<Uhrzeit>.xlsx`, nur **CSV** → `…csv`, jeweils **ohne**
+    Archiv drumherum,
+  - **PDFs** (allein) → `<Workflow>_<Datum>_<Uhrzeit>_<Anzahl>-PDFs.zip`, z. B.
+    `EStG_Uebungsleiter_20260717_131534_3-PDFs.zip`,
+  - **mehreres zusammen** → ein `<Workflow>_<Datum>_<Uhrzeit>.zip`; die Dokumente liegen darin
+    im Unterordner `PDFs/`, damit die beiden Tabellen nicht zwischen hunderten PDFs
+    verschwinden.
 - **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
 - **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
   betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein

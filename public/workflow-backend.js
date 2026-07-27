@@ -178,15 +178,47 @@
         updateCounts(box);
     }
 
+    // The download dialog states what the selection produces, because the container follows
+    // it: one spreadsheet comes plain, anything else in a ZIP. Same rule as the server
+    // (WorkflowActionController::download) – if one changes, change both.
+    function setupDownload(dialog) {
+        if (!dialog) { return; }
+
+        var form = dialog.querySelector('.wf-download');
+        var result = dialog.querySelector('[data-download-result]');
+        var submit = form.querySelector('button[type="submit"]');
+
+        var update = function () {
+            var checked = Array.prototype.slice
+                .call(form.querySelectorAll('input[name="parts[]"]'))
+                .filter(function (cb) { return cb.checked; });
+
+            submit.disabled = 0 === checked.length;
+
+            if (0 === checked.length) {
+                result.textContent = dialog.dataset.hintNone;
+            } else if (1 === checked.length && 'pdfs' !== checked[0].value) {
+                result.textContent = dialog.dataset['hint' + ('xlsx' === checked[0].value ? 'Xlsx' : 'Csv')];
+            } else {
+                result.textContent = dialog.dataset.hintZip;
+            }
+        };
+
+        form.querySelectorAll('input[name="parts[]"]').forEach(function (cb) {
+            cb.addEventListener('change', update);
+        });
+
+        update();
+    }
+
     ready(function () {
         document.querySelectorAll('.wf-box').forEach(function (box) {
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
-            // Plain choice dialogs: their options are ordinary links, so they need nothing
-            // beyond open/close.
+            // The import dialog offers plain links, so it needs nothing beyond open/close.
             wireDialog(box, '.wf-dialog--import', '.wf-open-import');
-            wireDialog(box, '.wf-dialog--download', '.wf-open-download');
+            setupDownload(wireDialog(box, '.wf-dialog--download', '.wf-open-download'));
         });
     });
 })();

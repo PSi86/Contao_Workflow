@@ -35,8 +35,11 @@ Nachkommastellen.
   auf – sie schützt gespeicherte Werte, und wer die Stellen selbst festlegt, hat die Frage
   beantwortet. Text-, Prozent- und Datumsformate bleiben unzulässig.
 - **Ein Dialog „Datendownload"** ersetzt die drei Buttons „Export (XLSX)", „Export (CSV)" und
-  „PDFs herunterladen". Die PDF-Option nennt die Anzahl, ein leeres Archiv ist damit vorab
-  erkennbar.
+  „PDFs herunterladen": ankreuzen, was mit soll, dann ein Button. **Die Verpackung folgt der
+  Auswahl** – nur Excel bzw. nur CSV kommt als diese Datei, ohne Archiv drumherum; PDFs und
+  jede Mehrfachauswahl kommen als ZIP (bei gemischter Auswahl liegen die Dokumente darin im
+  Unterordner `PDFs/`). Der Hinweis neben dem Button nennt das Ergebnis vorab. Die PDF-Option
+  zeigt die Anzahl und ist nicht ankreuzbar, solange keine Dokumente erzeugt wurden.
 
 ### Geändert
 - **Das eingebaute E-Mail-Feld im Formular entfällt.** Die Adresse ist eine Quellspalte wie
