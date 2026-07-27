@@ -42,7 +42,7 @@ class SpreadsheetImporter
     }
 
     /**
-     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>}
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
@@ -98,11 +98,25 @@ class SpreadsheetImporter
         $protected = 0;
         $seen = [];
 
+        /** @var array<string, array<string, array<int, int>>> $formulaIssues column => problem => rows */
+        $formulaIssues = [];
+
         for ($r = $headerRow + 1; $r <= $highestRow; ++$r) {
             $data = [];
+            $rowIssues = [];
+
             foreach ($headers as $colIndex => $name) {
                 $letter = Coordinate::stringFromColumnIndex($colIndex);
-                $data[$name] = $this->cellReader->read($sheet->getCell($letter.$r));
+                $cell = $sheet->getCell($letter.$r);
+                $data[$name] = $this->cellReader->read($cell);
+
+                // Formulas are not evaluated (see CellReader): a cell whose result the file
+                // does not carry imports as empty. Collected per row and only kept for rows
+                // that are actually stored, so a totals row or an already answered
+                // participant does not produce a warning about data nobody imported.
+                if (null !== $problem = $this->cellReader->formulaProblem($cell)) {
+                    $rowIssues[$name] = $problem;
+                }
             }
 
             $email = null !== $emailHeader ? ($data[$emailHeader] ?? '') : '';
@@ -145,6 +159,8 @@ class SpreadsheetImporter
                 $entry->tstamp = time();
                 $entry->save();
                 ++$updated;
+
+                $this->collectIssues($formulaIssues, $rowIssues, $r);
             } else {
                 $entry = new EntryModel();
                 $entry->pid = (int) $workflow->id;
@@ -156,6 +172,8 @@ class SpreadsheetImporter
                 $entry->sourceRow = $r;
                 $entry->save();
                 ++$inserted;
+
+                $this->collectIssues($formulaIssues, $rowIssues, $r);
             }
         }
 
@@ -164,13 +182,56 @@ class SpreadsheetImporter
         $workflow->save();
 
         return [
-            'inserted'       => $inserted,
-            'updated'        => $updated,
-            'protected'      => $protected,
-            'total'          => \count($existing) + $inserted,
-            'collisions'     => $collisions,
-            'formatProblems' => $formatProblems,
+            'inserted'        => $inserted,
+            'updated'         => $updated,
+            'protected'       => $protected,
+            'total'           => \count($existing) + $inserted,
+            'collisions'      => $collisions,
+            'formatProblems'  => $formatProblems,
+            'formulaProblems' => $this->describeFormulaIssues($formulaIssues),
         ];
+    }
+
+    /**
+     * @param array<string, array<string, array<int, int>>> $issues    column => problem => rows
+     * @param array<string, string>                         $rowIssues column => problem
+     */
+    private function collectIssues(array &$issues, array $rowIssues, int $row): void
+    {
+        foreach ($rowIssues as $column => $problem) {
+            $issues[$column][$problem][] = $row;
+        }
+    }
+
+    /**
+     * One sentence per column and kind of problem, naming a few rows – a column with 300
+     * broken formulas must not produce 300 messages.
+     *
+     * @param array<string, array<string, array<int, int>>> $issues column => problem => rows
+     *
+     * @return array<int, string>
+     */
+    private function describeFormulaIssues(array $issues): array
+    {
+        $messages = [];
+
+        foreach ($issues as $column => $problems) {
+            foreach ($problems as $problem => $rows) {
+                $shown = \array_slice($rows, 0, 3);
+                $rest = \count($rows) - \count($shown);
+
+                $messages[] = sprintf(
+                    'Spalte „%s": Formel ohne verwertbares Ergebnis (%s) in Zeile %s%s – %s leer importiert.',
+                    $column,
+                    $problem,
+                    implode(', ', array_map('strval', $shown)),
+                    $rest > 0 ? sprintf(' und %d weiteren', $rest) : '',
+                    1 === \count($rows) ? 'das Feld wurde' : 'die Felder wurden',
+                );
+            }
+        }
+
+        return $messages;
     }
 
 
@@ -209,6 +270,7 @@ class SpreadsheetImporter
             $result = $this->columnCompatibility->checkNumberColumn(
                 $column,
                 $this->formatAnalyzer->analyze($workflow, $column),
+                $question->getNumberDecimals(),
             );
 
             if (!$result->isCompatible() || null === $result->format) {

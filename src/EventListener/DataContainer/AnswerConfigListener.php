@@ -509,6 +509,7 @@ class AnswerConfigListener
         $result = $container->get(ColumnCompatibility::class)->checkNumberColumn(
             $column,
             $container->get(ColumnFormatAnalyzer::class)->analyze($workflow, $column),
+            $this->postedDecimals((string) ($question->numberDecimals ?? '')),
         );
 
         if (!$result->isCompatible()) {
@@ -540,9 +541,11 @@ class AnswerConfigListener
         }
 
         $container = System::getContainer();
+        $decimals = $this->postedDecimals((string) ($dc->activeRecord->numberDecimals ?? ''));
         $result = $container->get(ColumnCompatibility::class)->checkNumberColumn(
             $column,
             $container->get(ColumnFormatAnalyzer::class)->analyze($workflow, $column),
+            $decimals,
         );
 
         if (!$result->isCompatible()) {
@@ -558,6 +561,22 @@ class AnswerConfigListener
         );
 
         return $value;
+    }
+
+    /**
+     * The decimals the field will have after this save: the posted value if the form
+     * carried one, otherwise the stored one. A configured value lifts the column's decimal
+     * rules, so the check has to judge by what is being saved, not by what was there.
+     *
+     * The field is not posted at all when the type toggle hides it (hidden fields are
+     * disabled); the stored value is the right answer then.
+     */
+    private function postedDecimals(string $stored): ?int
+    {
+        $posted = Input::post('numberDecimals');
+        $value = trim((string) (null !== $posted ? $posted : $stored));
+
+        return '' === $value ? null : max(0, (int) $value);
     }
 
     /**

@@ -28,6 +28,7 @@ use Psimandl\WorkflowBundle\Excel\NumberFormat;
  * @property string $prefill      Prefill the field with the stored data value ("1"/"").
  * @property string $readOnly     Show the stored data value read-only ("1"/"").
  * @property string $numberFormat JSON snapshot of the storage column's Excel format ("number" only).
+ * @property string $numberDecimals Configured decimals ("number" only); empty = take them from the column.
  */
 class QuestionModel extends Model
 {
@@ -84,30 +85,54 @@ class QuestionModel extends Model
     }
 
     /**
-     * The storage column's Excel format, snapshotted when the field was saved (see
-     * AnswerConfigListener::validateNumberColumn).
+     * The decimals configured on the field, or null for "derive them from the column".
      *
-     * Null for a field configured before the snapshot existed. Callers must then recover
-     * the format from a stored value (ValueParser::inferFormat) rather than assume a
-     * default – guessing would re-render "3.000,00 €" as "3000" and drop the very
-     * formatting this field is supposed to preserve.
+     * The counterpart to the snapshot: the source file describes the data, but a column
+     * that is empty there (an answer column) describes nothing, and a column with mixed
+     * formatting describes it ambiguously. This is where the user settles it.
+     */
+    public function getNumberDecimals(): ?int
+    {
+        $configured = trim((string) $this->numberDecimals);
+
+        return '' === $configured ? null : max(0, (int) $configured);
+    }
+
+    /**
+     * The format this field renders with: the configured decimals over the storage column's
+     * Excel format, which was snapshotted when the field was saved and on every import (see
+     * AnswerConfigListener::validateNumberColumn, SpreadsheetImporter::refreshNumberFormats).
+     *
+     * Null for a field with neither – one configured before the snapshot existed. Callers
+     * must then recover the format from a stored value (ValueParser::inferFormat) rather
+     * than assume a default – guessing would re-render "3.000,00 €" as "3000" and drop the
+     * very formatting this field is supposed to preserve.
+     *
+     * This is the single place where the two sources meet: form, live preview, submission,
+     * document and export all read the format from here, so they cannot disagree.
      */
     public function getNumberFormat(): ?NumberFormat
     {
+        $decimals = $this->getNumberDecimals();
         $snapshot = trim((string) $this->numberFormat);
 
         if ('' === $snapshot) {
-            return null;
+            // Configured decimals stand on their own; grouping and currency have no source
+            // then, which is exactly what a column the file says nothing about looks like.
+            return null === $decimals ? null : NumberFormat::number($decimals);
         }
 
         try {
             /** @var array<string, mixed> $data */
             $data = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
-
-            return NumberFormat::fromArray($data);
+            $format = NumberFormat::fromArray($data);
         } catch (\JsonException) {
-            return null;
+            return null === $decimals ? null : NumberFormat::number($decimals);
         }
+
+        return null === $decimals
+            ? $format
+            : NumberFormat::number($decimals, $format->grouping, $format->currency);
     }
 
     /**

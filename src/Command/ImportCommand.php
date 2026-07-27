@@ -63,6 +63,13 @@ class ImportCommand extends Command
             $result['total'],
         ));
 
+        if ([] !== $result['formulaProblems']) {
+            $io->warning(
+                "Formula cells without a stored result – those fields were imported empty:\n"
+                .implode("\n", $result['formulaProblems']),
+            );
+        }
+
         if ([] !== $result['formatProblems']) {
             $io->warning(
                 "Number format not adopted – the affected fields keep their previous format:\n"

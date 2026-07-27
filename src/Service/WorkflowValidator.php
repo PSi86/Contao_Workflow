@@ -133,6 +133,7 @@ class WorkflowValidator
         $result = $this->columnCompatibility->checkNumberColumn(
             $column,
             $this->columnAnalyzer->analyze($workflow, $column),
+            $question->getNumberDecimals(),
         );
 
         if ($result->isCompatible()) {

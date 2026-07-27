@@ -183,6 +183,17 @@ class WorkflowActionController
                 $result['total'],
             ));
 
+            // Formulas are never recalculated: a cell whose result the file does not carry
+            // was imported empty. Saying so is the only way the user can tell an empty
+            // field apart from a broken one.
+            if ([] !== $result['formulaProblems']) {
+                Message::addError(sprintf(
+                    'Formelzellen ohne gespeichertes Ergebnis: %s Bitte die Quelldatei in Excel öffnen, '
+                    .'neu berechnen und speichern (oder die Werte als Text einfügen).',
+                    StringUtil::specialchars(implode(' | ', $result['formulaProblems'])),
+                ));
+            }
+
             // A number column the import could not adopt the format of: the field keeps its
             // previous format, which is a silent trap if nobody says so.
             if ([] !== $result['formatProblems']) {

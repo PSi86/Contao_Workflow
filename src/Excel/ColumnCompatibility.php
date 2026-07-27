@@ -14,6 +14,11 @@ namespace Psimandl\WorkflowBundle\Excel;
  * 100. Those are not cosmetic differences, so they are refused up front instead of
  * corrupting values later. A text field has no such contract and accepts anything.
  *
+ * The decimal rule guards *existing* values, so it applies to what the filled cells show.
+ * It does not apply to a format that only the empty cells declare (there is nothing to
+ * round-trip yet), and a field that states its own decimals lifts it entirely – the
+ * question it protects against is then answered.
+ *
  * The currency symbol is deliberately ignored: it carries no numeric meaning, so it never
  * makes a column incompatible (it does stay on the stored and printed value).
  *
@@ -36,10 +41,15 @@ class ColumnCompatibility
     ];
 
     /**
-     * @param array<int, array{row: int, format: NumberFormat, mask: string, value: float|null, text: string}> $cells
-     *                                                                                                                as produced by {@see ColumnFormatAnalyzer}
+     * @param array<int, array{row: int, format: NumberFormat, mask: string, value: float|null, text: string, empty?: bool}> $cells
+     *                                                                                                                              as produced by {@see ColumnFormatAnalyzer}
+     * @param int|null                                                                                                      $forcedDecimals
+     *                                                                                                                              decimals configured on the field ("Nachkommastellen"), or null for
+     *                                                                                                                              "derive them from the column". A configured value answers the
+     *                                                                                                                              question the decimal rules below exist for, so it lifts them: it is
+     *                                                                                                                              the user stating how the field rounds, not a guess from the data
      */
-    public function checkNumberColumn(string $header, array $cells): ColumnCheckResult
+    public function checkNumberColumn(string $header, array $cells, ?int $forcedDecimals = null): ColumnCheckResult
     {
         $problems = [];
 
@@ -53,8 +63,24 @@ class ColumnCompatibility
         $grouping = false;
         $currency = '';
 
+        // The format declared by the empty cells of the column. An empty cell is not a
+        // value and must never make a column incompatible – a participant may simply have
+        // nothing there yet – but its mask is a statement about the column. For an answer
+        // column, which is empty in the source by definition, it is the only statement
+        // there is: without reading it, "Währung mit 2 Nachkommastellen" silently became
+        // "ganzzahlig, keine Währung" and rounded 25,25 to 25 on the way in.
+        $declared = null;
+
         foreach ($cells as $cell) {
             $format = $cell['format'];
+
+            if ($cell['empty'] ?? false) {
+                if ($format->isNumeric() && null !== $format->decimals) {
+                    $declared ??= $format;
+                }
+
+                continue;
+            }
 
             if (!$format->isNumeric()) {
                 $badKinds[$format->kind][] = $cell['row'];
@@ -105,7 +131,9 @@ class ColumnCompatibility
         }
 
         foreach ($byDecimals as $decimals => $info) {
-            if (\in_array($decimals, self::ALLOWED_DECIMALS, true)) {
+            // A configured decimal count settles this: the field then rounds the way the
+            // user said, and refusing the column would only block the way there.
+            if (null !== $forcedDecimals || \in_array($decimals, self::ALLOWED_DECIMALS, true)) {
                 continue;
             }
 
@@ -119,8 +147,9 @@ class ColumnCompatibility
         }
 
         // Mixed decimals leave no single format to snapshot: the field would print one
-        // spelling while the neighbouring rows keep another.
-        if (\count($byDecimals) > 1) {
+        // spelling while the neighbouring rows keep another. Unless the field states its
+        // decimals – then there is a single format, the configured one.
+        if (null === $forcedDecimals && \count($byDecimals) > 1) {
             $counts = array_keys($byDecimals);
             sort($counts);
 
@@ -141,7 +170,18 @@ class ColumnCompatibility
             return new ColumnCheckResult($problems);
         }
 
-        $decimals = [] !== $byDecimals ? (int) array_key_first($byDecimals) : 0;
+        // Order of authority: what the field configures, else what the values show, else
+        // what the empty cells declare, else "no decimals". Grouping and the currency
+        // symbol come from the empty cells only when no value contributed them – a value
+        // carries its own mask and is the better witness.
+        $fromValues = [] !== $byDecimals ? (int) array_key_first($byDecimals) : null;
+
+        if (null === $fromValues && null !== $declared) {
+            $grouping = $grouping || $declared->grouping;
+            $currency = '' !== $currency ? $currency : $declared->currency;
+        }
+
+        $decimals = $forcedDecimals ?? $fromValues ?? $declared?->decimals ?? 0;
 
         return new ColumnCheckResult([], NumberFormat::number($decimals, $grouping, $currency));
     }
