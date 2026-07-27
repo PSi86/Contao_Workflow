@@ -88,21 +88,30 @@ $l = $this->dash;
         </tbody>
       </table>
 
+      <?php
+        // Buttons in the order the work happens: configure, import, look at what the import
+        // did, send, take the data out. Import and send need a runnable workflow (and the
+        // send its prerequisites); the log and the download are history and therefore always
+        // available – there is a log to read precisely when something is off.
+      ?>
       <div class="wf-actions">
         <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
+
         <?php if ($wf['runnable']): ?>
           <button type="button" class="tl_submit wf-open-import"><?= $l['btn_import'] ?></button>
-          <?php if ($wf['canSend']): ?>
-            <button type="button" class="tl_submit wf-open-dialog"><?= $l['btn_send'] ?></button>
-          <?php else: ?>
-            <span class="tl_submit wf-disabled" title="<?= $esc(implode('; ', $wf['sendBlockers'])) ?>"><?= $l['btn_send'] ?></span>
-          <?php endif; ?>
         <?php else: ?>
           <span class="tl_submit wf-disabled"><?= $l['btn_import'] ?></span>
-          <span class="tl_submit wf-disabled"><?= $l['btn_send'] ?></span>
         <?php endif; ?>
-        <button type="button" class="tl_submit wf-open-download"><?= $l['btn_download'] ?></button>
+
         <button type="button" class="tl_submit wf-open-log"><?= $l['btn_log'] ?></button>
+
+        <?php if ($wf['runnable'] && $wf['canSend']): ?>
+          <button type="button" class="tl_submit wf-open-dialog"><?= $l['btn_send'] ?></button>
+        <?php else: ?>
+          <span class="tl_submit wf-disabled"<?= [] !== $wf['sendBlockers'] ? ' title="'.$esc(implode('; ', $wf['sendBlockers'])).'"' : '' ?>><?= $l['btn_send'] ?></span>
+        <?php endif; ?>
+
+        <button type="button" class="tl_submit wf-open-download"><?= $l['btn_download'] ?></button>
       </div>
 
       <?php // The import log: what each run did, so a state can be explained afterwards.

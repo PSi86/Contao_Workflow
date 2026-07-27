@@ -10,7 +10,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 Schwerpunkt: der Import. Ausgeblendete Zeilen wurden trotzdem übernommen, Formeln kamen
 falsch formatiert (oder gar nicht) an, und eine leere Zahlenspalte verlor ihre
-Nachkommastellen.
+Nachkommastellen. Weil ein Import damit noch stärker von seinen Vorgängern abhängt, hält ein
+**Importprotokoll** ab sofort jeden Lauf fest.
+
+> **Beim Update:** `contao:migrate` ausführen – es legt die Protokolltabelle
+> (`tl_workflow_import`) und die neue Spalte `tl_workflow_question.numberDecimals` an.
 
 ### Hinzugefügt
 - **Importprotokoll**: jeder Lauf wird festgehalten – erreichbar über den Button
