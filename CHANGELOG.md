@@ -70,6 +70,11 @@ Nachkommastellen.
   lassen sich nicht zurückholen – die Nachkommastellen waren beim Speichern verloren.
 - Eine ausgeblendete Zeile mit abweichender Formatierung kann keine Spalte mehr für ein
   Zahlenfeld disqualifizieren – sie wird ja nicht importiert.
+- **Die Überschrift „Formularfelder" war bei einem Workflow mit vorliegenden Antworten kaum
+  noch lesbar.** Dort entfällt der Button „Neues Formularfeld" (Felder anzulegen würde die
+  erfassten Antworten entwerten). Die Button-Leiste blieb aber stehen – leer und ohne Höhe –
+  und zog mit ihrem negativen Abstand, der sonst den Button neben die Überschrift hebt, die
+  Liste über die Überschrift.
 
 ## [3.1.0] – 2026-07-21
 

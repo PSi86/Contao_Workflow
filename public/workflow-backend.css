@@ -201,6 +201,15 @@
     content: " 🔒";
 }
 
+/* A dcaWizard whose "new" button was taken away (locked workflow: no form fields may be
+   added). The widget pulls its button bar 28px up so the button sits on the line of the
+   field heading; with the bar empty that negative margin drags the list up over the
+   heading instead, which then all but disappears. !important because the widget writes
+   the margin as an inline style. The marker class comes from WorkflowLockListener. */
+.wf-wizard-nobutton .dcawizard #tl_buttons {
+    margin-top: 0 !important;
+}
+
 /* Not-runnable badge. */
 .wf-badge {
     display: inline-block;

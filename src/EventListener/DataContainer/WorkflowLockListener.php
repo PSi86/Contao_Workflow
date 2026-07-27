@@ -61,6 +61,7 @@ class WorkflowLockListener
         // file). Without this the button stayed visible and clicking it produced a bare
         // "not creatable" error page instead of simply not being offered.
         $this->lockAnswerFieldTable();
+        $this->markWizardWithoutButton();
 
         if ($this->isEditMask()) {
             Message::addInfo($this->notice($this->lock->answeredCount($id)));
@@ -102,6 +103,26 @@ class WorkflowLockListener
         $dca['config']['notCreatable'] = true;
         $dca['config']['notDeletable'] = true;
         unset($dca['list']['operations']['delete'], $dca['list']['operations']['copy'], $dca);
+    }
+
+    /**
+     * Flags the answer-field wizard as "has no button", so the stylesheet can undo the space
+     * the button would have taken.
+     *
+     * dcaWizard renders its button bar with an inline `margin-top:-28px`, which lifts the
+     * "new" button onto the line of the field heading. With the button gone the bar is still
+     * there, empty and zero-high – and the negative margin then drags the whole list up over
+     * the heading, leaving "Formularfelder" all but unreadable. Detecting the empty bar in
+     * CSS would need :has(); the class states it outright, from the place that removed the
+     * button (see .wf-wizard-nobutton in workflow-backend.css).
+     */
+    private function markWizardWithoutButton(): void
+    {
+        $eval = &$GLOBALS['TL_DCA']['tl_workflow']['fields']['questions']['eval'];
+        $eval['tl_class'] = trim(((string) ($eval['tl_class'] ?? '')).' wf-wizard-nobutton');
+        unset($eval);
+
+        $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
     }
 
     /**
