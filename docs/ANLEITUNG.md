@@ -415,15 +415,18 @@ gleichwertig unterstützt; die Regel-Variante ist für einfache Fälle transpare
 
 ### 3 c. Import
 **Workflow → Übersicht** → beim Workflow **„Import ausführen"**. Der Dialog fragt den
-**Modus** – er gilt nur für diesen einen Lauf:
+**Modus** – er gilt nur für diesen einen Lauf.
 
-- **Additiv** (Vorauswahl): neue Zeilen anlegen, vorhandene aktualisieren, **nichts löschen**.
-  Einträge, deren Zeile ausgeblendet ist oder in der Datei fehlt, bleiben bestehen und werden
-  weiterhin angeschrieben.
-- **Absolut**: die Quelldatei bestimmt die Teilnehmer. Einträge, deren Zeile ausgeblendet ist
-  oder in der Datei fehlt, werden **gelöscht** – samt bereits erzeugter PDFs, auch wenn sie
-  schon geantwortet haben. Bereits beantwortete Einträge, die in der Datei **stehen**, bleiben
-  wie im additiven Modus unverändert.
+**Beiden Modi gemeinsam:** neue sichtbare Zeilen werden angelegt, vorhandene aktualisiert,
+bereits beantwortete eingefroren – und **ausgeblendete Zeilen werden übersprungen, in beiden
+Fällen**. Der Modus entscheidet ausschließlich, was mit **bereits vorhandenen Einträgen**
+geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:
+
+- **Additiv** (Vorauswahl): sie bleiben bestehen und werden weiterhin angeschrieben.
+  **Nichts wird gelöscht.**
+- **Absolut**: sie werden **gelöscht** – samt bereits erzeugter PDFs, auch wenn sie schon
+  geantwortet haben. Die Quelldatei bestimmt damit die Teilnehmerliste. Bereits beantwortete
+  Einträge, die in der Datei **stehen**, bleiben wie im additiven Modus unverändert.
 
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
 **„Importiert"**.

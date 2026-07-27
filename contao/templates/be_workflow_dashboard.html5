@@ -110,6 +110,9 @@ $l = $this->dash;
           <div class="wf-dialog-box">
             <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
             <h3><?= $l['btn_import'] ?></h3>
+            <?php // What the two modes do NOT differ in – said first, because that is where
+                  // the question "does 'additiv' import hidden rows?" comes from. ?>
+            <p class="wf-choice-lead"><?= $l['import_intro'] ?></p>
             <p class="wf-choice">
               <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['import_add'] ?></a>
               <span class="wf-choice-hint"><?= $l['import_add_hint'] ?></span>

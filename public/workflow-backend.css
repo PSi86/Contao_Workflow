@@ -336,6 +336,12 @@
     margin: .8em 0;
 }
 .wf-choice .tl_submit { flex: 0 0 auto; }
+
+/* Lead sentence above a set of choices (what they have in common). */
+.wf-choice-lead {
+    margin: 0 0 1em;
+    line-height: 1.5;
+}
 .wf-choice > label {
     flex: 0 0 11em;
     cursor: pointer;
