@@ -38,14 +38,12 @@ class ImportLogListener
         $rows = $this->log->recent($id, self::LIMIT);
         $lang = $GLOBALS['TL_LANG']['tl_workflow'] ?? [];
 
-        $GLOBALS['TL_CSS']['workflow_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
-
         if ([] === $rows) {
-            return '<div class="widget wf-import-log"><h3>'.($lang['importLog'][0] ?? 'Importprotokoll').'</h3>'
+            return $this->open($lang)
                 .'<p class="tl_info">'.($lang['importLogEmpty'] ?? 'Für diesen Workflow wurde noch kein Import ausgeführt.').'</p></div>';
         }
 
-        $html = '<div class="widget wf-import-log"><h3>'.($lang['importLog'][0] ?? 'Importprotokoll').'</h3>';
+        $html = $this->open($lang);
         $html .= '<p class="tl_help" style="margin:0 0 .6em">'.($lang['importLog'][1] ?? '').'</p>';
         $html .= '<table class="tl_listing showColumns"><thead><tr>'
             .'<th>'.($lang['importLogTime'] ?? 'Zeitpunkt').'</th>'
@@ -76,6 +74,24 @@ class ImportLogListener
         }
 
         return $html.'</div>';
+    }
+
+    /**
+     * The opening wrapper, heading included.
+     *
+     * A field rendered by an input_field_callback is inserted raw: Contao adds no widget
+     * wrapper around it and does not apply the field's tl_class. The block has to bring its
+     * own, or it slides up next to the preceding half-width fields (Tabellenblatt,
+     * Kopfzeile, E-Mail-Spalte) and covers them – ".w50" is a left float in the back end
+     * theme. "clr" is the theme's own answer to that: it clears and sets the width every
+     * full-width widget has.
+     *
+     * @param array<string, mixed> $lang
+     */
+    private function open(array $lang): string
+    {
+        return '<div class="widget clr wf-import-log">'
+            .'<h3>'.($lang['importLog'][0] ?? 'Importprotokoll').'</h3>';
     }
 
     private function modeLabel(string $mode): string
