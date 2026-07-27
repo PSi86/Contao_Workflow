@@ -229,10 +229,16 @@ class QuestionModel extends Model
      * Statement template of a value-based question; ##answer## marks the spot
      * for the entered value. Default: "<label>: ##answer##". Choice questions
      * carry their document texts per option instead.
+     *
+     * Spaces and tabs at the edges are typing noise and go; line breaks stay. The
+     * statements of ##text_all## follow each other line by line, so a blank line at the
+     * start or end of this text is how a field is set apart from the next – written where
+     * the resulting space appears (see DocumentBodyComposer::trimStatement).
      */
     public function getStatementTemplate(): string
     {
-        $template = trim((string) $this->pdfStatement);
+        $raw = (string) $this->pdfStatement;
+        $template = '' === trim($raw) ? '' : trim($raw, " \t\r\0\x0B");
 
         // "Erklärung" is static text: the pdfStatement is the paragraph itself, with
         // no "<label>: ##answer##" fallback (there is no answer).
@@ -247,9 +253,8 @@ class QuestionModel extends Model
      * Whether a document statement was explicitly configured – per option for
      * choice questions (their pdfStatement is hidden and must not count),
      * pdfStatement otherwise. Only then does the form show the "this is how it
-     * appears in the document" hint, and ##text_all## adds a blank line before
-     * the statement – without explicit statements the visible label/option
-     * text counts verbatim anyway.
+     * appears in the document" hint – without an explicit statement the visible
+     * label/option text counts verbatim anyway.
      */
     public function hasExplicitStatement(): bool
     {

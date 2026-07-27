@@ -42,6 +42,16 @@ Nachkommastellen.
   zeigt die Anzahl und ist nicht ankreuzbar, solange keine Dokumente erzeugt wurden.
 
 ### Geändert
+- **`##text_all##` setzt keine Absätze mehr.** Bisher rückte das Bundle vor jeden Baustein
+  mit eigenem Dokument-Text selbsttätig eine Leerzeile ein – die ließ sich nicht abstellen.
+  Jetzt steht **ein Baustein je Zeile**, und Abstand kommt dorthin, wo er gemeint ist: eine
+  **Leerzeile am Anfang oder Ende eines Dokument-Texts** (bzw. eines Options-Texts) bleibt
+  erhalten und erscheint so im Dokument. Leerzeichen am Rand werden weiterhin entfernt.
+  Betrifft das Dokument und den `##text_all##`-Token in E-Mails; das Formular zeigt die
+  Bausteine einzeln und ändert sich nicht.
+- **Das Formular nutzt die Breite des Seitenlayouts.** Das Modul begrenzte sich selbst auf
+  640 px und überstimmte damit auf jeder Seite das Layout. Wer die alte Breite behalten will,
+  setzt sie im eigenen Stylesheet: `.mod_workflow_form { max-width: 640px; }`.
 - **Das eingebaute E-Mail-Feld im Formular entfällt.** Die Adresse ist eine Quellspalte wie
   jede andere: Soll sie im Formular stehen, wird dafür ein Formularfeld angelegt (Typ
   „Freitext", Speicherfeld = E-Mail-Spalte, Haken „Schreibgeschützt"). Position, Überschrift

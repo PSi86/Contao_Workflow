@@ -372,9 +372,11 @@ und auswählt, steht wörtlich im PDF** – das Dokument enthält keine Überras
     (z. B. `##text_entscheidung##`),
   - `##text_all##` – fügt **alle** Bausteine (Formularfelder **und** „Erklärung"-Absätze)
     in Formular-Reihenfolge ein. So kann **kein konfiguriertes Feld im Dokument vergessen
-    werden**. Formatierung: Felder ohne eigenen Dokument-Text („Überschrift: Wert") stehen
-    zeilenweise untereinander; vor jedem Feld bzw. jeder Erklärung **mit** eigenem Text
-    beginnt ein **neuer Absatz** (Leerzeile).
+    werden**. Formatierung: **ein Baustein je Zeile**, ohne zusätzlichen Abstand.
+    Mehr Abstand kommt dorthin, wo er gemeint ist – in den **Dokument-Text selbst**: eine
+    **Leerzeile am Anfang oder Ende** des Dokument-Texts bleibt erhalten und erscheint so im
+    Dokument. (Bis 3.1 setzte das Bundle vor jeden Baustein mit eigenem Dokument-Text
+    selbsttätig eine Leerzeile; die ließ sich nicht abstellen.)
   - Enthält ein Dokument-Text **kein** `##text_*##`, erscheinen die Textbausteine/Erklärungen
     dort **nicht** – der Text wird dann vollständig von Hand geschrieben (z. B. mit einzelnen
     `##data_*##`-Platzhaltern).
