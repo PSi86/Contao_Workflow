@@ -7,6 +7,7 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['question_legend'] = 'Form field';
 $GLOBALS['TL_LANG']['tl_workflow_question']['label']        = ['Heading', 'Heading of the form field shown in the form. For "Explanation" it is only the internal name (not shown).'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Type', 'Type of the form field. Depending on the type the relevant fields are shown/hidden.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['storageField'] = ['Storage column', 'Source column the selected value is written into.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['numberDecimals'] = ['Decimals', 'Type "Number" only. Empty = take them from the source column (its cell format). A value fixes the decimals and wins over the source file – useful when the column is empty there or formatted inconsistently. Thousands separator and currency symbol still come from the source file.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['mandatory']    = ['Mandatory', 'The field must be filled in the form.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['description']  = ['Description', 'Optional hint shown only in the form below the heading (only when not empty). It never appears in the document. Placeholders, {{insert tags}} and formatting ([b]bold[/b], [i]italic[/i], [u]underline[/u]) allowed.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['prefill']      = ['Prefill with the stored value', 'The field is prefilled with the stored value (from the source file or a previous answer) and stays editable. If the value of a choice field matches no option, the field starts empty.'];
@@ -37,3 +38,6 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['edit']   = ['Edit', 'Edit form fiel
 $GLOBALS['TL_LANG']['tl_workflow_question']['copy']   = ['Copy', 'Copy form field.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['delete'] = ['Delete', 'Delete form field.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['show']   = ['Details', 'Show form field.'];
+
+// Blank option of the "Decimals" select.
+$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'] = 'automatic (from the source file)';

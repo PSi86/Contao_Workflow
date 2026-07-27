@@ -137,6 +137,22 @@ class SpreadsheetInspector
     }
 
     /**
+     * Whether a sheet row is hidden – manually or by an active auto-filter, which both
+     * write the same "hidden" flag into the file.
+     *
+     * Hiding rows is how a source file gets narrowed down to the people a run is meant for,
+     * so a hidden row is not imported. The dimension is only asked for when the file
+     * actually carries one for that row; getRowDimension() would otherwise create (and
+     * cache) one for every row of the sheet.
+     *
+     * XLSX and XLS carry the flag; ODS and CSV do not, so there every row counts as visible.
+     */
+    public function isRowHidden(Worksheet $sheet, int $row): bool
+    {
+        return $sheet->rowDimensionExists($row) && !$sheet->getRowDimension($row)->getVisible();
+    }
+
+    /**
      * The configured sheet of a loaded spreadsheet, falling back to the active one.
      */
     public function sheetOf(Spreadsheet $spreadsheet, string $sheetName): Worksheet

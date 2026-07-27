@@ -7,6 +7,7 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['question_legend'] = 'Formularfeld';
 $GLOBALS['TL_LANG']['tl_workflow_question']['label']        = ['Überschrift', 'Überschrift des Formularfelds, die im Formular angezeigt wird. Bei „Erklärung“ nur die interne Bezeichnung (wird nicht angezeigt).'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['type']         = ['Typ', 'Art des Formularfelds. Je nach Typ werden passende Felder ein-/ausgeblendet.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['storageField'] = ['Speicherfeld', 'Spalte der Quelldatei, in die der gewählte Wert geschrieben wird.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['numberDecimals'] = ['Nachkommastellen', 'Nur beim Typ „Zahl“. Leer = aus der Spalte der Quelldatei übernehmen (deren Zellformat). Ein Wert legt die Nachkommastellen fest und gilt vor dem Format der Quelldatei – sinnvoll, wenn die Spalte in der Quelldatei leer ist oder uneinheitlich formatiert. Tausenderpunkt und Währungszeichen kommen weiterhin aus der Quelldatei.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['mandatory']    = ['Pflichtfeld', 'Das Feld muss im Formular ausgefüllt werden.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['description']  = ['Beschreibung', 'Optionaler Hinweistext, der nur im Formular unter der Überschrift angezeigt wird (nur wenn nicht leer). Er erscheint nie im Dokument. Platzhalter, {{Insert-Tags}} und Formatierung ([b]fett[/b], [i]kursiv[/i], [u]unterstrichen[/u]) erlaubt.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['prefill']      = ['Mit Wert aus den Daten vorbelegen', 'Das Feld wird mit dem gespeicherten Wert (aus der Quelldatei bzw. einer früheren Antwort) vorbelegt und bleibt editierbar. Passt der Wert bei Auswahlfeldern zu keiner Option, bleibt das Feld leer.'];
@@ -37,3 +38,6 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['edit']   = ['Bearbeiten', 'Formular
 $GLOBALS['TL_LANG']['tl_workflow_question']['copy']   = ['Kopieren', 'Formularfeld kopieren.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['delete'] = ['Löschen', 'Formularfeld löschen.'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['show']   = ['Details', 'Formularfeld anzeigen.'];
+
+// Leer-Option des Auswahlfelds „Nachkommastellen".
+$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'] = 'automatisch (aus der Quelldatei)';

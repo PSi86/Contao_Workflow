@@ -23,16 +23,18 @@ class ColumnFormatAnalyzer
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly FormatCodeParser $formatParser,
+        private readonly CellReader $cellReader,
     ) {
     }
 
     /**
      * Every data cell of $header, in sheet order.
      *
-     * @return array<int, array{row: int, format: NumberFormat, mask: string, value: float|null, text: string}>
+     * @return array<int, array{row: int, format: NumberFormat, mask: string, value: float|null, text: string, empty: bool}>
      *                              row   = 1-based sheet row (for the error messages)
      *                              mask  = the raw format code, quoted back at the user
      *                              value = null when the cell holds no number
+     *                              empty = no value at all; its mask still declares the format
      */
     public function analyze(WorkflowModel $workflow, string $header): array
     {
@@ -68,22 +70,28 @@ class ColumnFormatAnalyzer
         $cells = [];
 
         for ($r = $headerRow + 1; $r <= $highestRow; ++$r) {
+            // Hidden rows are not imported, so their formatting is none of this column's
+            // business – a leftover row hidden away in the file must not refuse a column
+            // whose imported cells are perfectly fine.
+            if ($this->inspector->isRowHidden($sheet, $r)) {
+                continue;
+            }
+
             // Judge only the rows the importer actually imports. A sheet's totals row
             // ("Summe: 16,800.00 €") has no e-mail and is skipped there, so flagging its
             // formatting would refuse a perfectly good column over a cell that never
             // becomes an entry.
-            if (null !== $emailLetter && '' === trim((string) $sheet->getCell($emailLetter.$r)->getFormattedValue())) {
+            if (null !== $emailLetter && '' === $this->cellReader->read($sheet->getCell($emailLetter.$r))) {
                 continue;
             }
 
             $cell = $sheet->getCell($letter.$r);
-            $raw = $cell->getValue();
-            $text = trim((string) $cell->getFormattedValue());
 
-            // Empty cells constrain nothing – a participant may simply have no value yet.
-            if ('' === $text && (null === $raw || '' === $raw)) {
-                continue;
-            }
+            // Through the CellReader, so a cell is judged by exactly the value the import
+            // would store: a formula counts with its stored result, and one without a
+            // usable result counts as empty instead of as "text instead of a number".
+            $raw = $this->cellReader->rawValue($cell);
+            $text = $this->cellReader->read($cell);
 
             $mask = (string) $cell->getStyle()->getNumberFormat()->getFormatCode();
 
@@ -93,6 +101,12 @@ class ColumnFormatAnalyzer
                 'mask'   => $mask,
                 'value'  => is_numeric($raw) ? (float) $raw : null,
                 'text'   => $text,
+                // An empty cell holds no value to judge – but its mask still declares how
+                // the column is formatted, which for a column that is empty everywhere
+                // (an answer column the participants fill in) is the only evidence there
+                // is. The compatibility check therefore reads them, but never turns them
+                // into a problem.
+                'empty'  => '' === $text && (null === $raw || '' === $raw),
             ];
         }
 

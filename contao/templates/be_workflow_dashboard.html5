@@ -88,22 +88,101 @@ $l = $this->dash;
         </tbody>
       </table>
 
+      <?php
+        // Buttons in the order the work happens: configure, import, look at what the import
+        // did, send, take the data out. Import and send need a runnable workflow (and the
+        // send its prerequisites); the log and the download are history and therefore always
+        // available – there is a log to read precisely when something is off.
+      ?>
       <div class="wf-actions">
         <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
+
         <?php if ($wf['runnable']): ?>
-          <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['btn_import'] ?></a>
-          <?php if ($wf['canSend']): ?>
-            <button type="button" class="tl_submit wf-open-dialog"><?= $l['btn_send'] ?></button>
-          <?php else: ?>
-            <span class="tl_submit wf-disabled" title="<?= $esc(implode('; ', $wf['sendBlockers'])) ?>"><?= $l['btn_send'] ?></span>
-          <?php endif; ?>
+          <button type="button" class="tl_submit wf-open-import"><?= $l['btn_import'] ?></button>
         <?php else: ?>
           <span class="tl_submit wf-disabled"><?= $l['btn_import'] ?></span>
-          <span class="tl_submit wf-disabled"><?= $l['btn_send'] ?></span>
         <?php endif; ?>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['exportXlsx']) ?>"><?= $l['btn_export_xlsx'] ?></a>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['exportCsv']) ?>"><?= $l['btn_export_csv'] ?></a>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['pdfs']) ?>"><?= $l['btn_pdfs'] ?></a>
+
+        <button type="button" class="tl_submit wf-open-log"><?= $l['btn_log'] ?></button>
+
+        <?php if ($wf['runnable'] && $wf['canSend']): ?>
+          <button type="button" class="tl_submit wf-open-dialog"><?= $l['btn_send'] ?></button>
+        <?php else: ?>
+          <span class="tl_submit wf-disabled"<?= [] !== $wf['sendBlockers'] ? ' title="'.$esc(implode('; ', $wf['sendBlockers'])).'"' : '' ?>><?= $l['btn_send'] ?></span>
+        <?php endif; ?>
+
+        <button type="button" class="tl_submit wf-open-download"><?= $l['btn_download'] ?></button>
+      </div>
+
+      <?php // The import log: what each run did, so a state can be explained afterwards.
+            // Same table as in the workflow's edit mask (ImportLogRenderer). ?>
+      <div class="wf-dialog wf-dialog--log" hidden>
+        <div class="wf-dialog-box wf-dialog-box--wide">
+          <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+          <h3><?= $l['btn_log'] ?> – <?= $esc($wf['title']) ?></h3>
+          <p class="wf-choice-lead"><?= $l['log_hint'] ?></p>
+          <?php // Safe HTML: built server-side by ImportLogRenderer, every value escaped. ?>
+          <?= $wf['importLog'] ?>
+        </div>
+      </div>
+
+      <?php // Import dialog: the mode is chosen per run, never stored. ?>
+      <?php if ($wf['runnable']): ?>
+        <div class="wf-dialog wf-dialog--import" hidden>
+          <div class="wf-dialog-box">
+            <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+            <h3><?= $l['btn_import'] ?></h3>
+            <?php // What the two modes do NOT differ in – said first, because that is where
+                  // the question "does 'additiv' import hidden rows?" comes from. ?>
+            <p class="wf-choice-lead"><?= $l['import_intro'] ?></p>
+            <p class="wf-choice">
+              <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['import_add'] ?></a>
+              <span class="wf-choice-hint"><?= $l['import_add_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <a class="tl_submit" href="<?= $esc($wf['urls']['importAbsolute']) ?>"
+                 onclick="return confirm('<?= $esc($l['import_absolute_confirm']) ?>');"><?= $l['import_absolute'] ?></a>
+              <span class="wf-choice-hint"><?= $l['import_absolute_hint'] ?></span>
+            </p>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <?php // Data download: pick what goes in, one button. The container follows the
+            // selection (see the hint below the button), so the form only submits the
+            // selection itself – a GET form, hence the token as a field. ?>
+      <div class="wf-dialog wf-dialog--download" hidden
+           data-hint-xlsx="<?= $esc($l['download_result_xlsx']) ?>"
+           data-hint-csv="<?= $esc($l['download_result_csv']) ?>"
+           data-hint-zip="<?= $esc($l['download_result_zip']) ?>"
+           data-hint-none="<?= $esc($l['download_result_none']) ?>">
+        <div class="wf-dialog-box">
+          <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+          <h3><?= $l['btn_download'] ?></h3>
+
+          <form method="get" action="<?= $esc($wf['urls']['download']) ?>" class="wf-download">
+            <input type="hidden" name="rt" value="<?= $esc($wf['rt']) ?>">
+
+            <p class="wf-choice">
+              <label><input type="checkbox" name="parts[]" value="xlsx" checked> <?= $l['btn_export_xlsx'] ?></label>
+              <span class="wf-choice-hint"><?= $l['download_data_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <label><input type="checkbox" name="parts[]" value="csv"> <?= $l['btn_export_csv'] ?></label>
+              <span class="wf-choice-hint"><?= $l['download_csv_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <?php // Nothing to pack while no document exists – the count says so. ?>
+              <label><input type="checkbox" name="parts[]" value="pdfs"<?= 0 === (int) $wf['pdfCount'] ? ' disabled' : '' ?>> <?= $l['btn_pdfs'] ?> (<?= (int) $wf['pdfCount'] ?>)</label>
+              <span class="wf-choice-hint"><?= $l['download_pdfs_hint'] ?></span>
+            </p>
+
+            <p class="wf-download-run">
+              <button type="submit" class="tl_submit"><?= $l['download_run'] ?></button>
+              <span class="wf-choice-hint" data-download-result><?= $l['download_result_xlsx'] ?></span>
+            </p>
+          </form>
+        </div>
       </div>
 
       <?php if (!empty($wf['pending'])): ?>
@@ -147,7 +226,7 @@ $l = $this->dash;
           </table>
         </details>
 
-        <div class="wf-dialog" hidden
+        <div class="wf-dialog wf-dialog--send" hidden
              data-send-url="<?= $esc($wf['sendUrl']) ?>"
              data-invite="<?= (int) $wf['inviteCount'] ?>"
              data-reminder="<?= (int) $wf['reminderCount'] ?>"

@@ -57,7 +57,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // are hidden (they are meaningless there). "Erklärung" is a static text
         // block (pdfStatement only) shown as a paragraph in the form and the
         // document – no storage field, no input.
-        'default' => '{question_legend},label,type,storageField,mandatory,readOnly,prefill,description,options,pdfStatement,showStatementInForm,hideInForm',
+        'default' => '{question_legend},label,type,storageField,numberDecimals,mandatory,readOnly,prefill,description,options,pdfStatement,showStatementInForm,hideInForm',
     ],
     'fields' => [
         'id' => [
@@ -95,7 +95,7 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                 'data-wf-toggle' => '{"mode":"select","map":{'
                     .'"text":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
                     .'"textarea":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
-                    .'"number":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
+                    .'"number":["storageField","numberDecimals","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
                     .'"date":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
                     .'"select":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
                     .'"radio":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
@@ -130,6 +130,21 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // re-reading the source file's style layer (expensive, and the file may be gone).
         'numberFormat' => [
             'sql' => "varchar(128) NOT NULL default ''",
+        ],
+        // Decimals of a "number" field. Empty = derive them from the source column (the
+        // snapshot above). A value wins over the snapshot and is the answer for a column
+        // the file says nothing usable about – notably one that is empty everywhere
+        // because the participants are the ones filling it in.
+        'numberDecimals' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'options'   => ['0', '1', '2', '3', '4'],
+            'eval'      => [
+                'includeBlankOption' => true,
+                'blankOptionLabel'   => &$GLOBALS['TL_LANG']['tl_workflow_question']['decimalsAuto'],
+                'tl_class'           => 'w50',
+            ],
+            'sql'       => "varchar(2) NOT NULL default ''",
         ],
         'mandatory' => [
             'exclude'   => true,

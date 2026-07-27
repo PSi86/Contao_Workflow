@@ -107,6 +107,19 @@ class PdfStorage
     }
 
     /**
+     * Removes a single generated document, e.g. when its entry is deleted. Does nothing for
+     * an empty path (an entry that never produced one) or a file that is already gone.
+     */
+    public function deleteFile(string $relativePath): void
+    {
+        if ('' === trim($relativePath)) {
+            return;
+        }
+
+        $this->filesystem->remove($this->getAbsolutePath($relativePath));
+    }
+
+    /**
      * Removes a workflow's entire PDF directory (all generated documents).
      * Called when the workflow itself is deleted, so no orphaned files are
      * left behind on disk. Safe to call when the directory never existed.

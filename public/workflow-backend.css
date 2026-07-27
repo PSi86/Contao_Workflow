@@ -201,6 +201,15 @@
     content: " 🔒";
 }
 
+/* A dcaWizard whose "new" button was taken away (locked workflow: no form fields may be
+   added). The widget pulls its button bar 28px up so the button sits on the line of the
+   field heading; with the bar empty that negative margin drags the list up over the
+   heading instead, which then all but disappears. !important because the widget writes
+   the margin as an inline style. The marker class comes from WorkflowLockListener. */
+.wf-wizard-nobutton .dcawizard #tl_buttons {
+    margin-top: 0 !important;
+}
+
 /* Not-runnable badge. */
 .wf-badge {
     display: inline-block;
@@ -304,6 +313,10 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
 }
 .wf-dialog-box h3 { margin-top: 0; }
+/* The import log carries five columns of prose; it needs the room. */
+.wf-dialog-box--wide { width: min(1000px, 100%); }
+.wf-dialog-box--wide .wf-import-log-table { font-size: .9em; }
+.wf-dialog-box--wide .wf-import-log-table td { vertical-align: top; }
 .wf-dialog-close {
     position: absolute;
     top: .4em;
@@ -317,3 +330,42 @@
 }
 .wf-dialog-close:hover { color: #c0392b; }
 .wf-confirm-list li { margin: 2px 0; }
+
+/* One option of a choice dialog (import mode, data download): the action or check box
+   first, its consequence right next to it – the choice is the point, not the button. */
+.wf-choice {
+    display: flex;
+    align-items: baseline;
+    gap: .8em;
+    margin: .8em 0;
+}
+.wf-choice .tl_submit { flex: 0 0 auto; }
+
+/* Lead sentence above a set of choices (what they have in common). */
+.wf-choice-lead {
+    margin: 0 0 1em;
+    line-height: 1.5;
+}
+.wf-choice > label {
+    flex: 0 0 11em;
+    cursor: pointer;
+}
+
+/* The download button plus the resulting file kind, separated from the selection. */
+.wf-download-run {
+    display: flex;
+    align-items: baseline;
+    gap: .8em;
+    margin: 1.2em 0 0;
+    padding-top: .8em;
+    border-top: 1px solid var(--content-border, #ddd);
+}
+.wf-download-run .tl_submit[disabled] {
+    opacity: .5;
+    cursor: not-allowed;
+}
+.wf-choice-hint {
+    font-size: .85em;
+    line-height: 1.4;
+    color: var(--text-muted, #666);
+}

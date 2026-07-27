@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\Excel;
 
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat as ExcelNumberFormat;
 
 /**
  * The single funnel from a spreadsheet cell to the string this bundle stores.
@@ -17,6 +18,19 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class CellReader
 {
+    /**
+     * The error literals a spreadsheet stores in place of a result. They are values in the
+     * file, but not data: carrying "#NV" into a document, a PDF and the export would be
+     * worse than an empty field plus a warning naming the row.
+     */
+    private const ERROR_VALUES = [
+        // English literals as stored by Excel/LibreOffice …
+        '#NULL!', '#DIV/0!', '#VALUE!', '#REF!', '#NAME?', '#NUM!', '#N/A',
+        '#GETTING_DATA', '#SPILL!', '#CALC!', '#FIELD!', '#BLOCKED!', '#CONNECT!', '#BUSY!',
+        // … plus the German ones, which a German Excel writes into the file verbatim.
+        '#NV', '#WERT!', '#BEZUG!', '#ZAHL!',
+    ];
+
     public function __construct(
         private readonly FormatCodeParser $formatParser,
         private readonly ValueFormatter $formatter,
@@ -28,11 +42,92 @@ class CellReader
      */
     public function read(Cell $cell): string
     {
-        $raw = $cell->getValue();
+        // A formula is never evaluated here: only the result the spreadsheet program itself
+        // stored in the file is used (see rawValue). Without a usable one the cell reads as
+        // empty and the caller reports it – recalculating would need the engine to
+        // understand every function in the file, and where it does not the import would
+        // either abort (CalculationException) or store a number the file never showed.
+        if ($cell->isFormula()) {
+            $cached = $this->rawValue($cell);
 
+            return null === $cached ? '' : $this->render($cell, $cached, true);
+        }
+
+        return $this->render($cell, $cell->getValue(), false);
+    }
+
+    /**
+     * The value a cell contributes, before formatting: for a formula cell the result stored
+     * in the file (null when there is none to work with), otherwise the cell's own value.
+     *
+     * The format analysis judges columns by this, so a formula column is measured by its
+     * results – not by the formula text, which would read as "text instead of a number".
+     */
+    public function rawValue(Cell $cell): mixed
+    {
+        if (!$cell->isFormula()) {
+            return $cell->getValue();
+        }
+
+        $cached = $cell->getOldCalculatedValue();
+
+        if (null === $cached || $this->isErrorValue($cached)) {
+            return null;
+        }
+
+        return \is_scalar($cached) ? $cached : null;
+    }
+
+    /**
+     * Why a formula cell yields no value ("kein gespeichertes Ergebnis", "Fehlerwert „#NV""),
+     * or null when the cell is fine – every non-formula cell is.
+     *
+     * The importer groups these per column into one warning instead of failing: a broken
+     * formula is a problem of the source file, and the participants' data is the point of
+     * the import.
+     */
+    public function formulaProblem(Cell $cell): ?string
+    {
+        if (!$cell->isFormula()) {
+            return null;
+        }
+
+        $cached = $cell->getOldCalculatedValue();
+
+        if (null === $cached) {
+            return 'kein gespeichertes Ergebnis';
+        }
+
+        return $this->isErrorValue($cached) ? sprintf('Fehlerwert „%s"', trim((string) $cached)) : null;
+    }
+
+    /**
+     * The format of a cell, straight from its number-format code.
+     */
+    public function formatOf(Cell $cell): NumberFormat
+    {
+        return $this->formatParser->parse((string) $cell->getStyle()->getNumberFormat()->getFormatCode());
+    }
+
+    private function isErrorValue(mixed $value): bool
+    {
+        return \is_string($value) && \in_array(strtoupper(trim($value)), self::ERROR_VALUES, true);
+    }
+
+    /**
+     * Turns a cell's raw value into the stored string, applying the cell's number format.
+     *
+     * $isFormula only decides how the untouched kinds fall back: a formula cell must not go
+     * through getFormattedValue(), which would evaluate the formula again – it formats the
+     * stored result with the same routine instead.
+     */
+    private function render(Cell $cell, mixed $raw, bool $isFormula): string
+    {
         if (!is_numeric($raw)) {
-            // Text, or a formula – getFormattedValue() resolves the latter.
-            return trim((string) $cell->getFormattedValue());
+            // Text (a formula's stored text result, or a plain text cell). Both go through
+            // the same formatter, so a formula's result is spelled like a literal cell's –
+            // including the TRUE/FALSE a boolean result prints as.
+            return $isFormula ? $this->applyMask($cell, $raw) : trim((string) $cell->getFormattedValue());
         }
 
         // Excel date cells carry a serial number plus a (possibly locale-specific, e.g.
@@ -44,31 +139,37 @@ class CellReader
         // Date::isDateTime() is also true for pure time / duration formats (serial < 1, a
         // fraction of a day); those must keep their formatted value ("12:00") instead of
         // becoming a 1899 epoch date.
-        if ((float) $raw >= 1.0 && Date::isDateTime($cell)) {
+        // The value is passed explicitly: without it Date::isDateTime() falls back to
+        // getCalculatedValue() and would evaluate a formula cell after all.
+        if ((float) $raw >= 1.0 && Date::isDateTime($cell, $raw)) {
             $date = Date::excelToDateTimeObject((float) $raw);
             $hasTime = '000000' !== $date->format('His');
 
             return $date->format($hasTime ? 'd.m.Y H:i' : 'd.m.Y');
         }
 
-        if (!Date::isDateTime($cell)) {
+        if (!Date::isDateTime($cell, $raw)) {
             $formatted = $this->formatter->format((float) $raw, $this->formatOf($cell));
 
             // null = a kind we deliberately do not re-render (percent, scientific,
-            // fraction); keep PhpSpreadsheet's own output for it.
+            // fraction); keep the spreadsheet's own output for it.
             if (null !== $formatted) {
                 return $formatted;
             }
         }
 
-        return trim((string) $cell->getFormattedValue());
+        return $isFormula ? $this->applyMask($cell, $raw) : trim((string) $cell->getFormattedValue());
     }
 
     /**
-     * The format of a cell, straight from its number-format code.
+     * What getFormattedValue() produces, minus the recalculation: the cell's number-format
+     * code applied to an already known value.
      */
-    public function formatOf(Cell $cell): NumberFormat
+    private function applyMask(Cell $cell, mixed $value): string
     {
-        return $this->formatParser->parse((string) $cell->getStyle()->getNumberFormat()->getFormatCode());
+        return trim((string) ExcelNumberFormat::toFormattedString(
+            $value,
+            (string) $cell->getStyle()->getNumberFormat()->getFormatCode(true),
+        ));
     }
 }

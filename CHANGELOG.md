@@ -6,6 +6,102 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.2.0] – 2026-07-27
+
+Schwerpunkt: der Import. Ausgeblendete Zeilen wurden trotzdem übernommen, Formeln kamen
+falsch formatiert (oder gar nicht) an, und eine leere Zahlenspalte verlor ihre
+Nachkommastellen. Weil ein Import damit noch stärker von seinen Vorgängern abhängt, hält ein
+**Importprotokoll** ab sofort jeden Lauf fest.
+
+> **Beim Update:** `contao:migrate` ausführen – es legt die Protokolltabelle
+> (`tl_workflow_import`) und die neue Spalte `tl_workflow_question.numberDecimals` an.
+
+### Hinzugefügt
+- **Importprotokoll**: jeder Lauf wird festgehalten – erreichbar über den Button
+  „Importprotokoll" in der **Übersicht** und in der Bearbeitungsmaske im gleichnamigen,
+  eingeklappten Abschnitt zwischen „Quelldaten" und „Inhalt". Je Lauf: Zeitpunkt, Modus,
+  auslösende Person, **welche Datei**
+  (Name, Tabellenblatt und Prüfsumme, womit zwei Läufe gegen denselben Dateinamen mit
+  unterschiedlichem Inhalt unterscheidbar werden), die Zahlen des Laufs und dieselben
+  Meldungen, die damals angezeigt wurden. **Gescheiterte Läufe** stehen mit ihrer
+  Fehlermeldung dort. Grund: das Ergebnis eines Imports hängt von seinen Vorgängern ab
+  (Zeilennummern, eingefrorene Antworten, Modus), ein Fehler kann sich also zwei Läufe später
+  zeigen – ohne Aufzeichnung ließe sich das im Nachhinein kaum rekonstruieren. Aufbewahrt
+  werden die letzten 100 Läufe je Workflow (täglicher Cron), gelöscht werden sie mit ihrem
+  Workflow.
+- **Ausgeblendete Zeilen der Quelldatei werden nicht mehr importiert.** Zeilen in Excel
+  auszublenden – von Hand oder per Autofilter – ist damit der Weg, eine Datei auf die
+  Teilnehmer eines Laufs einzugrenzen; dieselbe Datei lässt sich mehrfach mit
+  unterschiedlichen ausgeblendeten Zeilen importieren. Die Reihenfolge im Export bleibt die
+  der Quelldatei. XLSX und XLS tragen die Information, ODS und CSV nicht – dort gilt jede
+  Zeile als sichtbar.
+- **Importmodus, pro Lauf wählbar** (Dialog am Button „Import ausführen"; CLI `--mode`):
+  *additiv* legt an und aktualisiert, löscht nichts – Einträge, deren Zeile ausgeblendet ist
+  oder fehlt, bleiben bestehen und werden weiterhin angeschrieben. *absolut* lässt die
+  Quelldatei über die Teilnehmer entscheiden: solche Einträge werden gelöscht, samt bereits
+  erzeugter PDFs. Bereits beantwortete Einträge, die in der Datei stehen, bleiben in beiden
+  Modi unverändert – ihre Daten sind die Grundlage eines ausgestellten Dokuments.
+- **Der Import benennt, was er ausgelassen hat.** Bisher geschah das lautlos: übersprungene
+  ausgeblendete Zeilen (und wie viele davon schon importiert waren), Zeilen mit mehrfach
+  vorkommender E-Mail-Adresse, Einträge ohne sichtbare Zeile in der Datei – und doppelt
+  belegte Zeilennummern, die einzige Stelle, an der die Exportreihenfolge von der Datei
+  abweichen kann.
+- **Nachkommastellen je Formularfeld** (Typ „Zahl", leer = aus der Quelldatei). Ein gesetzter
+  Wert gilt vor dem Format der Quelldatei und hebt die Regel „nur 0 oder 2 Nachkommastellen"
+  auf – sie schützt gespeicherte Werte, und wer die Stellen selbst festlegt, hat die Frage
+  beantwortet. Text-, Prozent- und Datumsformate bleiben unzulässig.
+- **Ein Dialog „Datendownload"** ersetzt die drei Buttons „Export (XLSX)", „Export (CSV)" und
+  „PDFs herunterladen": ankreuzen, was mit soll, dann ein Button. **Die Verpackung folgt der
+  Auswahl** – nur Excel bzw. nur CSV kommt als diese Datei, ohne Archiv drumherum; PDFs und
+  jede Mehrfachauswahl kommen als ZIP (bei gemischter Auswahl liegen die Dokumente darin im
+  Unterordner `PDFs/`). Der Hinweis neben dem Button nennt das Ergebnis vorab. Die PDF-Option
+  zeigt die Anzahl und ist nicht ankreuzbar, solange keine Dokumente erzeugt wurden.
+
+### Geändert
+- **`##text_all##` setzt keine Absätze mehr.** Bisher rückte das Bundle vor jeden Baustein
+  mit eigenem Dokument-Text selbsttätig eine Leerzeile ein – die ließ sich nicht abstellen.
+  Jetzt steht **ein Baustein je Zeile**, und Abstand kommt dorthin, wo er gemeint ist: eine
+  **Leerzeile am Anfang oder Ende eines Dokument-Texts** (bzw. eines Options-Texts) bleibt
+  erhalten und erscheint so im Dokument. Leerzeichen am Rand werden weiterhin entfernt.
+  Betrifft das Dokument und den `##text_all##`-Token in E-Mails; das Formular zeigt die
+  Bausteine einzeln und ändert sich nicht.
+- **Das Formular nutzt die Breite des Seitenlayouts.** Das Modul begrenzte sich selbst auf
+  640 px und überstimmte damit auf jeder Seite das Layout. Wer die alte Breite behalten will,
+  setzt sie im eigenen Stylesheet: `.mod_workflow_form { max-width: 640px; }`.
+- **Das eingebaute E-Mail-Feld im Formular entfällt.** Die Adresse ist eine Quellspalte wie
+  jede andere: Soll sie im Formular stehen, wird dafür ein Formularfeld angelegt (Typ
+  „Freitext", Speicherfeld = E-Mail-Spalte, Haken „Schreibgeschützt"). Position, Überschrift
+  und Beschreibung sind dann frei wählbar. **Bestehende Workflows zeigen die Adresse nach dem
+  Update nicht mehr**, bis ein solches Feld angelegt wurde.
+- Konfigurations-Export/-Import kennen das Feld „Nachkommastellen" (Format-Version 6);
+  ältere Konfigurationen lassen sich unverändert importieren.
+
+### Behoben
+- **Formeln in der Quelldatei.** Eine Formelzelle landete im Textzweig des Imports: ihr
+  Währungsergebnis kam als `3,000.00 €` (englisch) herein statt `3.000,00 €`, ein
+  Datumsergebnis als `12/17/1955`, und eine Zahlenspalte mit Formeln galt als „Text statt
+  einer Zahl" – ein Zahlenfeld war darauf praktisch nicht nutzbar. Eine Formel, die
+  PhpSpreadsheet nicht kennt, konnte den Import sogar mit einer Fehlerseite abbrechen. Jetzt
+  wird das **in der Datei gespeicherte Ergebnis** übernommen – genau das, was in der Tabelle
+  zu sehen ist – und läuft durch dieselbe Zahl- und Datumsaufbereitung wie ein fest
+  eingetragener Wert. Gibt es kein verwertbares Ergebnis (keines gespeichert oder ein
+  Fehlerwert wie `#NV`), wird das Feld leer importiert und die Zeile gemeldet. Formeln müssen
+  vor dem Import also nicht mehr in Werte umgewandelt werden.
+- **Eine leere Zahlenspalte verlor ihr Format.** Die Formatprüfung übersprang leere Zellen
+  vollständig – und eine Antwortspalte ist in der Quelldatei leer, die Teilnehmer füllen sie
+  ja erst. Von „Währung mit zwei Nachkommastellen" blieb dadurch nichts übrig: das Feld
+  rechnete ganzzahlig, aus eingegebenen `25,25` wurde `25`, das Währungszeichen fehlte. Leere
+  Zellen können weiterhin keine Spalte durchfallen lassen, liefern aber jetzt die
+  Formatierung, wenn kein gefüllter Wert sie festlegt. Bereits als `25` gespeicherte Werte
+  lassen sich nicht zurückholen – die Nachkommastellen waren beim Speichern verloren.
+- Eine ausgeblendete Zeile mit abweichender Formatierung kann keine Spalte mehr für ein
+  Zahlenfeld disqualifizieren – sie wird ja nicht importiert.
+- **Die Überschrift „Formularfelder" war bei einem Workflow mit vorliegenden Antworten kaum
+  noch lesbar.** Dort entfällt der Button „Neues Formularfeld" (Felder anzulegen würde die
+  erfassten Antworten entwerten). Die Button-Leiste blieb aber stehen – leer und ohne Höhe –
+  und zog mit ihrem negativen Abstand, der sonst den Button neben die Überschrift hebt, die
+  Liste über die Überschrift.
+
 ## [3.1.0] – 2026-07-21
 
 Schwerpunkt: Zahlen- und Datumsfelder im Formular. Die Nachkommastellen gingen verloren, und

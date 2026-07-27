@@ -5,6 +5,7 @@ declare(strict_types=1);
 $GLOBALS['TL_LANG']['tl_workflow']['title_legend']        = 'Titel';
 $GLOBALS['TL_LANG']['tl_workflow']['steps_legend']        = 'Schritte / Status';
 $GLOBALS['TL_LANG']['tl_workflow']['source_legend']       = 'Quelldaten';
+$GLOBALS['TL_LANG']['tl_workflow']['importlog_legend']   = 'Importprotokoll';
 $GLOBALS['TL_LANG']['tl_workflow']['content_legend']      = 'Inhalt (Formular & Dokument)';
 $GLOBALS['TL_LANG']['tl_workflow']['form_legend']         = 'Formular & Formularfelder';
 $GLOBALS['TL_LANG']['tl_workflow']['pdf_legend']          = 'Dokument-Einstellungen';
@@ -48,3 +49,14 @@ $GLOBALS['TL_LANG']['tl_workflow']['edit']    = ['Bearbeiten', 'Workflow bearbei
 $GLOBALS['TL_LANG']['tl_workflow']['copy']    = ['Kopieren', 'Workflow kopieren.'];
 $GLOBALS['TL_LANG']['tl_workflow']['delete']  = ['Löschen', 'Workflow löschen.'];
 $GLOBALS['TL_LANG']['tl_workflow']['show']    = ['Details', 'Workflow-Details anzeigen.'];
+
+// Importprotokoll (ImportLogListener) – Pseudo-Feld in der Bearbeitungsmaske.
+$GLOBALS['TL_LANG']['tl_workflow']['importLog'] = ['Importprotokoll', 'Die letzten Importläufe dieses Workflows. Das Ergebnis eines Imports hängt von den vorherigen Läufen ab (Zeilennummern, eingefrorene Antworten, Modus) – hier steht, was wann womit passiert ist.'];
+$GLOBALS['TL_LANG']['tl_workflow']['importLogEmpty']  = 'Für diesen Workflow wurde noch kein Import ausgeführt.';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogTime']   = 'Zeitpunkt';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMode']   = 'Modus';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogUser']   = 'Ausgelöst von';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogSource'] = 'Quelldatei (Prüfsumme)';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogResult'] = 'Ergebnis';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogFailed'] = 'Fehlgeschlagen';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMore']   = '… und %d ältere Läufe.';

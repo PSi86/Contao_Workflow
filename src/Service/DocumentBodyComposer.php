@@ -165,9 +165,12 @@ class DocumentBodyComposer
      * ##answer## template for value questions – so a rule body built from these
      * tokens matches the form by construction.
      *
-     * ##text_all## formatting: default statements ("label: value") follow each
-     * other line by line; a statement with an explicitly configured document
-     * text gets a blank line before it (it is a full sentence, not a list row).
+     * ##text_all## formatting: one statement per line, nothing else. The composer
+     * decides nothing about spacing – it used to insert a blank line before every
+     * explicitly configured statement, which produced paragraphs nobody asked for and
+     * left no way to get rid of them. Extra space is now written where it is meant, in
+     * the document text itself: a blank line at its start or end survives (see
+     * trimStatement) and lands in the document.
      *
      * Questions hidden in the form (auto-filled "Aktuelle Zeit") are excluded
      * from ##text_all##: the participant never saw them.
@@ -194,7 +197,7 @@ class DocumentBodyComposer
                     continue;
                 }
 
-                $all = '' === $all ? $statement : $all."\n\n".$statement;
+                $all = '' === $all ? $statement : $all."\n".$statement;
 
                 continue;
             }
@@ -212,11 +215,7 @@ class DocumentBodyComposer
                 continue;
             }
 
-            if ('' === $all) {
-                $all = $statement;
-            } else {
-                $all .= ($question->hasExplicitStatement() ? "\n\n" : "\n").$statement;
-            }
+            $all = '' === $all ? $statement : $all."\n".$statement;
         }
 
         $tokens['text_all'] = $all;
@@ -276,7 +275,7 @@ class DocumentBodyComposer
     {
         // "Erklärung": static text, no value – resolve its tokens and return it.
         if ($question->isExplanation()) {
-            return trim($this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title));
+            return $this->trimStatement($this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title));
         }
 
         if ('' === trim($value)) {
@@ -313,7 +312,21 @@ class DocumentBodyComposer
     {
         $filled = $this->placeholderResolver->fill($template, $data, $extra, $email, $title);
 
-        return trim(str_replace('##answer##', $value, $filled));
+        return $this->trimStatement(str_replace('##answer##', $value, $filled));
+    }
+
+    /**
+     * Tidies a resolved statement without touching its line structure.
+     *
+     * Spaces and tabs at the edges are typing noise and go. Newlines do not: with the
+     * statements of ##text_all## joined by a single newline, a blank line at the start or
+     * end of a document text is the one way to set a field apart from the next – and it is
+     * written exactly where the resulting space appears. A statement that is nothing but
+     * whitespace stays empty, so an unfilled field cannot leave a stray line behind.
+     */
+    private function trimStatement(string $text): string
+    {
+        return '' === trim($text) ? '' : trim($text, " \t\r\0\x0B");
     }
 
     private function esc(string $value): string

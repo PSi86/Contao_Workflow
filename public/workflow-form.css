@@ -1,4 +1,9 @@
-.mod_workflow_form { max-width: 640px; }
+/*
+ * No width of its own: the form fills the column the page layout gives it. It used to cap
+ * itself at 640px, which overruled the layout on every site – the module knows nothing
+ * about the page that the layout does not know better. Put a max-width on .mod_workflow_form
+ * in your own stylesheet if the column is wider than you want the form to be.
+ */
 .mod_workflow_form .tw-heading { margin: 0 0 .5rem; }
 /* One blank line between the heading and the intro paragraph. */
 .mod_workflow_form .tw-intro { margin: 1.25rem 0; color: #333; }

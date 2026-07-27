@@ -57,6 +57,16 @@ services:
     Psimandl\WorkflowBundle\Service\PersonNameResolver:
         public: true
 
+    # Read by the (non-service) back end dashboard module for the number of generated
+    # documents shown on the download dialog.
+    Psimandl\WorkflowBundle\Service\PdfStorage:
+        public: true
+
+    # Renders the import log for the (non-service) back end dashboard module – the same
+    # table the edit mask shows.
+    Psimandl\WorkflowBundle\Service\ImportLogRenderer:
+        public: true
+
     # DCA callback class for the answer-field / PDF-rule child tables, referenced
     # by class name in tl_workflow*.php and resolved via System::importStatic() by
     # Contao core, MultiColumnWizard and dcaWizard. Must be public, otherwise
@@ -78,6 +88,11 @@ services:
     # DCA input_field_callback for the "reset all participants" button, referenced by
     # class name and resolved via System::importStatic() – must be public.
     Psimandl\WorkflowBundle\EventListener\DataContainer\ResetButtonListener:
+        public: true
+
+    # DCA input_field_callback for the import log, referenced by class name and resolved
+    # via System::importStatic() – must be public.
+    Psimandl\WorkflowBundle\EventListener\DataContainer\ImportLogListener:
         public: true
 
 

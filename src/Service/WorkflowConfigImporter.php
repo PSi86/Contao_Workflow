@@ -33,7 +33,9 @@ class WorkflowConfigImporter
     // exported so a re-import on the same site re-links to the existing element
     // (id + name must match); an element that cannot be linked is recorded in
     // tl_workflow.importIssues and flagged red in the edit mask.
-    public const VERSION = 5;
+    // v6: per-question "numberDecimals" (decimals of a "Zahl" field; empty = derive them
+    // from the source column).
+    public const VERSION = 6;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -528,14 +530,17 @@ class WorkflowConfigImporter
             $showStatement = ($q['showStatementInForm'] ?? true) ? '1' : '';
 
             $this->connection->executeStatement(
-                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, mandatory, prefill, readOnly, hideInForm, description, showStatementInForm, pdfStatement, options) '
-                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, numberDecimals, mandatory, prefill, readOnly, hideInForm, description, showStatementInForm, pdfStatement, options) '
+                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $workflowId,
                     $sorting,
                     (string) ($q['label'] ?? ''),
                     $type,
                     (string) ($q['storageField'] ?? ''),
+                    // Legacy configs (v1–v5) have none; empty means "take the decimals from
+                    // the source column", which is what they did.
+                    (string) ($q['numberDecimals'] ?? ''),
                     ($q['mandatory'] ?? false) ? '1' : '',
                     ($q['prefill'] ?? false) ? '1' : '',
                     $readOnly ? '1' : '',

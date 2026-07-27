@@ -42,6 +42,9 @@ class WorkflowConfigExporter
                 'label'               => (string) $question->label,
                 'type'                => (string) $question->type,
                 'storageField'        => (string) $question->storageField,
+                // Not the format snapshot – that describes the source file of THIS site and
+                // is re-taken on the next import. The configured decimals are a decision.
+                'numberDecimals'      => (string) $question->numberDecimals,
                 'mandatory'           => $question->isMandatory(),
                 'prefill'             => $question->isPrefilled(),
                 'readOnly'            => $question->isReadOnly(),

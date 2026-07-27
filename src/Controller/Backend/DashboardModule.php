@@ -10,7 +10,10 @@ use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
+use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
+use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
@@ -46,6 +49,10 @@ class DashboardModule extends BackendModule
         $validator = $container->get(WorkflowValidator::class);
         /** @var PersonNameResolver $nameResolver */
         $nameResolver = $container->get(PersonNameResolver::class);
+        /** @var PdfStorage $pdfStorage */
+        $pdfStorage = $container->get(PdfStorage::class);
+        /** @var ImportLogRenderer $importLogRenderer */
+        $importLogRenderer = $container->get(ImportLogRenderer::class);
         $router = $container->get('router');
         $csrf = $container->get('contao.csrf.token_manager');
         $rt = $csrf->getDefaultTokenValue();
@@ -105,11 +112,18 @@ class DashboardModule extends BackendModule
                     'urls'          => [
                         // Direct link into the workflow_manage edit view for this workflow.
                         'manage'     => $router->generate('contao_backend', ['do' => 'workflow_manage', 'act' => 'edit', 'id' => $id, 'rt' => $rt]),
-                        'import'     => $base('workflow_import'),
-                        'exportXlsx' => $base('workflow_export'),
-                        'exportCsv'  => $base('workflow_export').'&format=csv',
-                        'pdfs'       => $base('workflow_download_pdfs'),
+                        'import'         => $base('workflow_import'),
+                        // Same route, deleting mode: entries whose row is hidden or gone are
+                        // removed afterwards (SpreadsheetImporter::MODE_ABSOLUTE).
+                        'importAbsolute' => $base('workflow_import').'&mode='.SpreadsheetImporter::MODE_ABSOLUTE,
+                        // Without the token: the download dialog is a GET form, whose fields
+                        // replace the whole query string – the token travels as a field.
+                        'download'       => $router->generate('workflow_download', ['id' => $id]),
                     ],
+                    // Shown at the PDF checkbox, which is disabled while there are none.
+                    'pdfCount'      => $pdfStorage->countWorkflowPdfs($id),
+                    // The import log, rendered by the same service the edit mask uses.
+                    'importLog'     => $importLogRenderer->render($id),
                 ];
             }
         }

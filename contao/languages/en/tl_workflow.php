@@ -5,6 +5,7 @@ declare(strict_types=1);
 $GLOBALS['TL_LANG']['tl_workflow']['title_legend']        = 'Title';
 $GLOBALS['TL_LANG']['tl_workflow']['steps_legend']        = 'Steps / status';
 $GLOBALS['TL_LANG']['tl_workflow']['source_legend']       = 'Source data';
+$GLOBALS['TL_LANG']['tl_workflow']['importlog_legend']   = 'Import log';
 $GLOBALS['TL_LANG']['tl_workflow']['content_legend']      = 'Content (form & document)';
 $GLOBALS['TL_LANG']['tl_workflow']['form_legend']         = 'Form & form fields';
 $GLOBALS['TL_LANG']['tl_workflow']['pdf_legend']          = 'Document settings';
@@ -48,3 +49,14 @@ $GLOBALS['TL_LANG']['tl_workflow']['edit']    = ['Edit', 'Edit the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['copy']    = ['Copy', 'Copy the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['delete']  = ['Delete', 'Delete the workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['show']    = ['Details', 'Show workflow details.'];
+
+// Import log (ImportLogListener) – pseudo field in the edit mask.
+$GLOBALS['TL_LANG']['tl_workflow']['importLog'] = ['Import log', 'The most recent import runs of this workflow. An import\'s outcome depends on the runs before it (row numbers, frozen answers, mode) – this is the record of what happened when, and with which file.'];
+$GLOBALS['TL_LANG']['tl_workflow']['importLogEmpty']  = 'No import has run for this workflow yet.';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogTime']   = 'Time';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMode']   = 'Mode';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogUser']   = 'Triggered by';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogSource'] = 'Source file (checksum)';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogResult'] = 'Result';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogFailed'] = 'Failed';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMore']   = '… and %d older runs.';
