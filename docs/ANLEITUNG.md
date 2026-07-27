@@ -431,6 +431,18 @@ geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
 **„Importiert"**.
 
+> **Importprotokoll.** Jeder Lauf wird festgehalten – in der Bearbeitungsmaske des Workflows
+> unter **Quelldaten → „Importprotokoll"**: Zeitpunkt, Modus, wer ihn ausgelöst hat,
+> **welche Datei** (Name, Tabellenblatt und **Prüfsumme** – daran erkennt man zwei Läufe gegen
+> denselben Dateinamen mit unterschiedlichem Inhalt), die Zahlen des Laufs und dieselben
+> Meldungen, die damals angezeigt wurden. **Auch gescheiterte Läufe** stehen dort, mit ihrer
+> Fehlermeldung.
+>
+> Das ist der Weg zur Antwort auf „wie ist dieser Zustand entstanden?". Ein Import hängt von
+> seinen Vorgängern ab (Zeilennummern, eingefrorene Antworten, Modus), und ein Fehler kann
+> sich zwei Läufe später zeigen – aus den Daten allein lässt sich das kaum zurückrechnen.
+> Aufbewahrt werden die letzten 100 Läufe je Workflow.
+
 > **Ausgeblendete Zeilen werden nicht importiert.** Zeilen in Excel auszublenden (von Hand
 > oder per Autofilter) ist damit der Weg, eine Quelldatei auf die Teilnehmer eines Laufs
 > einzugrenzen – dieselbe Datei kann mehrfach mit unterschiedlichen ausgeblendeten Zeilen

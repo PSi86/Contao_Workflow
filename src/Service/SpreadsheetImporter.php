@@ -55,12 +55,20 @@ class SpreadsheetImporter
         private readonly ColumnFormatAnalyzer $formatAnalyzer,
         private readonly ColumnCompatibility $columnCompatibility,
         private readonly PdfStorage $pdfStorage,
+        private readonly ImportLog $log,
         private readonly Connection $connection,
         private readonly string $projectDir,
     ) {
     }
 
     /**
+     * Runs an import and records it in the import log – both outcomes.
+     *
+     * The log is written here rather than in the callers so every route into an import (back
+     * end, console) is covered by construction, and so a run that fails halfway is recorded
+     * as well: it may have written entries before it stopped, and "nothing happened, and
+     * why" is what one looks for afterwards.
+     *
      * @param string $mode self::MODE_ADD or self::MODE_ABSOLUTE
      *
      * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
@@ -68,6 +76,35 @@ class SpreadsheetImporter
      * @throws \RuntimeException when the source file is missing or has no columns
      */
     public function import(WorkflowModel $workflow, string $mode = self::MODE_ADD): array
+    {
+        // Resolved before the run, so a failure over an unreadable file is still logged
+        // against the file it was about.
+        $sourceFile = $this->inspector->resolvePath($workflow) ?? '';
+
+        try {
+            $result = $this->run($workflow, $mode);
+        } catch (\Throwable $exception) {
+            $this->log->recordFailure($workflow, $mode, $exception, $sourceFile);
+
+            throw $exception;
+        }
+
+        $this->log->recordSuccess($workflow, $mode, $result, $sourceFile);
+
+        return $result;
+    }
+
+    /**
+     * The run itself. Everything it reports travels in the returned array – import() turns
+     * that into the log entry.
+     *
+     * @param string $mode self::MODE_ADD or self::MODE_ABSOLUTE
+     *
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
+     *
+     * @throws \RuntimeException when the source file is missing or has no columns
+     */
+    private function run(WorkflowModel $workflow, string $mode): array
     {
         $this->framework->initialize();
 

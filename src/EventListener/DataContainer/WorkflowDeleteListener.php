@@ -7,6 +7,7 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 use Contao\CoreBundle\DataContainer\DataContainerOperation;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
+use Psimandl\WorkflowBundle\Service\ImportLog;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 
 /**
@@ -18,8 +19,10 @@ use Psimandl\WorkflowBundle\Service\PdfStorage;
  */
 class WorkflowDeleteListener
 {
-    public function __construct(private readonly PdfStorage $pdfStorage)
-    {
+    public function __construct(
+        private readonly PdfStorage $pdfStorage,
+        private readonly ImportLog $importLog,
+    ) {
     }
 
     /**
@@ -35,6 +38,9 @@ class WorkflowDeleteListener
 
         if ($id > 0) {
             $this->pdfStorage->deleteWorkflowDir($id);
+            // The import log hangs off the workflow but is not one of its ctables, so
+            // nothing else would remove it.
+            $this->importLog->deleteFor($id);
         }
     }
 

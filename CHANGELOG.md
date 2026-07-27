@@ -13,6 +13,16 @@ falsch formatiert (oder gar nicht) an, und eine leere Zahlenspalte verlor ihre
 Nachkommastellen.
 
 ### Hinzugefügt
+- **Importprotokoll**: jeder Lauf wird festgehalten und steht in der Bearbeitungsmaske des
+  Workflows unter „Quelldaten" – Zeitpunkt, Modus, auslösende Person, **welche Datei**
+  (Name, Tabellenblatt und Prüfsumme, womit zwei Läufe gegen denselben Dateinamen mit
+  unterschiedlichem Inhalt unterscheidbar werden), die Zahlen des Laufs und dieselben
+  Meldungen, die damals angezeigt wurden. **Gescheiterte Läufe** stehen mit ihrer
+  Fehlermeldung dort. Grund: das Ergebnis eines Imports hängt von seinen Vorgängern ab
+  (Zeilennummern, eingefrorene Antworten, Modus), ein Fehler kann sich also zwei Läufe später
+  zeigen – ohne Aufzeichnung ließe sich das im Nachhinein kaum rekonstruieren. Aufbewahrt
+  werden die letzten 100 Läufe je Workflow (täglicher Cron), gelöscht werden sie mit ihrem
+  Workflow.
 - **Ausgeblendete Zeilen der Quelldatei werden nicht mehr importiert.** Zeilen in Excel
   auszublenden – von Hand oder per Autofilter – ist damit der Weg, eine Datei auf die
   Teilnehmer eines Laufs einzugrenzen; dieselbe Datei lässt sich mehrfach mit

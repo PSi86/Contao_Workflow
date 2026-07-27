@@ -48,3 +48,14 @@ $GLOBALS['TL_LANG']['tl_workflow']['edit']    = ['Bearbeiten', 'Workflow bearbei
 $GLOBALS['TL_LANG']['tl_workflow']['copy']    = ['Kopieren', 'Workflow kopieren.'];
 $GLOBALS['TL_LANG']['tl_workflow']['delete']  = ['Löschen', 'Workflow löschen.'];
 $GLOBALS['TL_LANG']['tl_workflow']['show']    = ['Details', 'Workflow-Details anzeigen.'];
+
+// Importprotokoll (ImportLogListener) – Pseudo-Feld in der Bearbeitungsmaske.
+$GLOBALS['TL_LANG']['tl_workflow']['importLog'] = ['Importprotokoll', 'Die letzten Importläufe dieses Workflows. Das Ergebnis eines Imports hängt von den vorherigen Läufen ab (Zeilennummern, eingefrorene Antworten, Modus) – hier steht, was wann womit passiert ist.'];
+$GLOBALS['TL_LANG']['tl_workflow']['importLogEmpty']  = 'Für diesen Workflow wurde noch kein Import ausgeführt.';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogTime']   = 'Zeitpunkt';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMode']   = 'Modus';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogUser']   = 'Ausgelöst von';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogSource'] = 'Quelldatei (Prüfsumme)';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogResult'] = 'Ergebnis';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogFailed'] = 'Fehlgeschlagen';
+$GLOBALS['TL_LANG']['tl_workflow']['importLogMore']   = '… und %d ältere Läufe.';

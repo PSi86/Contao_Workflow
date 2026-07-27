@@ -17,6 +17,7 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
+use Psimandl\WorkflowBundle\Service\ImportSummary;
 use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
@@ -75,6 +76,7 @@ class WorkflowActionController
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly Security $security,
         private readonly SubmissionProcessor $submissionProcessor,
+        private readonly ImportSummary $importSummary,
         private readonly Connection $connection,
         private readonly string $csrfTokenName,
     ) {
@@ -186,19 +188,20 @@ class WorkflowActionController
         try {
             $result = $this->importer->import($workflow, $mode);
 
+            // Same wording as the import log entry (both come from ImportSummary): the log
+            // is meant to explain a state weeks later, which it can only do if it says what
+            // the user was told at the time.
             Message::addConfirmation(sprintf(
-                'Import (%s): %d neu hinzugefügt, %d aktualisiert%s%s (gesamt %d).',
+                'Import (%s): %s',
                 SpreadsheetImporter::MODE_ABSOLUTE === $mode ? 'absolut' : 'additiv',
-                $result['inserted'],
-                $result['updated'],
-                $result['protected'] > 0
-                    ? sprintf(', %d unverändert (bereits beantwortet)', $result['protected'])
-                    : '',
-                $result['removed'] > 0 ? sprintf(', %d gelöscht', $result['removed']) : '',
-                $result['total'],
+                $this->importSummary->headline($result, $mode),
             ));
 
-            $this->reportImportDetails($result, $mode);
+            $notes = $this->importSummary->notes($result, $mode);
+
+            if ([] !== $notes) {
+                Message::addInfo(implode(' ', $notes));
+            }
 
             // Formulas are never recalculated: a cell whose result the file does not carry
             // was imported empty. Saying so is the only way the user can tell an empty
@@ -233,73 +236,6 @@ class WorkflowActionController
         }
 
         return $backTo;
-    }
-
-    /**
-     * Everything a run left out or cleaned up, in one notice.
-     *
-     * All of it used to happen silently: rows skipped because their address already
-     * appeared, entries whose row is gone from the file (they stay and keep being mailed),
-     * and – new – rows hidden in the source file. The last item is about the export order:
-     * an entry the run did not touch keeps its old row number, which a new participant may
-     * meanwhile occupy.
-     *
-     * @param array{hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int} $result
-     */
-    private function reportImportDetails(array $result, string $mode): void
-    {
-        $notes = [];
-
-        if ($result['hidden'] > 0) {
-            $notes[] = sprintf(
-                '%d ausgeblendete Zeile(n) übersprungen%s.',
-                $result['hidden'],
-                $result['hiddenKnown'] > 0
-                    ? sprintf(', davon %d bereits früher importiert', $result['hiddenKnown'])
-                    : '',
-            );
-        }
-
-        if ($result['duplicates'] > 0) {
-            $notes[] = sprintf(
-                '%d Zeile(n) übersprungen, deren E-Mail-Adresse in der Datei mehrfach vorkommt – '
-                .'nur die erste wird importiert.',
-                $result['duplicates'],
-            );
-        }
-
-        if (SpreadsheetImporter::MODE_ABSOLUTE === $mode) {
-            if ($result['removed'] > 0) {
-                $notes[] = sprintf(
-                    '%d Eintrag/Einträge gelöscht, die in der Quelldatei nicht (mehr) sichtbar '
-                    .'vorkommen%s.',
-                    $result['removed'],
-                    $result['removedAnswered'] > 0
-                        ? sprintf(', darunter %d bereits beantwortete (inklusive erzeugter PDFs)', $result['removedAnswered'])
-                        : '',
-                );
-            }
-        } elseif ($result['missing'] > 0) {
-            $notes[] = sprintf(
-                '%d vorhandene(r) Eintrag/Einträge kommen in der Quelldatei nicht (mehr) sichtbar vor. '
-                .'Im Modus „additiv" bleiben sie bestehen und werden weiterhin angeschrieben; der Modus '
-                .'„absolut" entfernt sie.',
-                $result['missing'],
-            );
-        }
-
-        if ($result['sharedRows'] > 0) {
-            $notes[] = sprintf(
-                'Achtung: %d Zeilennummer(n) sind doppelt belegt. Das passiert, wenn ein Eintrag nicht '
-                .'mehr in der Datei steht und ein neuer Teilnehmer inzwischen seine Zeile einnimmt – im '
-                .'Export entscheidet dort das Alter des Eintrags über die Reihenfolge.',
-                $result['sharedRows'],
-            );
-        }
-
-        if ([] !== $notes) {
-            Message::addInfo(implode(' ', $notes));
-        }
     }
 
     /**
