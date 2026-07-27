@@ -57,6 +57,11 @@ services:
     Psimandl\WorkflowBundle\Service\PersonNameResolver:
         public: true
 
+    # Read by the (non-service) back end dashboard module for the number of generated
+    # documents shown on the download dialog.
+    Psimandl\WorkflowBundle\Service\PdfStorage:
+        public: true
+
     # DCA callback class for the answer-field / PDF-rule child tables, referenced
     # by class name in tl_workflow*.php and resolved via System::importStatic() by
     # Contao core, MultiColumnWizard and dcaWizard. Must be public, otherwise

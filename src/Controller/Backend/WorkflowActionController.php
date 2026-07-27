@@ -170,18 +170,29 @@ class WorkflowActionController
             return $redirect;
         }
 
+        // Chosen per run in the overview dialog, never stored: "absolut" is a clean-up
+        // decision about one file, not a property of the workflow. Anything but the explicit
+        // value means the additive default – a mistyped parameter must not delete entries.
+        $mode = SpreadsheetImporter::MODE_ABSOLUTE === (string) $request->query->get('mode')
+            ? SpreadsheetImporter::MODE_ABSOLUTE
+            : SpreadsheetImporter::MODE_ADD;
+
         try {
-            $result = $this->importer->import($workflow);
+            $result = $this->importer->import($workflow, $mode);
 
             Message::addConfirmation(sprintf(
-                'Import: %d neu hinzugefügt, %d aktualisiert%s (gesamt %d).',
+                'Import (%s): %d neu hinzugefügt, %d aktualisiert%s%s (gesamt %d).',
+                SpreadsheetImporter::MODE_ABSOLUTE === $mode ? 'absolut' : 'additiv',
                 $result['inserted'],
                 $result['updated'],
                 $result['protected'] > 0
                     ? sprintf(', %d unverändert (bereits beantwortet)', $result['protected'])
                     : '',
+                $result['removed'] > 0 ? sprintf(', %d gelöscht', $result['removed']) : '',
                 $result['total'],
             ));
+
+            $this->reportImportDetails($result, $mode);
 
             // Formulas are never recalculated: a cell whose result the file does not carry
             // was imported empty. Saying so is the only way the user can tell an empty
@@ -216,6 +227,73 @@ class WorkflowActionController
         }
 
         return $backTo;
+    }
+
+    /**
+     * Everything a run left out or cleaned up, in one notice.
+     *
+     * All of it used to happen silently: rows skipped because their address already
+     * appeared, entries whose row is gone from the file (they stay and keep being mailed),
+     * and – new – rows hidden in the source file. The last item is about the export order:
+     * an entry the run did not touch keeps its old row number, which a new participant may
+     * meanwhile occupy.
+     *
+     * @param array{hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int} $result
+     */
+    private function reportImportDetails(array $result, string $mode): void
+    {
+        $notes = [];
+
+        if ($result['hidden'] > 0) {
+            $notes[] = sprintf(
+                '%d ausgeblendete Zeile(n) übersprungen%s.',
+                $result['hidden'],
+                $result['hiddenKnown'] > 0
+                    ? sprintf(', davon %d bereits früher importiert', $result['hiddenKnown'])
+                    : '',
+            );
+        }
+
+        if ($result['duplicates'] > 0) {
+            $notes[] = sprintf(
+                '%d Zeile(n) übersprungen, deren E-Mail-Adresse in der Datei mehrfach vorkommt – '
+                .'nur die erste wird importiert.',
+                $result['duplicates'],
+            );
+        }
+
+        if (SpreadsheetImporter::MODE_ABSOLUTE === $mode) {
+            if ($result['removed'] > 0) {
+                $notes[] = sprintf(
+                    '%d Eintrag/Einträge gelöscht, die in der Quelldatei nicht (mehr) sichtbar '
+                    .'vorkommen%s.',
+                    $result['removed'],
+                    $result['removedAnswered'] > 0
+                        ? sprintf(', darunter %d bereits beantwortete (inklusive erzeugter PDFs)', $result['removedAnswered'])
+                        : '',
+                );
+            }
+        } elseif ($result['missing'] > 0) {
+            $notes[] = sprintf(
+                '%d vorhandene(r) Eintrag/Einträge kommen in der Quelldatei nicht (mehr) sichtbar vor. '
+                .'Im Modus „additiv" bleiben sie bestehen und werden weiterhin angeschrieben; der Modus '
+                .'„absolut" entfernt sie.',
+                $result['missing'],
+            );
+        }
+
+        if ($result['sharedRows'] > 0) {
+            $notes[] = sprintf(
+                'Achtung: %d Zeilennummer(n) sind doppelt belegt. Das passiert, wenn ein Eintrag nicht '
+                .'mehr in der Datei steht und ein neuer Teilnehmer inzwischen seine Zeile einnimmt – im '
+                .'Export entscheidet dort das Alter des Eintrags über die Reihenfolge.',
+                $result['sharedRows'],
+            );
+        }
+
+        if ([] !== $notes) {
+            Message::addInfo(implode(' ', $notes));
+        }
     }
 
     /**

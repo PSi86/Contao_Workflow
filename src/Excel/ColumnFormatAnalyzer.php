@@ -70,6 +70,13 @@ class ColumnFormatAnalyzer
         $cells = [];
 
         for ($r = $headerRow + 1; $r <= $highestRow; ++$r) {
+            // Hidden rows are not imported, so their formatting is none of this column's
+            // business – a leftover row hidden away in the file must not refuse a column
+            // whose imported cells are perfectly fine.
+            if ($this->inspector->isRowHidden($sheet, $r)) {
+                continue;
+            }
+
             // Judge only the rows the importer actually imports. A sheet's totals row
             // ("Summe: 16,800.00 €") has no e-mail and is skipped there, so flagging its
             // formatting would refuse a perfectly good column over a cell that never

@@ -25,9 +25,27 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  * It always runs, even when the source file is unchanged: re-importing is how the original
  * source values are restored after a reset. The file checksum is still recorded, but only to
  * drive the "source changed, re-import needed" hint (see WorkflowValidator::isReimportNeeded).
+ *
+ * Hidden rows are skipped: hiding rows in the source file is how a run is narrowed down to
+ * the people it is meant for. What that means for rows imported earlier is the run's mode
+ * (see MODE_ADD / MODE_ABSOLUTE).
  */
 class SpreadsheetImporter
 {
+    /**
+     * Add and update, delete nothing. Entries whose row is now hidden or gone from the file
+     * keep existing (and keep being mailed) – they are only counted and reported.
+     */
+    public const MODE_ADD = 'add';
+
+    /**
+     * The file decides who takes part: entries this run did not see – hidden row or row gone
+     * – are deleted afterwards, together with their generated PDF. Entries that ARE in the
+     * file and have already answered stay frozen either way; their data is what an issued
+     * document was built from.
+     */
+    public const MODE_ABSOLUTE = 'absolute';
+
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly TokenGenerator $tokenGenerator,
@@ -36,17 +54,20 @@ class SpreadsheetImporter
         private readonly CellReader $cellReader,
         private readonly ColumnFormatAnalyzer $formatAnalyzer,
         private readonly ColumnCompatibility $columnCompatibility,
+        private readonly PdfStorage $pdfStorage,
         private readonly Connection $connection,
         private readonly string $projectDir,
     ) {
     }
 
     /**
-     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>}
+     * @param string $mode self::MODE_ADD or self::MODE_ABSOLUTE
+     *
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
-    public function import(WorkflowModel $workflow): array
+    public function import(WorkflowModel $workflow, string $mode = self::MODE_ADD): array
     {
         $this->framework->initialize();
 
@@ -96,12 +117,40 @@ class SpreadsheetImporter
         $inserted = 0;
         $updated = 0;
         $protected = 0;
+        $hidden = 0;
+        $hiddenKnown = 0;
+        $duplicates = 0;
         $seen = [];
+
+        // Column letter of the e-mail, needed to look at a hidden row without reading the
+        // whole row: the address is all that is asked of it.
+        $emailIndex = null !== $emailHeader ? array_search($emailHeader, $headers, true) : false;
+        $emailLetter = false === $emailIndex ? null : Coordinate::stringFromColumnIndex((int) $emailIndex);
 
         /** @var array<string, array<string, array<int, int>>> $formulaIssues column => problem => rows */
         $formulaIssues = [];
 
         for ($r = $headerRow + 1; $r <= $highestRow; ++$r) {
+            // A hidden row is not part of this run. It is counted (and, when it was imported
+            // before, counted separately) so the result can say what was left out instead of
+            // quietly importing fewer people than the file has rows.
+            if ($this->inspector->isRowHidden($sheet, $r)) {
+                $hiddenEmail = null !== $emailLetter
+                    ? $this->cellReader->read($sheet->getCell($emailLetter.$r))
+                    : '';
+
+                // A hidden totals or spacer row is not worth mentioning.
+                if ('' !== $hiddenEmail) {
+                    ++$hidden;
+
+                    if (isset($existing[mb_strtolower($hiddenEmail)])) {
+                        ++$hiddenKnown;
+                    }
+                }
+
+                continue;
+            }
+
             $data = [];
             $rowIssues = [];
 
@@ -128,8 +177,13 @@ class SpreadsheetImporter
 
             $key = mb_strtolower($email);
 
-            // Guard against duplicate e-mails within the same source file.
+            // Guard against duplicate e-mails within the same source file. Only the first
+            // row of such a pair becomes an entry – the address is the identity here, so
+            // the second one cannot be told apart from it. Counted, because silently
+            // dropping a row of the file is exactly the kind of thing nobody notices.
             if (isset($seen[$key])) {
+                ++$duplicates;
+
                 continue;
             }
             $seen[$key] = true;
@@ -177,6 +231,27 @@ class SpreadsheetImporter
             }
         }
 
+        // Entries this run never met: their row is hidden, or it is gone from the file (an
+        // address changed in the source counts as gone – the address is the identity, so a
+        // changed one reads as a different person).
+        $untouched = array_diff_key($existing, $seen);
+        $removed = 0;
+        $removedAnswered = 0;
+
+        if (self::MODE_ABSOLUTE === $mode) {
+            foreach ($untouched as $entry) {
+                if ((int) $entry->respondedAt > 0 || ($finalStatus > 0 && (int) $entry->status >= $finalStatus)) {
+                    ++$removedAnswered;
+                }
+
+                // The document belongs to the entry; leaving it behind would keep it in the
+                // PDF bundle of a workflow whose participant no longer exists.
+                $this->pdfStorage->deleteFile((string) $entry->pdfPath);
+                $entry->delete();
+                ++$removed;
+            }
+        }
+
         $workflow->sourceHash = $hash;
         $workflow->tstamp = time();
         $workflow->save();
@@ -185,11 +260,37 @@ class SpreadsheetImporter
             'inserted'        => $inserted,
             'updated'         => $updated,
             'protected'       => $protected,
-            'total'           => \count($existing) + $inserted,
+            'total'           => \count($existing) + $inserted - $removed,
             'collisions'      => $collisions,
             'formatProblems'  => $formatProblems,
             'formulaProblems' => $this->describeFormulaIssues($formulaIssues),
+            'hidden'          => $hidden,
+            'hiddenKnown'     => $hiddenKnown,
+            'duplicates'      => $duplicates,
+            'missing'         => \count($untouched),
+            'removed'         => $removed,
+            'removedAnswered' => $removedAnswered,
+            'sharedRows'      => $this->countSharedRows((int) $workflow->id),
         ];
+    }
+
+    /**
+     * How many source rows are claimed by more than one entry.
+     *
+     * The export order is the stored row number (tl_workflow_entry.sourceRow), refreshed on
+     * every row a run touches. An entry the run did not touch keeps the number of the run
+     * that last saw it, and a new participant can meanwhile have moved into that row – then
+     * two entries sort to the same position and their order is decided by age alone. That is
+     * not wrong data, but it is the one way the export order can stop mirroring the file, so
+     * it is reported rather than left to be discovered.
+     */
+    private function countSharedRows(int $workflowId): int
+    {
+        return (int) $this->connection->fetchOne(
+            'SELECT COUNT(*) FROM (SELECT sourceRow FROM tl_workflow_entry '
+            .'WHERE pid = ? AND sourceRow > 0 GROUP BY sourceRow HAVING COUNT(*) > 1) shared',
+            [$workflowId],
+        );
     }
 
     /**

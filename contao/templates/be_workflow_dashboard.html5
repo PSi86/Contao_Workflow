@@ -91,7 +91,7 @@ $l = $this->dash;
       <div class="wf-actions">
         <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
         <?php if ($wf['runnable']): ?>
-          <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['btn_import'] ?></a>
+          <button type="button" class="tl_submit wf-open-import"><?= $l['btn_import'] ?></button>
           <?php if ($wf['canSend']): ?>
             <button type="button" class="tl_submit wf-open-dialog"><?= $l['btn_send'] ?></button>
           <?php else: ?>
@@ -101,9 +101,49 @@ $l = $this->dash;
           <span class="tl_submit wf-disabled"><?= $l['btn_import'] ?></span>
           <span class="tl_submit wf-disabled"><?= $l['btn_send'] ?></span>
         <?php endif; ?>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['exportXlsx']) ?>"><?= $l['btn_export_xlsx'] ?></a>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['exportCsv']) ?>"><?= $l['btn_export_csv'] ?></a>
-        <a class="tl_submit" href="<?= $esc($wf['urls']['pdfs']) ?>"><?= $l['btn_pdfs'] ?></a>
+        <button type="button" class="tl_submit wf-open-download"><?= $l['btn_download'] ?></button>
+      </div>
+
+      <?php // Import dialog: the mode is chosen per run, never stored. ?>
+      <?php if ($wf['runnable']): ?>
+        <div class="wf-dialog wf-dialog--import" hidden>
+          <div class="wf-dialog-box">
+            <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+            <h3><?= $l['btn_import'] ?></h3>
+            <p class="wf-choice">
+              <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['import_add'] ?></a>
+              <span class="wf-choice-hint"><?= $l['import_add_hint'] ?></span>
+            </p>
+            <p class="wf-choice">
+              <a class="tl_submit" href="<?= $esc($wf['urls']['importAbsolute']) ?>"
+                 onclick="return confirm('<?= $esc($l['import_absolute_confirm']) ?>');"><?= $l['import_absolute'] ?></a>
+              <span class="wf-choice-hint"><?= $l['import_absolute_hint'] ?></span>
+            </p>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <div class="wf-dialog wf-dialog--download" hidden>
+        <div class="wf-dialog-box">
+          <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+          <h3><?= $l['btn_download'] ?></h3>
+          <p class="wf-choice">
+            <a class="tl_submit" href="<?= $esc($wf['urls']['exportXlsx']) ?>"><?= $l['btn_export_xlsx'] ?></a>
+            <span class="wf-choice-hint"><?= $l['download_data_hint'] ?></span>
+          </p>
+          <p class="wf-choice">
+            <a class="tl_submit" href="<?= $esc($wf['urls']['exportCsv']) ?>"><?= $l['btn_export_csv'] ?></a>
+            <span class="wf-choice-hint"><?= $l['download_csv_hint'] ?></span>
+          </p>
+          <p class="wf-choice">
+            <?php if ((int) $wf['pdfCount'] > 0): ?>
+              <a class="tl_submit" href="<?= $esc($wf['urls']['pdfs']) ?>"><?= $l['btn_pdfs'] ?> (<?= (int) $wf['pdfCount'] ?>)</a>
+            <?php else: ?>
+              <span class="tl_submit wf-disabled"><?= $l['btn_pdfs'] ?> (0)</span>
+            <?php endif; ?>
+            <span class="wf-choice-hint"><?= $l['download_pdfs_hint'] ?></span>
+          </p>
+        </div>
       </div>
 
       <?php if (!empty($wf['pending'])): ?>
@@ -147,7 +187,7 @@ $l = $this->dash;
           </table>
         </details>
 
-        <div class="wf-dialog" hidden
+        <div class="wf-dialog wf-dialog--send" hidden
              data-send-url="<?= $esc($wf['sendUrl']) ?>"
              data-invite="<?= (int) $wf['inviteCount'] ?>"
              data-reminder="<?= (int) $wf['reminderCount'] ?>"

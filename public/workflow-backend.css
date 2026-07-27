@@ -317,3 +317,18 @@
 }
 .wf-dialog-close:hover { color: #c0392b; }
 .wf-confirm-list li { margin: 2px 0; }
+
+/* One option of a plain choice dialog (import mode, data download): the action first,
+   its consequence right next to it – the choice is the point, not the button. */
+.wf-choice {
+    display: flex;
+    align-items: baseline;
+    gap: .8em;
+    margin: .8em 0;
+}
+.wf-choice .tl_submit { flex: 0 0 auto; }
+.wf-choice-hint {
+    font-size: .85em;
+    line-height: 1.4;
+    color: var(--text-muted, #666);
+}

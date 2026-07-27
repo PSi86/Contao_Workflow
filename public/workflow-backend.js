@@ -1,5 +1,6 @@
-/* Back end dashboard interactions: pending-list sorting + selection and the
-   unified "send e-mail" dialog (automatic / manual, with a confirmation step). */
+/* Back end dashboard interactions: pending-list sorting + selection, the unified
+   "send e-mail" dialog (automatic / manual, with a confirmation step) and the plain
+   choice dialogs for the import mode and the data download. */
 (function () {
     'use strict';
 
@@ -78,7 +79,7 @@
     }
 
     function updateCounts(box) {
-        var dialog = box.querySelector('.wf-dialog');
+        var dialog = box.querySelector('.wf-dialog--send');
         if (!dialog) { return; }
         var manual = isManual(box);
         dialog.querySelectorAll('.wf-send').forEach(function (btn) {
@@ -93,26 +94,41 @@
         }
     }
 
-    function setupDialog(box) {
-        var dialog = box.querySelector('.wf-dialog');
-        if (!dialog) { return; }
-        var form = dialog.querySelector('.wf-step2');
-        var step1 = dialog.querySelector('.wf-step1');
-        form.action = dialog.dataset.sendUrl;
+    // Open/close wiring shared by every dialog of a workflow box: the × button and a click
+    // on the backdrop close it, the given button opens it. Returns the dialog (or null when
+    // the box has none, e.g. the import dialog of a workflow that cannot run).
+    function wireDialog(box, dialogSelector, openSelector, onOpen) {
+        var dialog = box.querySelector(dialogSelector);
+        if (!dialog) { return null; }
 
-        var open = box.querySelector('.wf-open-dialog');
+        var open = box.querySelector(openSelector);
         if (open) {
             open.addEventListener('click', function () {
-                step1.hidden = false;
-                form.hidden = true;
+                if (onOpen) { onOpen(); }
                 dialog.hidden = false;
-                updateCounts(box);
             });
         }
 
         var close = function () { dialog.hidden = true; };
         dialog.querySelector('.wf-dialog-close').addEventListener('click', close);
         dialog.addEventListener('click', function (e) { if (e.target === dialog) { close(); } });
+
+        return dialog;
+    }
+
+    function setupDialog(box) {
+        var probe = box.querySelector('.wf-dialog--send');
+        if (!probe) { return; }
+        var form = probe.querySelector('.wf-step2');
+        var step1 = probe.querySelector('.wf-step1');
+        form.action = probe.dataset.sendUrl;
+
+        var dialog = wireDialog(box, '.wf-dialog--send', '.wf-open-dialog', function () {
+            step1.hidden = false;
+            form.hidden = true;
+            updateCounts(box);
+        });
+
         dialog.querySelector('.wf-back').addEventListener('click', function () {
             form.hidden = true; step1.hidden = false;
         });
@@ -167,6 +183,10 @@
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
+            // Plain choice dialogs: their options are ordinary links, so they need nothing
+            // beyond open/close.
+            wireDialog(box, '.wf-dialog--import', '.wf-open-import');
+            wireDialog(box, '.wf-dialog--download', '.wf-open-download');
         });
     });
 })();
