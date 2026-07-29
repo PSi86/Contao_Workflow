@@ -6,6 +6,11 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.2.1] – 2026-07-29
+
+Nachtrag zu 3.2.0: die dort angekündigte Leerzeile am Ende eines Dokument-Texts kam nie in
+der Datenbank an.
+
 ### Behoben
 - **Die Leerzeile am Ende eines Dokument-Texts überlebt jetzt das Speichern.** 3.2.0 hatte
   versprochen, dass eine Leerzeile im **Dokument-Text (Textbaustein)** erhalten bleibt und
