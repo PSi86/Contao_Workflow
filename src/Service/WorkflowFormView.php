@@ -46,14 +46,15 @@ class WorkflowFormView
             }
 
             // "Erklärung": a static text block (paragraph), no input. The text is
-            // resolved server-side (same as the document) and shown as flowing text.
+            // resolved server-side (same as the document) and shown as flowing text –
+            // minus the blank lines at its edges, which are document layout only.
             if ($question->isExplanation()) {
                 $views[] = [
                     'id'          => (int) $question->id,
                     'type'        => 'explanation',
                     'label'       => (string) $question->label,
                     'description' => $this->bodyComposer->resolveFormText($question->getDescription(), $workflow, $data, $extra, $email),
-                    'text'        => $this->bodyComposer->formatBlock($this->bodyComposer->renderStatement($question, '', $data, $extra, $email, (string) $workflow->title)),
+                    'text'        => $this->bodyComposer->formatBlock($this->bodyComposer->renderFormStatement($question, '', $data, $extra, $email, (string) $workflow->title)),
                 ];
 
                 continue;
@@ -101,7 +102,7 @@ class WorkflowFormView
                 // the server-rendered static statement carry inline formatting ([b]/[i]/[u]).
                 'statementTemplate' => $this->bodyComposer->formatInline($parts['template']),
                 'statement'         => '' !== $staticValue
-                    ? $this->bodyComposer->formatInline($this->bodyComposer->renderStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title))
+                    ? $this->bodyComposer->formatInline($this->bodyComposer->renderFormStatement($question, $staticValue, $data, $extra, $email, (string) $workflow->title))
                     : '',
                 // Number fields carry their column's format into the markup so the browser
                 // formats the live preview exactly like the PDF will. Null for every

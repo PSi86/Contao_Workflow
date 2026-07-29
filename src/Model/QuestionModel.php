@@ -202,7 +202,9 @@ class QuestionModel extends Model
             $options[] = [
                 'value'     => $value,
                 'label'     => '' !== $label ? $label : $value,
-                'statement' => trim((string) ($row['statement'] ?? '')),
+                // Document text: line breaks are content here, not noise (see
+                // trimDocumentText) – value and label are single-line and trim fully.
+                'statement' => self::trimDocumentText((string) ($row['statement'] ?? '')),
             ];
         }
 
@@ -226,19 +228,33 @@ class QuestionModel extends Model
     }
 
     /**
+     * Trims a document text ("Textbaustein") the way the document needs it: spaces and
+     * tabs at the edges are typing noise and go, line breaks stay. The statements of
+     * ##text_all## follow each other line by line, so a blank line at the start or end of
+     * a document text is how one field is set apart from the next – written exactly where
+     * the resulting space appears. A text that is nothing but whitespace stays empty, so
+     * an unfilled field cannot leave a stray line behind.
+     *
+     * The blank lines only reach the database because the DCA fields carrying document
+     * texts set eval.doNotTrim (Contao trims every posted value otherwise), and they are
+     * only for the DOCUMENT: the form shows the blocks one by one and trims them (see
+     * DocumentBodyComposer::renderFormStatement).
+     */
+    public static function trimDocumentText(string $text): string
+    {
+        // The charlist deliberately holds no "\r": a browser posts "\r\n" line breaks, and
+        // biting the "\r" off one would leave half a break behind.
+        return '' === trim($text) ? '' : trim($text, " \t\0\x0B");
+    }
+
+    /**
      * Statement template of a value-based question; ##answer## marks the spot
      * for the entered value. Default: "<label>: ##answer##". Choice questions
      * carry their document texts per option instead.
-     *
-     * Spaces and tabs at the edges are typing noise and go; line breaks stay. The
-     * statements of ##text_all## follow each other line by line, so a blank line at the
-     * start or end of this text is how a field is set apart from the next – written where
-     * the resulting space appears (see DocumentBodyComposer::trimStatement).
      */
     public function getStatementTemplate(): string
     {
-        $raw = (string) $this->pdfStatement;
-        $template = '' === trim($raw) ? '' : trim($raw, " \t\r\0\x0B");
+        $template = self::trimDocumentText((string) $this->pdfStatement);
 
         // "Erklärung" is static text: the pdfStatement is the paragraph itself, with
         // no "<label>: ##answer##" fallback (there is no answer).

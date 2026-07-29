@@ -269,6 +269,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
     **Options-Text gilt wörtlich** als Dokument-Text.
   - **Textauszeichnung:** `[b]fett[/b]`, `[i]kursiv[/i]` und `[u]unterstrichen[/u]` formatieren
     den Dokument-Text – im PDF und in der Live-Vorschau im Formular.
+  - **Abstand im Dokument:** eine **Leerzeile am Ende** des Dokument-Texts bleibt erhalten
+    und setzt den Baustein im Dokument vom nächsten ab (siehe Abschnitt 3 b‑3). Im Formular
+    wird sie nicht mit angezeigt – dort steht jeder Baustein ohnehin für sich.
 - **Textbaustein im Formular anzeigen** (Standard: **an**): schaltet die Live-Vorschau
   „So erscheint dies im Dokument" des Dokument-Texts im Formular ein oder aus.
 - **Erklärung**: ein **statischer Text-Absatz** – **kein** Eingabefeld und **ohne**
@@ -374,9 +377,15 @@ und auswählt, steht wörtlich im PDF** – das Dokument enthält keine Überras
     in Formular-Reihenfolge ein. So kann **kein konfiguriertes Feld im Dokument vergessen
     werden**. Formatierung: **ein Baustein je Zeile**, ohne zusätzlichen Abstand.
     Mehr Abstand kommt dorthin, wo er gemeint ist – in den **Dokument-Text selbst**: eine
-    **Leerzeile am Anfang oder Ende** des Dokument-Texts bleibt erhalten und erscheint so im
-    Dokument. (Bis 3.1 setzte das Bundle vor jeden Baustein mit eigenem Dokument-Text
-    selbsttätig eine Leerzeile; die ließ sich nicht abstellen.)
+    **Leerzeile am Ende** des Dokument-Texts bleibt erhalten und setzt den Baustein im
+    Dokument vom nächsten ab. (Bis 3.1 setzte das Bundle vor jeden Baustein mit eigenem
+    Dokument-Text selbsttätig eine Leerzeile; die ließ sich nicht abstellen.)
+    Diese Leerzeilen gelten **nur für das Dokument**: im **Formular** steht jeder Baustein
+    ohnehin für sich, dort werden sie abgeschnitten (Live-Vorschau „So erscheint dies im
+    Dokument" und „Erklärung"-Absätze).
+    Leerzeilen am **Anfang** eines Dokument-Texts sind dagegen unzuverlässig – das
+    Eingabefeld im Backend verliert beim Öffnen die erste Zeile. Abstand deshalb immer am
+    **Ende** des davorstehenden Bausteins setzen.
   - Enthält ein Dokument-Text **kein** `##text_*##`, erscheinen die Textbausteine/Erklärungen
     dort **nicht** – der Text wird dann vollständig von Hand geschrieben (z. B. mit einzelnen
     `##data_*##`-Platzhaltern).

@@ -6,6 +6,29 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.2.1] – 2026-07-29
+
+Nachtrag zu 3.2.0: die dort angekündigte Leerzeile am Ende eines Dokument-Texts kam nie in
+der Datenbank an.
+
+### Behoben
+- **Die Leerzeile am Ende eines Dokument-Texts überlebt jetzt das Speichern.** 3.2.0 hatte
+  versprochen, dass eine Leerzeile im **Dokument-Text (Textbaustein)** erhalten bleibt und
+  den Baustein im Dokument vom nächsten absetzt – die Dokument-Seite tat das auch, nur kam
+  die Leerzeile nie in der Datenbank an: Contao schneidet beim Speichern jedes
+  Eingabefeld an beiden Enden ab. Betroffen waren der Dokument-Text eines Formularfelds,
+  der Dokument-Text **je Option** und der **Dokument-Text der Regel**; alle drei behalten
+  ihre Leerzeilen ab sofort unverändert.
+- **Die Live-Vorschau im Formular zeigt keine Leerzeilen mehr.** Die Leerzeilen sind
+  Layout für das Dokument. Im Formular steht jeder Baustein ohnehin für sich, deshalb
+  schneidet die Vorschau „So erscheint dies im Dokument" (und der „Erklärung"-Absatz) sie
+  weiterhin ab.
+
+> **Beim Update:** den Contao-Cache leeren, sonst gilt die alte Feldkonfiguration weiter.
+> Leerzeilen am **Anfang** eines Dokument-Texts bleiben unzuverlässig – das Eingabefeld des
+> Backends verliert beim Öffnen die erste Zeile. Abstand darum am **Ende** des
+> davorstehenden Bausteins setzen.
+
 ## [3.2.0] – 2026-07-27
 
 Schwerpunkt: der Import. Ausgeblendete Zeilen wurden trotzdem übernommen, Formeln kamen
