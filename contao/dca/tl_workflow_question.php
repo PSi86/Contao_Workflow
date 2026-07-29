@@ -221,10 +221,11 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                     // the visible label counts verbatim in the document. Multi-line
                     // (usually the longest of the three columns); its column is
                     // widened via CSS (see #ctrl_options in workflow-backend.css).
+                    // doNotTrim: see pdfStatement.
                     'statement' => [
                         'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'],
                         'inputType' => 'textarea',
-                        'eval'      => ['decodeEntities' => true, 'style' => 'height:44px'],
+                        'eval'      => ['decodeEntities' => true, 'doNotTrim' => true, 'style' => 'height:44px'],
                     ],
                 ],
             ],
@@ -232,11 +233,17 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         ],
         // Statement template of a value-based question; ##answer## marks the
         // entered value, other ##tokens## resolve as usual. Empty = "<label>: <value>".
+        //
+        // doNotTrim: a blank line at the end of a document text is layout for the
+        // document – ##text_all## puts one statement per line, so this is how a field is
+        // set apart from the next (see DocumentBodyComposer::trimStatement). Without this
+        // flag Contao trims every posted value, and the blank line would never reach the
+        // database, no matter how carefully the document side preserves it.
         'pdfStatement' => [
             'exclude'   => true,
             'search'    => true,
             'inputType' => 'textarea',
-            'eval'      => ['decodeEntities' => true, 'style' => 'height:60px', 'tl_class' => 'clr'],
+            'eval'      => ['decodeEntities' => true, 'doNotTrim' => true, 'style' => 'height:60px', 'tl_class' => 'clr'],
             'sql'       => 'text NULL',
         ],
     ],

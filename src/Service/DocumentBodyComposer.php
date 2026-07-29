@@ -229,6 +229,8 @@ class DocumentBodyComposer
      * ##data_*##/##letterhead_*## tokens are already resolved, only ##answer## is left
      * for the browser to substitute.
      *
+     * Form rendering, so blank lines at the edges go (see renderFormStatement).
+     *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
      *
@@ -242,14 +244,14 @@ class DocumentBodyComposer
             $options = [];
 
             foreach ($question->getOptions() as $option) {
-                $options[$option['value']] = $this->resolveStatementText(
+                $options[$option['value']] = trim($this->resolveStatementText(
                     $question->getOptionStatement($option['value']),
                     $option['value'],
                     $data,
                     $extra,
                     $email,
                     $title,
-                );
+                ));
             }
 
             // Choice questions have their document text per option only – a
@@ -259,9 +261,26 @@ class DocumentBodyComposer
 
         // ##answer## is no known resolver token, so it survives the fill().
         return [
-            'template' => $this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title),
+            'template' => trim($this->placeholderResolver->fill($question->getStatementTemplate(), $data, $extra, $email, $title)),
             'options'  => [],
         ];
+    }
+
+    /**
+     * The statement of one question as the FORM shows it: the document statement without
+     * the blank lines at its edges.
+     *
+     * Those blank lines are layout for the document, where the statements follow each
+     * other line by line (see QuestionModel::trimDocumentText). The form shows every block
+     * on its own – the "Textbaustein im Formular anzeigen" hint and the "Erklärung"
+     * paragraph – so there they would only be stray space above or below the text.
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra
+     */
+    public function renderFormStatement(QuestionModel $question, string $value, array $data, array $extra, string $email, string $title): string
+    {
+        return trim($this->renderStatement($question, $value, $data, $extra, $email, $title));
     }
 
     /**
@@ -316,17 +335,13 @@ class DocumentBodyComposer
     }
 
     /**
-     * Tidies a resolved statement without touching its line structure.
-     *
-     * Spaces and tabs at the edges are typing noise and go. Newlines do not: with the
-     * statements of ##text_all## joined by a single newline, a blank line at the start or
-     * end of a document text is the one way to set a field apart from the next – and it is
-     * written exactly where the resulting space appears. A statement that is nothing but
-     * whitespace stays empty, so an unfilled field cannot leave a stray line behind.
+     * Tidies a resolved statement without touching its line structure – the same rule
+     * the configured text is read with, applied again after the tokens are filled in
+     * (a token can resolve to trailing spaces). See QuestionModel::trimDocumentText.
      */
     private function trimStatement(string $text): string
     {
-        return '' === trim($text) ? '' : trim($text, " \t\r\0\x0B");
+        return QuestionModel::trimDocumentText($text);
     }
 
     private function esc(string $value): string

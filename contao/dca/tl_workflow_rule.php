@@ -117,10 +117,12 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
             ],
             'sql' => 'blob NULL',
         ],
+        // doNotTrim: the body is printed as written – blank lines at its edges are part
+        // of the page layout and must survive the save (see tl_workflow_question.pdfStatement).
         'pdfBody' => [
             'exclude'   => true,
             'inputType' => 'textarea',
-            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'rows' => 8, 'tl_class' => 'clr'],
+            'eval'      => ['mandatory' => true, 'decodeEntities' => true, 'doNotTrim' => true, 'rows' => 8, 'tl_class' => 'clr'],
             'sql'       => 'text NULL',
         ],
     ],
