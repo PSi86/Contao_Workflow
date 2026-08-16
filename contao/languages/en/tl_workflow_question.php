@@ -17,6 +17,53 @@ $GLOBALS['TL_LANG']['tl_workflow_question']['hideInForm']   = ['Hide field in th
 $GLOBALS['TL_LANG']['tl_workflow_question']['options']      = ['Options', 'Available choices. "Value" is stored, "Option text" is displayed, "Document text" appears in the document (empty = option text counts verbatim). Formatting in the document text: [b]bold[/b], [i]italic[/i], [u]underline[/u].'];
 $GLOBALS['TL_LANG']['tl_workflow_question']['pdfStatement'] = ['Document text (statement)', 'Sentence that appears in the document for this field; ##answer## stands for the entered value, other ##tokens## and {{insert tags}} resolve as usual. Empty = "heading: value". Reference it in the document text via ##text_<storage-column>## or ##text_all##. Choice fields maintain the document text per option. For "Explanation" this is the displayed text paragraph. A blank line at the end is kept and sets the statement apart from the next one in the document; the form does not show it. Formatting: [b]bold[/b], [i]italic[/i], [u]underline[/u].'];
 
+// Conditional form fields ("visibility").
+$GLOBALS['TL_LANG']['tl_workflow_question']['condition_legend'] = 'Visibility';
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditionMode']  = ['Display', 'Controls whether this field appears in the form. "Always" = as before. Otherwise the visibility is re-evaluated while the form is filled in. A mandatory field only has to be filled while it is visible; a hidden field is not stored on submission and its storage column is cleared.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditionLogic'] = ['Combination', 'How the conditions work together.'];
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditions']     = ['Conditions', 'Only fields ABOVE this one in the list that have a storage column can be checked. A hidden field counts as empty for the conditions that follow it. For checkboxes (multi-select) "contains" checks whether a particular option is ticked.'];
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditionAlways'] = 'always';
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditionModeOptions'] = [
+    'show' => 'only show when …',
+    'hide' => 'hide when …',
+];
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['conditionLogicOptions'] = [
+    'and' => 'all conditions must match (AND)',
+    'or'  => 'one condition is enough (OR)',
+];
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['cond_field']    = 'Field';
+$GLOBALS['TL_LANG']['tl_workflow_question']['cond_operator'] = 'Operator';
+$GLOBALS['TL_LANG']['tl_workflow_question']['cond_value']    = 'Comparison value';
+$GLOBALS['TL_LANG']['tl_workflow_question']['unknownOption'] = 'Unknown option: %s';
+
+// Value dropdown (workflow-condition-value.js): the options of the trigger field are offered
+// as "option text (stored value)". The switch next to it moves between list and free text in
+// both directions.
+$GLOBALS['TL_LANG']['tl_workflow_question']['condValueOffList'] = '%s (not in the option list)';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condValueFree']    = 'Enter a free value';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condValueList']    = 'Choose from the list';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condValueInert']   = 'This operator does not use a comparison value.';
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['condSelfRef']      = 'A field cannot depend on itself (condition "%s").';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condForwardRef']   = 'The condition refers to the field "%s", which is NOT above this one in the list. Conditions may only refer to preceding fields – please adjust the order of the form fields.';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condEmpty']        = 'Please provide at least one complete condition (field and operator) or select "always".';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condValueUnknown'] = 'Note: the comparison value "%s" is not among the options of the field "%s". The STORED value is compared (the "value" column of the option list), not the displayed option text.';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condTypeHint']     = 'Note: for the field "%s" (number/date) only "is empty"/"is not empty" is currently reliable. A value comparison may fail on the spelling (e.g. "1.000,00 €" versus "1000").';
+
+$GLOBALS['TL_LANG']['tl_workflow_question']['depTrigger']    = 'Controls: %s';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depShowIf']     = 'shown when %s';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depHideIf']     = 'hidden when %s';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depAnd']        = 'and';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depOr']         = 'or';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depOrderError'] = 'This field is placed before the field it depends on – the order cannot be saved like this.';
+$GLOBALS['TL_LANG']['tl_workflow_question']['condOrderViolation'] = 'The form field "%s" depends on the field with the storage column "%s" and must be placed BELOW it in the list. The changed order was therefore not applied.';
+$GLOBALS['TL_LANG']['tl_workflow_question']['depColumn']     = 'Dependency';
+
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_value']     = 'Value (stored)';
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_label']     = 'Option text';
 $GLOBALS['TL_LANG']['tl_workflow_question']['option_statement'] = 'Document text (empty = option text)';

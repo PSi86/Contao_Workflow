@@ -53,6 +53,12 @@ class WorkflowConfigExporter
                 'showStatementInForm' => $question->showsStatementInForm(),
                 'pdfStatement'        => (string) $question->pdfStatement,
                 'options'             => $question->getOptions(),
+                // Conditional visibility. Portable as it stands: a condition names a storage
+                // COLUMN, and the columns are what the target site's source file provides too –
+                // no ids to remap, unlike a reference to the sibling field would be.
+                'conditionMode'       => $question->getConditionMode(),
+                'conditionLogic'      => $question->getConditionLogic(),
+                'conditions'          => $question->getConditions(),
             ];
         }
 

@@ -37,7 +37,26 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
     // uniformly: .tw-field.tw-field--<kind> > label/legend + control(s).
     // Radio/checkbox groups keep their (semantically correct) fieldset; the
     // CSS resets it so it looks identical to the div-based fields.
+    $hasConditions = false;
+
+    foreach ($this->questions as $q) {
+        if (!empty($q['condition'])) {
+            $hasConditions = true;
+            break;
+        }
+    }
   ?>
+
+  <?php if ($hasConditions): ?>
+    <?php
+      // Without JavaScript nothing can react to what is being entered, so every conditional
+      // field is revealed instead. They are not disabled either (only the script disables),
+      // so they are filled in and posted, and the server discards the ones whose conditions
+      // do not apply. Leaving them hidden would make the follow-up questions unreachable –
+      // a silent gap in the answers, which is worse than showing one field too many.
+    ?>
+    <noscript><style>.mod_workflow_form .tw-field[hidden] { display: block; }</style></noscript>
+  <?php endif; ?>
   <form method="post" class="tw-form" novalidate<?= !empty($this->preview) ? ' onsubmit="return false"' : '' ?>>
     <input type="hidden" name="FORM_SUBMIT" value="<?= $esc($this->formId) ?>">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->requestToken) ?>">
@@ -49,9 +68,24 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
       // else. ($this->email is still available to templates and tokens.)
     ?>
     <?php foreach ($this->questions as $q): ?>
+      <?php
+        // Conditional fields. "data-wf-field" marks a possible trigger (its storage column),
+        // "data-wf-cond" carries this field's own rules, and "hidden" is the initial state as
+        // the SERVER computed it – so a field that starts hidden never flashes up.
+        //
+        // "disabled" is deliberately NOT rendered here: only workflow-conditions.js disables a
+        // hidden field's controls. Without JavaScript the noscript rule in workflow-form.css
+        // reveals every conditional field again, and since nothing is disabled they are all
+        // filled in and posted – the server then discards the ones whose conditions do not
+        // apply. That is the difference between "no follow-up question was ever asked" and a
+        // form the participant cannot complete.
+        $condAttr = ('' !== (string) ($q['column'] ?? '') ? ' data-wf-field="'.$esc($q['column']).'"' : '')
+            .(!empty($q['condition']) ? ' data-wf-cond="'.$esc(json_encode($q['condition'], JSON_UNESCAPED_UNICODE)).'"' : '')
+            .(!($q['visible'] ?? true) ? ' hidden' : '');
+      ?>
       <?php if ('explanation' === $q['type']): ?>
         <?php // "Erklärung": static text block (no input), shown as a paragraph. ?>
-        <div class="tw-field tw-field--explanation">
+        <div class="tw-field tw-field--explanation"<?= $condAttr ?>>
           <?php if ('' !== (string) $q['text']): ?>
             <?php // Safe HTML (escaped + [b]/[i]/[u] formatting + <br>), built server-side. ?>
             <div class="tw-explanation-text"><?= $q['text'] ?></div>
@@ -88,7 +122,7 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
         $forAttr = $isChoiceGroup ? '' : ' for="'.$esc($ctrlId).'"';
         $classes = 'tw-field tw-field--'.$q['type'].($ro ? ' tw-field--readonly' : '');
       ?>
-      <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?>>
+      <<?= $tag ?> class="<?= $esc($classes) ?>"<?= $hint && !$isStatic ? ' data-tw-question' : '' ?><?= $tplAttr ?><?= $condAttr ?>>
         <<?= $labelTag ?><?= $forAttr ?>><?= $esc($q['label']).$star ?></<?= $labelTag ?>>
 
         <?php // Optional description, shown in the form only (never in the document).

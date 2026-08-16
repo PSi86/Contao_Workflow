@@ -11,9 +11,44 @@
 [data-question-sort] .tw-drag-handle:active { cursor: grabbing; }
 [data-question-sort] tr.tw-dragging { opacity: .4; }
 
+/* Dependency markers of conditional form fields (workflow-question-deps.js). A trigger
+   carries a numbered badge, a dependent field an arrow with its trigger's number(s);
+   the readable condition is the badge's tooltip. Hovering a row tints everything it is
+   connected to, in both directions – with a free row order and multiple triggers per
+   field, that link cannot be drawn by indentation. */
+[data-question-sort] .tw-dep-cell { width: 1px; white-space: nowrap; }
+[data-question-sort] .tw-dep { cursor: help; font-size: 1.1em; line-height: 1; }
+[data-question-sort] .tw-dep-trigger { color: #1a3a61; }
+[data-question-sort] .tw-dep-child { color: #777; }
+[data-question-sort] tr.tw-dep-related td { background: #eef4fb; }
+
+/* Ordered wrongly: the field sits above a field it depends on, so its condition could
+   never be evaluated. Saving refuses this order; the red row says so beforehand. */
+[data-question-sort] tr.tw-dep-error td { background: #fdecea; }
+[data-question-sort] tr.tw-dep-error .tw-dep { color: #c00; }
+
 /* Technical, versioned field holding the answer-field order (driven by the
    drag&drop above) – never shown to the user. */
 .wf-question-order { display: none; }
+
+/* Comparison value of a visibility condition (workflow-condition-value.js): the switch
+   between the option list and free text, and the greyed-out state for the operators that
+   use no value at all. No colours of their own – the back end has a dark mode, and opacity
+   reads correctly in both themes. */
+#ctrl_conditions .tw-cond-mode {
+    margin-left: .3em;
+    padding: 0 .25em;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    opacity: .55;
+}
+#ctrl_conditions .tw-cond-mode:hover,
+#ctrl_conditions .tw-cond-mode:focus-visible { opacity: 1; }
+#ctrl_conditions .tw-cond-inert { opacity: .5; cursor: not-allowed; }
 
 /* Keep a MultiColumnWizard (answer-field options, rule conditions) and its row
    operation buttons inside the (modal) dialog width instead of overflowing:

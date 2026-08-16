@@ -47,6 +47,11 @@
         if (field) {
             field.value = rowsIn(b).map(function (r) { return r.getAttribute('data-question-id'); }).join(',');
         }
+
+        // The order decides whether the visibility conditions can still be evaluated (they may
+        // only reference PRECEDING fields). workflow-question-deps.js listens and marks a
+        // violation immediately; the save refuses it as well, but only after the round trip.
+        document.dispatchEvent(new CustomEvent('wf-question-order-changed'));
     }
 
     // Reorder freshly rendered rows to match the pending order; ids not in it

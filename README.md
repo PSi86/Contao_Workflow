@@ -122,6 +122,13 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
      **„Erklärung"** ist ein reiner Textabsatz (kein Eingabefeld): der Text steht im
      *Dokument-Text* und erscheint als Fließtext im Formular **und** im Dokument.
      Ja/Nein = Radio mit zwei Optionen (z. B. „Akzeptieren“→`ja`, „Ablehnen“→`nein`).
+     Im Abschnitt **Sichtbarkeit** wird ein Feld **bedingt**: Es erscheint (oder verschwindet)
+     abhängig von der Antwort auf ein **vorangehendes** Feld – „Haben Sie Kinder?" = `ja` blendet
+     „Wie viele Kinder haben Sie?" ein. Der Browser reagiert beim Ausfüllen, entschieden wird
+     beim Absenden erneut serverseitig: Ein ausgeblendetes Feld wird nicht geprüft (auch ein
+     Pflichtfeld nicht), nicht gespeichert, erscheint nicht im Dokument, und seine Speicherspalte
+     wird geleert. In der Feldliste zeigen Marker (① / ⤷①) die Abhängigkeiten samt Bedingung
+     im Klartext.
    - **Dokument-Einstellungen:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern und
      `{{Insert-Tags}}`, z. B. `Verzicht_##data_name##_##data_vorname##` oder
      `Verzicht_##data_name##_{{date::Y}}`; die Eingabe von `##` bzw. `{` blendet eine

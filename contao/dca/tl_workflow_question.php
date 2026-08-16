@@ -5,6 +5,11 @@ declare(strict_types=1);
 use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 
+// The visibility section is available for EVERY field type ("Erklärung" included), so it is
+// appended to every branch of the type toggle map below. Kept in a variable so the per-type
+// lists stay readable.
+$wfConditionFields = ',"conditionMode","conditionLogic","conditions"';
+
 $GLOBALS['TL_DCA']['tl_workflow_question'] = [
     'config' => [
         'dataContainer'    => DC_Table::class,
@@ -57,7 +62,11 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         // are hidden (they are meaningless there). "Erklärung" is a static text
         // block (pdfStatement only) shown as a paragraph in the form and the
         // document – no storage field, no input.
-        'default' => '{question_legend},label,type,storageField,numberDecimals,mandatory,readOnly,prefill,description,options,pdfStatement,showStatementInForm,hideInForm',
+        //
+        // The "Sichtbarkeit" section (conditional fields) is separate and applies to every
+        // type; its wizard is shown client-side once a mode other than "immer" is chosen.
+        'default' => '{question_legend},label,type,storageField,numberDecimals,mandatory,readOnly,prefill,description,options,pdfStatement,showStatementInForm,hideInForm'
+            .';{condition_legend},conditionMode,conditionLogic,conditions',
     ],
     'fields' => [
         'id' => [
@@ -93,15 +102,15 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
                 'mandatory'      => true,
                 'tl_class'       => 'w50',
                 'data-wf-toggle' => '{"mode":"select","map":{'
-                    .'"text":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
-                    .'"textarea":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
-                    .'"number":["storageField","numberDecimals","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
-                    .'"date":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"],'
-                    .'"select":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
-                    .'"radio":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
-                    .'"checkbox":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"],'
-                    .'"currentTime":["storageField","hideInForm","pdfStatement"],'
-                    .'"explanation":["pdfStatement"]}}',
+                    .'"text":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"textarea":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"number":["storageField","numberDecimals","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"date":["storageField","mandatory","prefill","readOnly","description","pdfStatement","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"select":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"radio":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"checkbox":["storageField","mandatory","prefill","readOnly","description","options","showStatementInForm"'.$wfConditionFields.'],'
+                    .'"currentTime":["storageField","hideInForm","pdfStatement"'.$wfConditionFields.'],'
+                    .'"explanation":["pdfStatement"'.$wfConditionFields.']}}',
             ],
             // Warns when the chosen type does not fit the storage column. The strict check
             // sits on storageField, but that field is locked once answers exist and then
@@ -245,6 +254,75 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
             'inputType' => 'textarea',
             'eval'      => ['decodeEntities' => true, 'doNotTrim' => true, 'style' => 'height:60px', 'tl_class' => 'clr'],
             'sql'       => 'text NULL',
+        ],
+        // Conditional visibility. Empty = the field is always shown, which is what every
+        // existing field keeps doing; "show"/"hide" evaluate the conditions below.
+        //
+        // A condition names the STORAGE COLUMN of a PRECEDING field, never a question id:
+        // column names survive a workflow copy and a configuration import without remapping,
+        // and they let the visibility be recomputed from the stored data alone – which is what
+        // the document composer does when a PDF is regenerated months later.
+        'conditionMode' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'options'   => ['show', 'hide'],
+            'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['conditionModeOptions'],
+            // data-wf-toggle: the wizard and the AND/OR selector only appear once a mode is
+            // chosen – client-side, no save (see workflow-field-toggle.js). The blank option
+            // is a real, labelled choice ("immer anzeigen"), so "" is a valid map key.
+            'eval'      => [
+                'includeBlankOption' => true,
+                'blankOptionLabel'   => &$GLOBALS['TL_LANG']['tl_workflow_question']['conditionAlways'],
+                'tl_class'           => 'w50',
+                'data-wf-toggle'     => '{"mode":"select","map":{"":[],"show":["conditionLogic","conditions"],"hide":["conditionLogic","conditions"]}}',
+            ],
+            'sql'       => "varchar(8) NOT NULL default ''",
+        ],
+        'conditionLogic' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'options'   => ['and', 'or'],
+            'reference' => &$GLOBALS['TL_LANG']['tl_workflow_question']['conditionLogicOptions'],
+            'eval'      => ['tl_class' => 'w50'],
+            'sql'       => "varchar(3) NOT NULL default 'and'",
+        ],
+        'conditions' => [
+            'exclude'   => true,
+            'inputType' => 'multiColumnWizard',
+            // Hands the browser the answer options of the possible trigger fields, so the
+            // "Vergleichswert" column becomes a dropdown for choice fields instead of a value
+            // that has to be retyped correctly.
+            'load_callback' => [[AnswerConfigListener::class, 'loadConditionValueOptions']],
+            // Drops incomplete rows, clears everything for mode "immer" and refuses a
+            // condition that cannot work (self-reference, forward reference).
+            'save_callback' => [[AnswerConfigListener::class, 'validateConditions']],
+            'eval'      => [
+                'tl_class'     => 'clr',
+                'columnFields' => [
+                    'field' => [
+                        'label'            => &$GLOBALS['TL_LANG']['tl_workflow_question']['cond_field'],
+                        'inputType'        => 'select',
+                        'options_callback' => [AnswerConfigListener::class, 'getConditionSourceOptions'],
+                        'eval'             => ['includeBlankOption' => true, 'style' => 'width:240px'],
+                    ],
+                    'operator' => [
+                        'label'            => &$GLOBALS['TL_LANG']['tl_workflow_question']['cond_operator'],
+                        'inputType'        => 'select',
+                        // Deliberately a SUBSET of the PDF rule operators: the browser mirrors
+                        // this comparison live, and restricting it to string operators keeps
+                        // that mirror free of the number/date parsing the ordering operators
+                        // would need. See AnswerConfigListener::getConditionOperatorOptions().
+                        'options_callback' => [AnswerConfigListener::class, 'getConditionOperatorOptions'],
+                        'eval'             => ['style' => 'width:160px'],
+                    ],
+                    'value' => [
+                        'label'     => &$GLOBALS['TL_LANG']['tl_workflow_question']['cond_value'],
+                        'inputType' => 'text',
+                        'eval'      => ['decodeEntities' => true, 'style' => 'width:220px'],
+                    ],
+                ],
+            ],
+            'sql' => 'blob NULL',
         ],
     ],
 ];

@@ -29,6 +29,9 @@ use Psimandl\WorkflowBundle\Excel\NumberFormat;
  * @property string $readOnly     Show the stored data value read-only ("1"/"").
  * @property string $numberFormat JSON snapshot of the storage column's Excel format ("number" only).
  * @property string $numberDecimals Configured decimals ("number" only); empty = take them from the column.
+ * @property string $conditionMode  Conditional visibility: "" = always, "show", "hide".
+ * @property string $conditionLogic "and" = all conditions must match, "or" = one is enough.
+ * @property string $conditions     Serialized list of [field, operator, value] visibility conditions.
  */
 class QuestionModel extends Model
 {
@@ -178,6 +181,64 @@ class QuestionModel extends Model
     public function isHiddenInForm(): bool
     {
         return $this->isCurrentTime() && '1' === (string) $this->hideInForm;
+    }
+
+    /**
+     * Conditional visibility mode: "" (always shown), "show" (only when the conditions
+     * match) or "hide" (hidden while they match).
+     */
+    public function getConditionMode(): string
+    {
+        $mode = trim((string) $this->conditionMode);
+
+        return \in_array($mode, ['show', 'hide'], true) ? $mode : '';
+    }
+
+    /**
+     * Whether this field's visibility depends on other fields' answers. A mode without a
+     * single complete condition does NOT count: a broken configuration must never make a
+     * field disappear silently (the save callback refuses that state, this is the runtime
+     * safety net).
+     */
+    public function isConditional(): bool
+    {
+        return '' !== $this->getConditionMode() && [] !== $this->getConditions();
+    }
+
+    /**
+     * How the conditions combine: "and" (all must match) or "or" (one is enough).
+     */
+    public function getConditionLogic(): string
+    {
+        return 'or' === trim((string) $this->conditionLogic) ? 'or' : 'and';
+    }
+
+    /**
+     * Visibility conditions as field/operator/value triples (incomplete rows skipped).
+     * "field" is the STORAGE COLUMN of a preceding form field, mirroring the PDF rules.
+     *
+     * @return array<int, array{field: string, operator: string, value: string}>
+     */
+    public function getConditions(): array
+    {
+        $conditions = [];
+
+        foreach (StringUtil::deserialize($this->conditions, true) as $row) {
+            $field = trim((string) ($row['field'] ?? ''));
+            $operator = trim((string) ($row['operator'] ?? ''));
+
+            if ('' === $field || '' === $operator) {
+                continue;
+            }
+
+            $conditions[] = [
+                'field'    => $field,
+                'operator' => $operator,
+                'value'    => (string) ($row['value'] ?? ''),
+            ];
+        }
+
+        return $conditions;
     }
 
     /**
