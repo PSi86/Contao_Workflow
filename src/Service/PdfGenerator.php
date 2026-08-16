@@ -103,10 +103,16 @@ class PdfGenerator
 
     private function sanitizeFileName(string $name): string
     {
-        // On-disk PDF name (and later a ZIP member): kept ASCII on purpose — a Cyrillic or
-        // umlaut member name in a ZIP is mangled by many desktop unzip tools. The shared
-        // slugger transliterates any script faithfully, so nothing is dropped to empty.
-        return mb_substr($this->slugger->ascii($name), 0, 120);
+        // Keeps the characters of the configured pattern: a document about Frau Müller is
+        // called "…_Müller.pdf", not "…_Mueller.pdf". The name travels on to the ZIP bundle
+        // and the result mail, both of which carry non-ASCII names correctly (the ZIP flags
+        // them as UTF-8, the mail encodes them per RFC 2231).
+        //
+        // Path safety comes from the slugger itself: everything that is not a letter, digit or
+        // combining mark – "/", "\", ".", control characters – becomes "_", so no name can
+        // escape its workflow directory. fileName() also bounds the length in bytes, which is
+        // what the file system limits.
+        return $this->slugger->fileName($name);
     }
 
     /**

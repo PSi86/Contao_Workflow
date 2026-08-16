@@ -744,6 +744,11 @@ class WorkflowActionController
             $folder = ['pdfs'] === $parts ? '' : 'PDFs/';
 
             foreach ($files as $file) {
+                // The member name is the on-disk name, umlauts and all. ZipArchive detects
+                // that it is not plain ASCII and flags the entry as UTF-8 (general purpose bit
+                // 11), which Windows Explorer, macOS, 7-Zip and Info-ZIP all honour. Keeping
+                // the two names identical is the point: the archive name already carries the
+                // original characters (see pdfBundleName()).
                 $zip->addFile($file, $folder.basename($file));
             }
         }

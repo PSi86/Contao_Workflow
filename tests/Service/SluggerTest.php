@@ -50,6 +50,10 @@ final class SluggerTest extends TestCase
             'trailing colon'  => ['Stundenlohn:', 'stundenlohn'],
             'plain'           => ['Geburtsdatum', 'geburtsdatum'],
             'multi word'      => ['Tätigkeit in Abteilung', 'taetigkeit_in_abteilung'],
+            // Capital umlauts transliterate in caps (ÄÖÜ -> AEOEUE) for the case-preserving
+            // file name; the lower-cased token must be unaffected by that, because it is what
+            // every ##data_*## reference resolves against.
+            'all caps umlaut' => ['ÄÖÜ', 'aeoeue'],
         ];
     }
 
@@ -90,10 +94,85 @@ final class SluggerTest extends TestCase
         $this->assertNotSame($this->slugger->token('Отдел'), $this->slugger->token('Зарплата'));
     }
 
-    public function testAsciiPreservesCase(): void
+    /**
+     * ascii() is the fallback of a download header, so it keeps capitalisation – and must not
+     * drop a character the way a plain character-class replace did ("EStG Übungsleiter" once
+     * became "EStG_bungsleiter").
+     *
+     * @dataProvider asciiNames
+     */
+    public function testAsciiPreservesCase(string $input, string $expected): void
     {
-        $this->assertSame('EStG_Uebungsleiter', $this->slugger->ascii('EStG Übungsleiter'));
-        $this->assertSame('Otdel_Kadrov', $this->slugger->ascii('Отдел Кадров'));
+        $this->assertSame($expected, $this->slugger->ascii($input));
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function asciiNames(): array
+    {
+        return [
+            'umlaut'           => ['EStG Übungsleiter', 'EStG_Uebungsleiter'],
+            'cyrillic'         => ['Отдел Кадров', 'Otdel_Kadrov'],
+            'sharp s'          => ['Straßenfest', 'Strassenfest'],
+            'all umlauts'      => ['äöü ÄÖÜ ß', 'aeoeue_AEOEUE_ss'],
+            'acronym'          => ['Übungsleiter ÜLP 2026', 'Uebungsleiter_UELP_2026'],
+            'keeps case'       => ['CamelCase Titel', 'CamelCase_Titel'],
+            'dash with spaces' => ['Demo - Einverständnis', 'Demo_Einverstaendnis'],
+            'punctuation'      => ['Verzicht: Ablehnung (2026)', 'Verzicht_Ablehnung_2026'],
+            'hyphen'           => ['Anti-Aging-Kurs', 'Anti_Aging_Kurs'],
+            'multiple spaces'  => ['A   B', 'A_B'],
+            'trims separators' => ['  - Titel -  ', 'Titel'],
+        ];
+    }
+
+    /**
+     * fileName() names the documents this bundle writes to disk. Keeping the umlauts is the
+     * point of it; everything else it does is about staying a name a file system accepts.
+     */
+    public function testFileNameKeepsOriginalCharacters(): void
+    {
+        $this->assertSame('Verzicht_Müller_Jürgen', $this->slugger->fileName('Verzicht Müller Jürgen'));
+        $this->assertSame('Отдел_кадров', $this->slugger->fileName('Отдел кадров'));
+        $this->assertSame('人事部_2026', $this->slugger->fileName('人事部 2026'));
+    }
+
+    /**
+     * A decomposed umlaut (NFD, as macOS produces) is a letter plus a combining mark. Dropping
+     * the mark would silently turn "Müller" into "Muller" – or rather "Mu_ller".
+     */
+    public function testFileNameKeepsDecomposedUmlauts(): void
+    {
+        $composed = "M\u{00FC}ller";      // NFC: single "ü"
+        $decomposed = "Mu\u{0308}ller";   // NFD: "u" + combining diaeresis
+
+        $this->assertSame($composed, $this->slugger->fileName($composed));
+        $this->assertSame($decomposed, $this->slugger->fileName($decomposed));
+    }
+
+    /**
+     * A file name must fit the file system's byte limit (NAME_MAX is 255 bytes, and the caller
+     * still appends ".pdf" plus a possible collision suffix) – and cutting it must never split
+     * a multi-byte character, which would leave an unusable, invalid UTF-8 name.
+     */
+    public function testFileNameStaysWithinTheByteBudget(): void
+    {
+        $name = $this->slugger->fileName(str_repeat('人', 200));
+
+        $this->assertLessThanOrEqual(180, \strlen($name));
+        $this->assertTrue(mb_check_encoding($name, 'UTF-8'));
+        $this->assertSame($name, trim($name, '_-'));
+    }
+
+    public function testFileNameCannotEscapeItsDirectory(): void
+    {
+        foreach (['../etc/passwd', 'a/b\\c', '..', '.'] as $evil) {
+            $name = $this->slugger->fileName($evil);
+
+            $this->assertStringNotContainsString('/', $name);
+            $this->assertStringNotContainsString('\\', $name);
+            $this->assertStringNotContainsString('.', $name);
+        }
     }
 
     /**
@@ -127,7 +206,9 @@ final class SluggerTest extends TestCase
     public function testUnusableInputReturnsEmpty(): void
     {
         $this->assertSame('', $this->slugger->ascii('!!!'));
+        $this->assertSame('', $this->slugger->ascii(''));
         $this->assertSame('', $this->slugger->token('—'));
         $this->assertSame('', $this->slugger->unicode('/// \\\\'));
+        $this->assertSame('', $this->slugger->fileName('!!!'));
     }
 }

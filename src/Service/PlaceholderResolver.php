@@ -28,17 +28,6 @@ use Contao\CoreBundle\InsertTag\InsertTagParser;
 class PlaceholderResolver
 {
     /**
-     * Common German characters transliterated into ASCII so slugs (and file
-     * names) stay readable (e.g. "Tätigkeit" -> "taetigkeit", "Straße" ->
-     * "strasse").
-     */
-    /**
-     * The capital forms map to "Ae"/"Oe"/"Ue", not "ae"/"oe"/"ue": {@see normalize()} lower-cases
-     * afterwards and cannot tell the difference, but the case-preserving callers
-     * ({@see fileSlug()}, PdfGenerator::sanitizeFileName()) can – "Übungsleiter" has to become
-     * "Uebungsleiter", not "uebungsleiter".
-     */
-    /**
      * Inline formatting markers (BBCode style) supported in the document texts and
      * Textbausteine, mapped to the whitelisted HTML tags they produce. The same
      * marker/tag idea as ##tokens##/{{insert-tags}}: a delimited marker that is
@@ -255,14 +244,6 @@ class PlaceholderResolver
     public function normalize(string $name): string
     {
         return $this->slugger->token($name);
-    }
-
-    /**
-     * A name turned into an ASCII filename component, capitalisation preserved.
-     */
-    public function fileSlug(string $name): string
-    {
-        return $this->slugger->ascii($name);
     }
 
     /**
