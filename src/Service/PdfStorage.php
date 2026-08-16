@@ -124,7 +124,18 @@ class PdfStorage
             return 0;
         }
 
-        return \count(glob($dir.'/*.pdf') ?: []);
+        // Counted by iteration rather than glob(): the overview asks this for every workflow,
+        // and a run with a few thousand documents would otherwise build an array of paths just
+        // to take its length.
+        $count = 0;
+
+        foreach (new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS) as $file) {
+            if ($file->isFile() && 'pdf' === strtolower($file->getExtension())) {
+                ++$count;
+            }
+        }
+
+        return $count;
     }
 
     /**

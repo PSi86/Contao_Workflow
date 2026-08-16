@@ -13,7 +13,7 @@ use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
-use Psimandl\WorkflowBundle\Model\EntryModel;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
@@ -39,6 +39,7 @@ class WorkflowIntegrityListener
         private readonly WorkflowValidator $validator,
         private readonly PlaceholderResolver $placeholders,
         private readonly SpreadsheetInspector $inspector,
+        private readonly Connection $connection,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $projectDir,
@@ -440,16 +441,19 @@ class WorkflowIntegrityListener
             return [];
         }
 
-        $entries = EntryModel::findBy('pid', (int) $workflow->id, ['limit' => self::PREFILL_CHECK_LIMIT]);
-
-        if (null === $entries) {
-            return [];
-        }
+        // Only the data blobs, not whole models: this samples up to 500 entries for a warning,
+        // and hydrating (plus registering) that many EntryModels to read one serialized column
+        // is the single most expensive thing the edit mask used to do. StringUtil::deserialize
+        // is exactly what EntryModel::getData() does with the same value.
+        $blobs = $this->connection->fetchFirstColumn(
+            'SELECT data FROM tl_workflow_entry WHERE pid = ? LIMIT '.self::PREFILL_CHECK_LIMIT,
+            [(int) $workflow->id],
+        );
 
         $samples = [];
 
-        foreach ($entries as $entry) {
-            $data = $entry->getData();
+        foreach ($blobs as $blob) {
+            $data = StringUtil::deserialize($blob, true);
 
             foreach ($checks as $question) {
                 $storage = trim((string) $question->storageField);

@@ -6,8 +6,9 @@ namespace Psimandl\WorkflowBundle\Controller\Backend;
 
 use Contao\BackendModule;
 use Contao\Message;
+use Contao\StringUtil;
 use Contao\System;
-use Psimandl\WorkflowBundle\Model\EntryModel;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
@@ -50,6 +51,8 @@ class DashboardModule extends BackendModule
         $validator = $container->get(WorkflowValidator::class);
         /** @var PersonNameResolver $nameResolver */
         $nameResolver = $container->get(PersonNameResolver::class);
+        /** @var Connection $connection */
+        $connection = $container->get('database_connection');
         /** @var PdfStorage $pdfStorage */
         $pdfStorage = $container->get(PdfStorage::class);
         /** @var ImportLogRenderer $importLogRenderer */
@@ -66,9 +69,11 @@ class DashboardModule extends BackendModule
                 $id = (int) $workflow->id;
                 $final = $workflow->getFinalStatus();
                 $steps = $workflow->getSteps();
-                $byStatus = $status->countByStatus($id);
+                // One query for every figure of this row (see WorkflowStatus::summary).
+                $figures = $status->summary($workflow);
+                $byStatus = $figures['byStatus'];
 
-                $pending = $this->buildPending($workflow, $status, $nameResolver, $hasName, $hasVorname, $hasAbteilung);
+                $pending = $this->buildPending($workflow, $status, $nameResolver, $connection, $hasName, $hasVorname, $hasAbteilung);
 
                 // Per-step select buttons: every step except the final one.
                 $selectSteps = [];
@@ -99,10 +104,10 @@ class DashboardModule extends BackendModule
                     'neverImported' => $validator->hasNeverImported($workflow),
                     'canSend'       => [] === $problems && [] === $sendBlockers,
                     'sendBlockers'  => $sendBlockers,
-                    'completed'     => $status->countCompleted($workflow),
-                    'open'          => $status->countOpen($workflow),
-                    'total'         => $status->countTotal($id),
-                    'breakdown'     => $status->getBreakdown($workflow),
+                    'completed'     => $figures['completed'],
+                    'open'          => $figures['open'],
+                    'total'         => $figures['total'],
+                    'breakdown'     => $figures['breakdown'],
                     'pending'       => $pending,
                     'hasName'       => $hasName,
                     'hasVorname'    => $hasVorname,
@@ -195,7 +200,7 @@ class DashboardModule extends BackendModule
     /**
      * @return array<int, array{id: int, email: string, statusIndex: int, status: string, name: string, vorname: string, abteilung: string}>
      */
-    private function buildPending(WorkflowModel $workflow, WorkflowStatus $status, PersonNameResolver $nameResolver, ?bool &$hasName, ?bool &$hasVorname, ?bool &$hasAbteilung): array
+    private function buildPending(WorkflowModel $workflow, WorkflowStatus $status, PersonNameResolver $nameResolver, Connection $connection, ?bool &$hasName, ?bool &$hasVorname, ?bool &$hasAbteilung): array
     {
         $hasName = false;
         $hasVorname = false;
@@ -210,15 +215,16 @@ class DashboardModule extends BackendModule
         // in the back end leaves the old resultDoneAt timestamp in place (it records that a
         // confirmation was once produced), so without it such an entry would silently stay
         // invisible for the whole re-do cycle.
-        $entries = EntryModel::findBy(
-            ['pid=?', "(status<? OR resultDoneAt=0 OR (sendError IS NOT NULL AND sendError!='') OR bounceHard!='')"],
+        // Read as plain rows: this list is rendered, never modified, and hydrating a model per
+        // open item only to read its columns is work with no return. The WHERE clause and the
+        // ordering are the ones the model call used.
+        $entries = $connection->fetchAllAssociative(
+            'SELECT id, email, status, data, sendError, bounceHard, bounceInfo, resultError, '
+            .'respondedAt, resultDoneAt FROM tl_workflow_entry '
+            ."WHERE pid = ? AND (status < ? OR resultDoneAt = 0 OR (sendError IS NOT NULL AND sendError != '') OR bounceHard != '') "
+            .'ORDER BY status, email',
             [(int) $workflow->id, $workflow->getFinalStatus()],
-            ['order' => 'status, email'],
         );
-
-        if (null === $entries) {
-            return [];
-        }
 
         // The source columns are identical for all entries of a workflow, so resolve the
         // first-name / last-name / e-mail columns once from the first row's keys.
@@ -229,7 +235,7 @@ class DashboardModule extends BackendModule
         $keysResolved = false;
 
         foreach ($entries as $entry) {
-            $row = $entry->getData();
+            $row = StringUtil::deserialize($entry['data'], true);
 
             if (!$keysResolved) {
                 $keys = array_keys($row);
@@ -244,7 +250,7 @@ class DashboardModule extends BackendModule
             $name = null !== $lastNameKey ? (string) ($row[$lastNameKey] ?? '') : '';
             $abteilung = null !== $departmentKey ? (string) ($row[$departmentKey] ?? '') : '';
             // The configured e-mail field is canonical; fall back to a detected column.
-            $email = (string) $entry->email;
+            $email = (string) $entry['email'];
 
             if ('' === $email && null !== $emailKey) {
                 $email = (string) ($row[$emailKey] ?? '');
@@ -254,7 +260,7 @@ class DashboardModule extends BackendModule
             $hasVorname = $hasVorname || '' !== $vorname;
             $hasAbteilung = $hasAbteilung || '' !== $abteilung;
 
-            $sendError = (string) $entry->sendError;
+            $sendError = (string) $entry['sendError'];
 
             // Delivery state shown in its own "Zustellung" column, in addition to (never
             // replacing) the workflow status. Empty only while no mail has been attempted;
@@ -264,29 +270,29 @@ class DashboardModule extends BackendModule
             // invitation was actually sent.
             $delivery = '';
 
-            if ('1' === (string) $entry->bounceHard) {
+            if ('1' === (string) $entry['bounceHard']) {
                 $delivery = 'bounce';
             } elseif ('' !== $sendError) {
                 $delivery = 'error';
-            } elseif ((int) $entry->respondedAt > 0 && 0 === (int) $entry->resultDoneAt) {
+            } elseif ((int) $entry['respondedAt'] > 0 && 0 === (int) $entry['resultDoneAt']) {
                 // Answered, but the confirmation (PDF + result mail) is not through yet.
                 $delivery = 'pending';
-            } elseif ((int) $entry->status >= WorkflowStatus::STATUS_INVITED) {
+            } elseif ((int) $entry['status'] >= WorkflowStatus::STATUS_INVITED) {
                 $delivery = 'sent';
             }
 
             $pending[] = [
-                'id'          => (int) $entry->id,
+                'id'          => (int) $entry['id'],
                 'email'       => $email,
-                'statusIndex' => (int) $entry->status,
-                'status'      => $status->getStepLabel($workflow, (int) $entry->status),
+                'statusIndex' => (int) $entry['status'],
+                'status'      => $status->getStepLabel($workflow, (int) $entry['status']),
                 'name'        => $name,
                 'vorname'     => $vorname,
                 'abteilung'   => $abteilung,
                 'delivery'    => $delivery,
                 'sendError'   => $sendError,
-                'bounceInfo'  => (string) $entry->bounceInfo,
-                'resultError' => (string) $entry->resultError,
+                'bounceInfo'  => (string) $entry['bounceInfo'],
+                'resultError' => (string) $entry['resultError'],
             ];
         }
 

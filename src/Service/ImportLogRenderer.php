@@ -58,12 +58,17 @@ class ImportLogRenderer
 
         $html .= '</tbody></table>';
 
-        $total = $this->log->count($workflowId);
+        // Only ask for the total when the page is full – fewer rows than the limit means there
+        // is nothing older, and the count would be a second query per workflow in the overview
+        // to confirm what the row count already says.
+        if (\count($rows) >= self::LIMIT) {
+            $total = $this->log->count($workflowId);
 
-        if ($total > \count($rows)) {
-            $html .= '<p class="tl_help" style="margin:.4em 0 0">'
-                .sprintf($this->label($lang, 'importLogMore', '… und %d ältere Läufe.'), $total - \count($rows))
-                .'</p>';
+            if ($total > \count($rows)) {
+                $html .= '<p class="tl_help" style="margin:.4em 0 0">'
+                    .sprintf($this->label($lang, 'importLogMore', '… und %d ältere Läufe.'), $total - \count($rows))
+                    .'</p>';
+            }
         }
 
         return $html;
