@@ -20,12 +20,6 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class WorkflowValidator
 {
-    /**
-     * tl_workflow fields that store the name of a source column. They share one rule: a
-     * non-empty value has to be among the current headers, or it is orphaned.
-     */
-    private const COLUMN_FIELDS = ['emailField', 'pdfSignatureDate', 'pdfSignatureLocation'];
-
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly LinkGenerator $linkGenerator,
@@ -400,6 +394,27 @@ class WorkflowValidator
     }
 
     /**
+     * tl_workflow fields whose stored value is the name of a source column. They share one
+     * rule: a non-empty value has to be among the current headers, or it is orphaned.
+     *
+     * Which fields those are depends on the record: with the signature place taken from a
+     * letterhead variable, pdfSignatureLocation no longer names a column at all – checking it
+     * would red-outline a field for a value it is not currently using.
+     *
+     * @return array<int, string>
+     */
+    private function columnFields(WorkflowModel $workflow): array
+    {
+        $fields = ['emailField', 'pdfSignatureDate'];
+
+        if ('var' !== (string) $workflow->pdfSignatureLocationSource) {
+            $fields[] = 'pdfSignatureLocation';
+        }
+
+        return $fields;
+    }
+
+    /**
      * tl_workflow fields whose stored value cannot be resolved against the current
      * source columns – marked in the edit mask. When there is no source file at
      * all, every header-dependent field is flagged.
@@ -408,7 +423,10 @@ class WorkflowValidator
      */
     public function orphanedFields(WorkflowModel $workflow): array
     {
-        $headerDependent = ['sourceSheet', 'emailField', 'pdfSignatureDate', 'pdfSignatureLocation', 'questions', 'rules'];
+        $headerDependent = array_merge(
+            ['sourceSheet', 'questions', 'rules'],
+            $this->columnFields($workflow),
+        );
 
         if (!$workflow->sourceFile) {
             return $headerDependent;
@@ -423,10 +441,9 @@ class WorkflowValidator
         $orphaned = [];
 
         // Every field whose stored value is a source column name, checked the same way. The
-        // two signature-line fields belong here as much as emailField does: they name a
-        // column too, and a copy (which drops the source file) leaves them pointing at
-        // nothing.
-        foreach (self::COLUMN_FIELDS as $field) {
+        // signature-line fields belong here as much as emailField does: they name a column
+        // too, and a copy (which drops the source file) leaves them pointing at nothing.
+        foreach ($this->columnFields($workflow) as $field) {
             $value = trim((string) $workflow->{$field});
 
             if ('' !== $value && !\in_array($value, $headers, true)) {

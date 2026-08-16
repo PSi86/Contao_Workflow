@@ -12,6 +12,7 @@ use Contao\StringUtil;
 use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\LetterheadVars;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
 /**
@@ -23,6 +24,7 @@ class WorkflowOptionsListener
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly QuestionParentResolver $questionParent,
+        private readonly LetterheadVars $letterheadVars,
     ) {
     }
 
@@ -54,6 +56,25 @@ class WorkflowOptionsListener
         $workflow = $this->getWorkflow($dc);
 
         return null === $workflow ? [] : $this->inspector->getHeaderOptions($workflow);
+    }
+
+    /**
+     * Letterhead ("Briefpapier") variables offered as the signature place – the content
+     * variables of the master the workflow is assigned to (layout metrics excluded).
+     *
+     * The master is read from the STORED record: the field has no submitOnChange, so a
+     * letterhead just picked in the mask brings its variables along only after saving. That is
+     * how every other dependent picker of this mask behaves (they all read the stored source
+     * file), and the field's help text says so.
+     *
+     * @return array<string, string>
+     */
+    #[AsCallback(table: 'tl_workflow', target: 'fields.pdfSignatureLocationVar.options')]
+    public function getSignatureLocationVarOptions(?DataContainer $dc = null): array
+    {
+        $workflow = $this->getWorkflow($dc);
+
+        return null === $workflow ? [] : $this->letterheadVars->options($workflow);
     }
 
     /**

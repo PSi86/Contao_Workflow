@@ -101,7 +101,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocation,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -171,7 +171,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'inputType' => 'checkbox',
             // data-wf-toggle: show the signature-line fields only while checked
             // (client-side, no save). See workflow-field-toggle.js.
-            'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","on":["pdfSignatureDate","pdfSignatureLocation"]}'],
+            'eval'      => ['tl_class' => 'w50 m12', 'data-wf-toggle' => '{"mode":"checkbox","on":["pdfSignatureDate","pdfSignatureLocationSource","pdfSignatureLocation","pdfSignatureLocationVar"]}'],
             'sql'       => "char(1) NOT NULL default '1'",
         ],
         'formPage' => [
@@ -243,14 +243,44 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfSignatureDate' => [
             'exclude'   => true,
             'inputType' => 'select',
-            // clr: start a new row so the two signature-line fields sit BELOW the
-            // "Signatur benötigt" checkbox (not next to it).
+            // clr: start a new row so the signature-line fields sit BELOW the
+            // "Unterschrift benötigt" checkbox (not next to it).
             'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50 clr'],
             'sql'       => "varchar(128) NOT NULL default ''",
+        ],
+        // Where the place in the signature line comes from. "data": a source column, i.e. one
+        // value per participant (their town). "var": a variable of the assigned letterhead,
+        // i.e. the same value for everyone (the club's seat) – which is the far more common
+        // case and used to force a column into the source file that carried the same string in
+        // every row.
+        //
+        // Default "data", so existing workflows keep behaving exactly as before.
+        'pdfSignatureLocationSource' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'options'   => ['data', 'var'],
+            'reference' => &$GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocationSourceOptions'],
+            // clr: start a new row so the signature-line fields sit BELOW the
+            // "Unterschrift benötigt" checkbox (not next to it).
+            // data-wf-toggle combines with requireSignature by AND (workflow-field-toggle.js):
+            // unchecked hides all of them, checked lets this select decide which one shows.
+            'eval'      => [
+                'tl_class'       => 'w50 clr',
+                'data-wf-toggle' => '{"mode":"select","map":{"data":["pdfSignatureLocation"],"var":["pdfSignatureLocationVar"]}}',
+            ],
+            'sql'       => "varchar(8) NOT NULL default 'data'",
         ],
         // Source column whose value is printed as the place in the signature line
         // (e.g. the participant's town). Empty = no place printed.
         'pdfSignatureLocation' => [
+            'exclude'   => true,
+            'inputType' => 'select',
+            'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
+            'sql'       => "varchar(128) NOT NULL default ''",
+        ],
+        // Letterhead variable whose value is printed as the place in the signature line
+        // (e.g. "Ort" of the Briefpapier). Empty = no place printed.
+        'pdfSignatureLocationVar' => [
             'exclude'   => true,
             'inputType' => 'select',
             'eval'      => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],

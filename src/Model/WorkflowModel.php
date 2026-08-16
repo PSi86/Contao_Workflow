@@ -26,7 +26,9 @@ use Psimandl\WorkflowBundle\Service\WorkflowStatus;
  * @property string $pdfTitle        Shared heading (form + PDF), supports ##tokens##.
  * @property string $introText       Optional intro after the heading (form + PDF), supports ##tokens##.
  * @property string $pdfSignatureDate Data column whose value is printed as the signature date.
+ * @property string $pdfSignatureLocationSource Where the signature place comes from: "data" or "var".
  * @property string $pdfSignatureLocation Data column whose value is printed as the signature place.
+ * @property string $pdfSignatureLocationVar Letterhead variable printed as the signature place.
  * @property string $pdfBodyTemplate Body template name (template mode), e.g. pdf_body_verzicht.
  * @property int    $master        tl_workflow_master id (letterhead: template + logo + variables).
  * @property string $sourceHash    Checksum of the last imported source file.

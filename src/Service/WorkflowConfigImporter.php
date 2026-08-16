@@ -35,7 +35,11 @@ class WorkflowConfigImporter
     // tl_workflow.importIssues and flagged red in the edit mask.
     // v6: per-question "numberDecimals" (decimals of a "Zahl" field; empty = derive them
     // from the source column).
-    public const VERSION = 6;
+    // v7: workflow "pdfSignatureLocationSource" + "pdfSignatureLocationVar" (the signature
+    // place may now come from a letterhead variable instead of a source column). A file of
+    // version 6 or below has no such key and is imported as "data", which is the only
+    // behaviour it could have described.
+    public const VERSION = 7;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -443,8 +447,9 @@ class WorkflowConfigImporter
             'INSERT INTO tl_workflow '
             .'(tstamp, title, published, steps, sourceFile, sourceSheet, headerRow, emailField, '
             .'requireSignature, formPage, master, pdfBodyType, pdfBodyTemplate, pdfTitle, introText, pdfSignatureDate, '
-            .'pdfSignatureLocation, pdfFileName, ncInvite, ncReminder, ncResult, importIssues) '
-            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            .'pdfSignatureLocationSource, pdfSignatureLocation, pdfSignatureLocationVar, pdfFileName, '
+            .'ncInvite, ncReminder, ncResult, importIssues) '
+            .'VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 (string) $wf['title'],
                 ($wf['published'] ?? true) ? '1' : '',
@@ -461,7 +466,10 @@ class WorkflowConfigImporter
                 (string) ($wf['pdfTitle'] ?? ''),
                 (string) ($wf['introText'] ?? ''),
                 (string) ($wf['pdfSignatureDate'] ?? ''),
+                // Missing in a file of format 6 or below – "data" is the behaviour it had.
+                'var' === (string) ($wf['pdfSignatureLocationSource'] ?? 'data') ? 'var' : 'data',
                 (string) ($wf['pdfSignatureLocation'] ?? ''),
+                (string) ($wf['pdfSignatureLocationVar'] ?? ''),
                 (string) ($wf['pdfFileName'] ?? ''),
                 $nc['invite'] ?? 0,
                 $nc['reminder'] ?? 0,
