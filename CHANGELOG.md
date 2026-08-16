@@ -6,6 +6,28 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.4.1] – 2026-08-16
+
+Fehlerkorrektur zu 3.4.0: gelöschte Workflows ließen Aufzeichnungen zurück.
+
+### Behoben
+- **Beim Löschen eines Workflows bleiben keine Reste mehr zurück.** Contao entfernt automatisch
+  nur, was als Kindtabelle eingetragen ist – Einträge, Formularfelder und Regeln. Alles andere
+  muss ausdrücklich benannt werden, und dabei fehlte etwas: Das **Versandprotokoll** blieb
+  liegen, und beim Wiederherstellen der **Demo** blieben zusätzlich das **Importprotokoll** und
+  die erzeugten **PDF-Dokumente** liegen – dieser Weg löscht seinen Vorgänger direkt in der
+  Datenbank und lief damit an der Aufräum-Routine vorbei. Die zurückgebliebenen Zeilen zeigten
+  auf eine Workflow-Nummer, die es nicht mehr gab; das Importprotokoll wird zwar je Workflow
+  gedeckelt, aber nie leer, und eine Versandzeile, die nie zugestellt oder endgültig
+  fehlgeschlagen ist, wird bewusst dauerhaft aufbewahrt. Beide Wege benutzen jetzt dieselbe
+  Aufräum-Routine, sodass eine künftig hinzukommende Aufzeichnung nur an einer Stelle ergänzt
+  werden muss.
+
+  Wer sein System aufräumen möchte: Reste früherer Löschvorgänge verschwinden nicht von selbst.
+  Sie stehen in `tl_workflow_import` und `tl_workflow_send` unter einer Workflow-Nummer, die es
+  nicht mehr gibt, sowie als Verzeichnisse unter `var/workflow_pdfs/`. Sie richten keinen
+  Schaden an – sie belegen Platz und tauchen in keiner Ansicht auf.
+
 ## [3.4.0] – 2026-08-16
 
 Schwerpunkt: **bedingte Formularfelder**. Ein Formularfeld kann jetzt von der Antwort auf ein
