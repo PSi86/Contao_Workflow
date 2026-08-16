@@ -42,7 +42,7 @@ $x = fn (string $k, string $def = ''): string => '' !== (string) ($this->extra[$
 | `$this->logoSrc` | absoluter Dateipfad des Logos (oder `''`) |
 | `$this->signatureSrc` | absoluter Dateipfad der Unterschrift (oder `''`) |
 | `$this->signerName` | Name für die Unterschriftszeile |
-| `$this->ort` | Ort der Unterschriftszeile (aus dem Workflow-Feld *Ort für Unterschriftszeile*, z. B. `Wohnort`) |
+| `$this->ort` | Ort der Unterschriftszeile – je nach *Quelle für den Ort* entweder aus einer Quellspalte (z. B. `Wohnort`, je Teilnehmer verschieden) oder aus einer Briefpapier-Variablen (z. B. `Ort`, für alle gleich) |
 | `$this->datum` | Datum der Unterschriftszeile (aus dem Workflow-Feld *Datum für Unterschriftszeile*) |
 | `$this->footer` | optionale Fußzeilen-Variable `Footer`; das mitgelieferte `pdf_master` (Beispiel-Briefpapier) nutzt stattdessen eine feste 4-spaltige Fußzeile |
 | `$this->extra` | **alle** PDF-Variablen des Briefpapiers als Array (`$this->extra['Verein']` …); damit kann ein Master Kopf-/Fußzeile komplett aus den Variablen aufbauen |
