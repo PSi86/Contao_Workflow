@@ -35,6 +35,7 @@ class DemoWorkflowSeeder
         private readonly WorkflowConfigImporter $configImporter,
         private readonly SpreadsheetImporter $spreadsheetImporter,
         private readonly DemoFormPage $demoFormPage,
+        private readonly WorkflowPurger $purger,
         private readonly string $projectDir,
     ) {
     }
@@ -91,6 +92,12 @@ class DemoWorkflowSeeder
             foreach (['tl_workflow_question', 'tl_workflow_rule', 'tl_workflow_entry'] as $table) {
                 $this->connection->executeStatement("DELETE FROM $table WHERE pid = ?", [(int) $id]);
             }
+
+            // Deleting here bypasses tl_workflow's config.ondelete callback, so the things
+            // outside Contao's cascade have to be named: import log, send log, documents.
+            // Without this the restore left them behind, pointing at an id that no longer
+            // resolves.
+            $this->purger->purge((int) $id);
 
             $this->connection->executeStatement('DELETE FROM tl_workflow WHERE id = ?', [(int) $id]);
         }
