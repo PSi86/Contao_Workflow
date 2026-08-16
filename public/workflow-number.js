@@ -52,15 +52,20 @@
     }
 
     /**
-     * Renders a number the way ValueFormatter does: grouping ".", decimal ",".
+     * Renders a number the way ValueFormatter does: grouping ".", decimal ",", and the
+     * column's currency symbol appended after a space.
+     *
+     * The currency is not decoration: the stored value carries it (the server puts it back on
+     * submission), so a preview without it would promise something the document does not show.
+     * Like ValueFormatter, the symbol is only appended when the format fixes the decimals –
+     * a "General" column has no currency to begin with.
      */
-    function formatNumber(value, decimals, grouping) {
+    function formatNumber(value, decimals, grouping, currency) {
         // decimals === null is "General": keep the decimals the value carries instead of
         // forcing a count. Mirrors ValueFormatter, where a null decimals prints the value
         // as-is – forcing 0 here would round 11,56 to 12.
-        var fixed = null === decimals || undefined === decimals
-            ? String(Math.abs(value))
-            : Math.abs(value).toFixed(decimals);
+        var general = null === decimals || undefined === decimals;
+        var fixed = general ? String(Math.abs(value)) : Math.abs(value).toFixed(decimals);
         var parts = fixed.split('.');
         var integer = parts[0];
 
@@ -68,7 +73,9 @@
             integer = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
 
-        return (value < 0 ? '-' : '') + integer + (parts[1] ? ',' + parts[1] : '');
+        var out = (value < 0 ? '-' : '') + integer + (parts[1] ? ',' + parts[1] : '');
+
+        return !general && currency ? out + ' ' + currency : out;
     }
 
     /**
@@ -97,13 +104,25 @@
         return formatNumber(
             number,
             isNaN(decimals) ? null : decimals,
-            input.getAttribute('data-wf-grouping') === '1'
+            input.getAttribute('data-wf-grouping') === '1',
+            input.getAttribute('data-wf-currency') || ''
         );
+    }
+
+    /**
+     * Whether what is currently typed can be read as a number. Empty counts as valid – whether
+     * a field may be left empty is the "mandatory" flag's business, not this one's.
+     */
+    function isAcceptable(input) {
+        var raw = input.value.trim();
+
+        return raw === '' || parseNumber(raw) !== null;
     }
 
     window.WorkflowNumber = {
         parse: parseNumber,
         format: formatNumber,
-        formatInput: formatInput
+        formatInput: formatInput,
+        isAcceptable: isAcceptable
     };
 })();

@@ -89,8 +89,9 @@
                 if (input && input.type === 'date') {
                     value = formatDate(value);
                 } else if (input && input.hasAttribute('data-wf-number') && window.WorkflowNumber) {
-                    // Show the number the way the document will spell it ("1.234,50"),
-                    // not the raw keystrokes – the preview's whole promise.
+                    // Show the number the way the document will spell it ("1.234,50 €"),
+                    // not the raw keystrokes – the preview's whole promise. The currency
+                    // symbol belongs to that: it is part of the stored value.
                     value = window.WorkflowNumber.formatInput(input);
                 }
                 result = template.split('##answer##').join(escapeHtml(value));
@@ -101,11 +102,31 @@
         hint.hidden = result === '';
     }
 
+    /**
+     * Marks a number field whose content cannot be read as a number, so the mistake is visible
+     * while typing instead of only after submitting.
+     *
+     * Deliberately a hint, not a barrier: the form carries "novalidate" (the server owns
+     * validation and phrases the messages), and blocking the submit here would put a second,
+     * silently diverging rule in front of the one that decides. The server rejects the same
+     * input with a named message; this only says so earlier.
+     */
+    function checkNumber(field) {
+        var input = field.querySelector('[data-wf-number]');
+
+        if (!input || !window.WorkflowNumber) {
+            return;
+        }
+
+        field.classList.toggle('tw-field--invalid', !window.WorkflowNumber.isAcceptable(input));
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.tw-form [data-tw-question]').forEach(function (field) {
             ['input', 'change'].forEach(function (event) {
                 field.addEventListener(event, function () {
                     update(field);
+                    checkNumber(field);
                 });
             });
 

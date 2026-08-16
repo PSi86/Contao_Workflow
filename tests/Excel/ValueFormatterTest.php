@@ -61,6 +61,44 @@ final class ValueFormatterTest extends TestCase
     }
 
     /**
+     * The reference for workflow-number.js, which mirrors this method so the live preview
+     * spells a value exactly as the document will. Each case pins one branch the JS has to
+     * reproduce: no decimals, no grouping, a negative value, and a three-letter code instead
+     * of a symbol.
+     *
+     * @dataProvider currencyCases
+     */
+    public function testCurrencyRendering(float $value, int $decimals, bool $grouping, string $currency, string $expected): void
+    {
+        $this->assertSame($expected, $this->formatter->format($value, NumberFormat::number($decimals, $grouping, $currency)));
+    }
+
+    /**
+     * @return array<string, array{0: float, 1: int, 2: bool, 3: string, 4: string}>
+     */
+    public static function currencyCases(): array
+    {
+        return [
+            'two decimals'   => [1234.5, 2, true, '€', '1.234,50 €'],
+            'no decimals'    => [1234.0, 0, true, '€', '1.234 €'],
+            'no grouping'    => [1234.5, 2, false, '€', '1234,50 €'],
+            'negative'       => [-1234.5, 2, true, '€', '-1.234,50 €'],
+            'zero'           => [0.0, 2, true, '€', '0,00 €'],
+            'currency code'  => [1234.5, 2, true, 'CHF', '1.234,50 CHF'],
+            'no currency'    => [1234.5, 2, true, '', '1.234,50'],
+        ];
+    }
+
+    /**
+     * "General" has no fixed decimals and therefore no currency either – appending a symbol to
+     * a value whose shape is unknown would invent a format the column does not have.
+     */
+    public function testGeneralNeverAppendsACurrency(): void
+    {
+        $this->assertSame('3000', $this->formatter->format(3000.0, NumberFormat::general()));
+    }
+
+    /**
      * "General" carries no fixed decimals: an integer stays an integer ("3000" must never
      * become "3.000,00"), and a decimal only gets its separator localised – which is what
      * German Excel shows for such a cell.
