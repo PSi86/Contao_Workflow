@@ -13,7 +13,8 @@ use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
-use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
+// STILLGELEGT mit dem absoluten Importmodus (siehe unten, urls.importAbsolute):
+// use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
@@ -116,9 +117,12 @@ class DashboardModule extends BackendModule
                         // Direct link into the workflow_manage edit view for this workflow.
                         'manage'     => $router->generate('contao_backend', ['do' => 'workflow_manage', 'act' => 'edit', 'id' => $id, 'rt' => $rt]),
                         'import'         => $base('workflow_import'),
-                        // Same route, deleting mode: entries whose row is hidden or gone are
-                        // removed afterwards (SpreadsheetImporter::MODE_ABSOLUTE).
-                        'importAbsolute' => $base('workflow_import').'&mode='.SpreadsheetImporter::MODE_ABSOLUTE,
+                        // STILLGELEGT: dieselbe Route im löschenden Modus – Einträge, deren
+                        // Zeile ausgeblendet ist oder fehlt, wurden danach entfernt
+                        // (SpreadsheetImporter::MODE_ABSOLUTE). Siehe den abgeschalteten
+                        // Import-Dialog in be_workflow_dashboard.html5. Zum Reaktivieren
+                        // einkommentieren (und den use-Import oben wieder aufnehmen):
+                        // 'importAbsolute' => $base('workflow_import').'&mode='.SpreadsheetImporter::MODE_ABSOLUTE,
                         // Without the token: the download dialog is a GET form, whose fields
                         // replace the whole query string – the token travels as a field.
                         'download'       => $router->generate('workflow_download', ['id' => $id]),

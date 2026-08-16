@@ -44,6 +44,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'download_result_csv'  => 'Ergebnis: eine CSV-Datei (.csv).',
     'download_result_zip'  => 'Ergebnis: ein ZIP-Archiv (.zip) mit der Auswahl.',
     'download_result_none' => 'Bitte mindestens einen Eintrag auswählen.',
+    // Der Import-Dialog ist stillgelegt (siehe be_workflow_dashboard.html5) – „Import
+    // ausführen“ startet direkt den additiven Lauf. Seine vier Texte bleiben für eine
+    // Reaktivierung stehen. „import_add“ und „import_absolute“ sind NICHT ungenutzt: das
+    // Importprotokoll beschriftet damit auch alte Läufe im absoluten Modus.
     'import_intro'     => '<strong>Ausgeblendete Zeilen werden in beiden Fällen übersprungen</strong> – sie werden nie importiert. Der Modus entscheidet nur, was mit <em>bereits vorhandenen</em> Einträgen geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:',
     'import_add'       => 'Additiv',
     'import_add_hint'  => 'Solche Einträge bleiben bestehen und werden weiterhin angeschrieben. Es wird nichts gelöscht.',

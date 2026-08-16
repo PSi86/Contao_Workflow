@@ -44,6 +44,9 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'download_result_csv'  => 'Result: one CSV file (.csv).',
     'download_result_zip'  => 'Result: one ZIP archive (.zip) with the selection.',
     'download_result_none' => 'Please select at least one item.',
+    // The import dialog is disabled (see be_workflow_dashboard.html5) – "Run import" starts the
+    // additive run directly. Its four texts stay for a possible reactivation. "import_add" and
+    // "import_absolute" are NOT unused: the import log labels historic absolute runs with them.
     'import_intro'     => '<strong>Hidden rows are skipped either way</strong> – they are never imported. The mode only decides what happens to <em>existing</em> entries whose row is now hidden or missing from the file:',
     'import_add'       => 'Add',
     'import_add_hint'  => 'Such entries remain and are still mailed. Nothing is deleted.',

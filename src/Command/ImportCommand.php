@@ -11,7 +11,8 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
+// STILLGELEGT mit der Option --mode (siehe configure()):
+// use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -31,13 +32,19 @@ class ImportCommand extends Command
     protected function configure(): void
     {
         $this->addArgument('workflow', InputArgument::REQUIRED, 'The tl_workflow ID to import.');
-        $this->addOption(
-            'mode',
-            null,
-            InputOption::VALUE_REQUIRED,
-            'add: only add and update (default). absolute: additionally delete entries whose row is hidden or gone from the file, including their PDFs.',
-            SpreadsheetImporter::MODE_ADD,
-        );
+
+        // STILLGELEGT: der absolute Importmodus wird nicht mehr angeboten – weder hier noch im
+        // Backend (siehe den abgeschalteten Import-Dialog in be_workflow_dashboard.html5). Er
+        // löschte Einträge samt bereits erzeugter PDFs, auch bereits beantwortete, sobald ihre
+        // Zeile in der Quelldatei fehlte oder ausgeblendet war. Zum Reaktivieren diesen Block
+        // und die Modus-Prüfung in execute() einkommentieren.
+        // $this->addOption(
+        //     'mode',
+        //     null,
+        //     InputOption::VALUE_REQUIRED,
+        //     'add: only add and update (default). absolute: additionally delete entries whose row is hidden or gone from the file, including their PDFs.',
+        //     SpreadsheetImporter::MODE_ADD,
+        // );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -54,13 +61,15 @@ class ImportCommand extends Command
             return Command::FAILURE;
         }
 
-        $mode = (string) $input->getOption('mode');
-
-        if (!\in_array($mode, [SpreadsheetImporter::MODE_ADD, SpreadsheetImporter::MODE_ABSOLUTE], true)) {
-            $io->error(sprintf('Unknown mode "%s" – use "add" or "absolute".', $mode));
-
-            return Command::INVALID;
-        }
+        // STILLGELEGT mit der Option --mode (siehe configure()): jeder Lauf ist additiv.
+        // $mode = (string) $input->getOption('mode');
+        //
+        // if (!\in_array($mode, [SpreadsheetImporter::MODE_ADD, SpreadsheetImporter::MODE_ABSOLUTE], true)) {
+        //     $io->error(sprintf('Unknown mode "%s" – use "add" or "absolute".', $mode));
+        //
+        //     return Command::INVALID;
+        // }
+        $mode = SpreadsheetImporter::MODE_ADD;
 
         try {
             $result = $this->importer->import($workflow, $mode);

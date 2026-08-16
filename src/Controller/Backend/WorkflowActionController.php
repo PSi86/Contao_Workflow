@@ -178,12 +178,17 @@ class WorkflowActionController
             return $redirect;
         }
 
-        // Chosen per run in the overview dialog, never stored: "absolut" is a clean-up
-        // decision about one file, not a property of the workflow. Anything but the explicit
-        // value means the additive default – a mistyped parameter must not delete entries.
-        $mode = SpreadsheetImporter::MODE_ABSOLUTE === (string) $request->query->get('mode')
-            ? SpreadsheetImporter::MODE_ABSOLUTE
-            : SpreadsheetImporter::MODE_ADD;
+        // Jeder Import läuft additiv – er legt an und aktualisiert, löscht aber nichts. Der
+        // frühere absolute Modus ist stillgelegt (siehe den abgeschalteten Import-Dialog in
+        // be_workflow_dashboard.html5): ein Klick löschte Einträge samt bereits erzeugter
+        // PDFs, auch bereits beantwortete. Der Query-Parameter wird bewusst nicht mehr
+        // ausgewertet, sonst bliebe der Modus durch Hand-Editieren der URL erreichbar.
+        // Zum Reaktivieren die folgenden drei Zeilen einkommentieren und die feste Zuweisung
+        // darunter entfernen:
+        // $mode = SpreadsheetImporter::MODE_ABSOLUTE === (string) $request->query->get('mode')
+        //     ? SpreadsheetImporter::MODE_ABSOLUTE
+        //     : SpreadsheetImporter::MODE_ADD;
+        $mode = SpreadsheetImporter::MODE_ADD;
 
         try {
             $result = $this->importer->import($workflow, $mode);

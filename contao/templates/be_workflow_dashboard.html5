@@ -102,8 +102,14 @@ $l = $this->dash;
       <div class="wf-actions">
         <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
 
+        <?php // Startet den Import direkt (additiv, es wird nichts gelöscht). Der frühere
+              // Dialog mit der Modus-Wahl ist stillgelegt – siehe wf-dialog--import weiter
+              // unten. Zum Reaktivieren: hier wieder einen
+              // <button type="button" class="tl_submit wf-open-import"> mit demselben Label
+              // ausgeben, den Dialogblock unten freischalten (if (false) entfernen) und in
+              // workflow-backend.js den wireDialog-Aufruf einkommentieren. ?>
         <?php if ($wf['runnable']): ?>
-          <button type="button" class="tl_submit wf-open-import"><?= $l['btn_import'] ?></button>
+          <a class="tl_submit" href="<?= $esc($wf['urls']['import']) ?>"><?= $l['btn_import'] ?></a>
         <?php else: ?>
           <span class="tl_submit wf-disabled"><?= $l['btn_import'] ?></span>
         <?php endif; ?>
@@ -131,8 +137,18 @@ $l = $this->dash;
         </div>
       </div>
 
-      <?php // Import dialog: the mode is chosen per run, never stored. ?>
-      <?php if ($wf['runnable']): ?>
+      <?php // STILLGELEGT: der Import-Dialog mit der Wahl zwischen „additiv" und „absolut".
+            // „Absolut" löschte mit einem Klick Einträge samt bereits erzeugter PDFs – auch
+            // bereits beantwortete –, sobald ihre Zeile in der Quelldatei fehlte oder
+            // ausgeblendet war. Ein Fehlgriff im Dialog war damit nicht rückholbar. Der
+            // Button oben löst jetzt direkt den additiven Import aus.
+            //
+            // Der Block bleibt stehen (statt gelöscht zu werden) und ist über `if (false)`
+            // abgeschaltet: so bleibt er syntaxgeprüft und mit einer Zeile reaktivierbar.
+            // Dazu gehören: der Button oben, `urls.importAbsolute` im DashboardModule, die
+            // Auswertung von `?mode` im WorkflowActionController und die Option `--mode` des
+            // Konsolenbefehls – alle vier sind an derselben Begründung markiert. ?>
+      <?php if (false && $wf['runnable']): ?>
         <div class="wf-dialog wf-dialog--import" hidden>
           <div class="wf-dialog-box">
             <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
