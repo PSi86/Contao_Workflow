@@ -47,8 +47,16 @@ final class WorkflowReimportTest extends TestCase
 
         $inspector = $this->createMock(SpreadsheetInspector::class);
         $inspector->method('resolvePath')->willReturn($resolvedPath);
+        // Both delegate to the file system in the real inspector; only the caching is its own.
         $inspector->method('fileStat')->willReturnCallback(
-            static fn (string $p): string => (int) @filemtime($p).':'.(int) @filesize($p),
+            static function (string $p): string {
+                clearstatcache(true, $p);
+
+                return (int) @filemtime($p).':'.(int) @filesize($p);
+            },
+        );
+        $inspector->method('fileHash')->willReturnCallback(
+            static fn (string $p): string => (string) @md5_file($p),
         );
 
         $validator = new WorkflowValidator(

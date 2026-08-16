@@ -45,6 +45,9 @@ class SpreadsheetInspector
     /** @var array<string, array<int, string>> */
     private array $headers = [];
 
+    /** @var array<string, string> checksums by file key, see fileHash() */
+    private array $hashes = [];
+
     /**
      * The one parsed workbook kept alive (see loadSheet()). Holding exactly one means the
      * peak memory is unchanged – a second file evicts the first – while every consumer of
@@ -209,6 +212,26 @@ class SpreadsheetInspector
         clearstatcache(true, $path);
 
         return (int) @filemtime($path).':'.(int) @filesize($path);
+    }
+
+    /**
+     * Checksum of a file, computed at most once per request and file.
+     *
+     * Reading the whole file is the expensive part, and several callers want the same answer
+     * within one back-end page: the change detection ({@see WorkflowValidator::isSourceDirty()})
+     * and the source-file summary in the edit mask. Keyed by {@see fileStat()} as well, so a
+     * file replaced mid-request cannot be answered from the cache.
+     */
+    public function fileHash(string $path): string
+    {
+        $key = $this->fileKey($path);
+
+        if (!isset($this->hashes[$key])) {
+            $hash = @md5_file($path);
+            $this->hashes[$key] = false !== $hash ? $hash : '';
+        }
+
+        return $this->hashes[$key];
     }
 
     /**

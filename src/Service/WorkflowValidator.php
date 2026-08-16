@@ -340,9 +340,9 @@ class WorkflowValidator
             return false;
         }
 
-        $hash = @md5_file($path);
+        $hash = $this->inspector->fileHash($path);
 
-        return false !== $hash && $hash !== (string) $workflow->sourceHash;
+        return '' !== $hash && $hash !== (string) $workflow->sourceHash;
     }
 
     /**

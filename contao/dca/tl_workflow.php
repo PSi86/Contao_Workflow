@@ -6,6 +6,7 @@ use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ImportLogListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\SourceFileInfoListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ResetButtonListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\WorkflowDeleteListener;
@@ -101,7 +102,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -333,6 +334,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'pdfPreview' => [
             'exclude'              => true,
             'input_field_callback' => [PreviewButtonListener::class, 'renderPdfButton'],
+            'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Read-only summary of the source file (no DB column): which file is being read, when
+        // it was last changed, and whether that is still what the last import saw. Sits right
+        // under the picker because that is where the wrong file gets chosen.
+        'sourceInfo' => [
+            'exclude'              => true,
+            'input_field_callback' => [SourceFileInfoListener::class, 'render'],
             'eval'                 => ['tl_class' => 'clr'],
         ],
         // Read-only import log (no DB column): the runs of this workflow, newest first.

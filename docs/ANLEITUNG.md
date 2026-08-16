@@ -130,6 +130,19 @@ nicht mehr im Workflow.
 **Dateiverwaltung → Ordner `files`** → CSV/XLSX hochladen
 (z. B. `files/analyse/basistabelle-2026.xlsx`).
 
+> ⚠ **Eine Ersatzdatei muss exakt so heißen wie die bisherige.** Contao ersetzt beim Hochladen
+> weder Leerzeichen noch Großbuchstaben: `Basistabelle 2026.xlsx` überschreibt
+> `basistabelle-2026.xlsx` **nicht**, sondern landet als **zweite Datei daneben**. Der Workflow
+> liest dann weiter die alte – und weil jeder Import erfolgreich meldet, fällt das lange nicht
+> auf. Das häufigste Symptom: einzelne Teilnehmer fehlen oder Beträge sind veraltet, „als wäre
+> die alte Datei noch im Cache".
+>
+> Die Bearbeitungsmaske sagt es einem: Unter der **Quelldatei** stehen Pfad, Änderungsdatum und
+> Prüfsumme, dazu das Urteil **„Stand des letzten Imports – die Datei wurde seitdem nicht
+> verändert"**. Wer gerade eine neue Fassung hochgeladen hat und das liest, findet die neue
+> Datei im selben Ordner unter anderem Namen. Hat ein Lauf tatsächlich eine andere Datei
+> gelesen, wird auch deren Pfad genannt.
+
 ### 3 b. Workflow anlegen & konfigurieren
 **Workflow → Workflows → Neu.** Die **gesamte** Konfiguration liegt in
 **„Bearbeiten"** (in Abschnitte gegliedert: *Allgemein · Quelldaten ·
@@ -470,8 +483,9 @@ Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im 
 > **„Importprotokoll"** und in der Bearbeitungsmaske im gleichnamigen (eingeklappten)
 > Abschnitt zwischen „Quelldaten" und „Inhalt": Zeitpunkt, Modus (bei Läufen bis 3.2 auch
 > „Absolut"), wer ihn ausgelöst hat,
-> **welche Datei** (Name, Tabellenblatt und **Prüfsumme** – daran erkennt man zwei Läufe gegen
-> denselben Dateinamen mit unterschiedlichem Inhalt), die Zahlen des Laufs und dieselben
+> **welche Datei** (vollständiger **Pfad**, Tabellenblatt und **Prüfsumme** – daran erkennt man
+> zwei Läufe gegen denselben Dateinamen mit unterschiedlichem Inhalt **und** zwei ähnlich
+> benannte Dateien im selben Ordner), die Zahlen des Laufs und dieselben
 > Meldungen, die damals angezeigt wurden. **Auch gescheiterte Läufe** stehen dort, mit ihrer
 > Fehlermeldung.
 >

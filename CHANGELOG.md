@@ -18,6 +18,18 @@ Währungsspalten) und der Wegfall des absoluten Importmodus.
 > Cache leeren, sonst gilt die alte Feldkonfiguration weiter.
 
 ### Hinzugefügt
+- **Unter der Quelldatei steht jetzt, welche Datei gelesen wird und ob sie noch dem letzten
+  Import entspricht** – Pfad, Größe, Änderungsdatum, Prüfsumme und ein Urteil dazu: *noch nicht
+  importiert*, *seit dem letzten Import geändert* oder *Stand des letzten Imports*. Anlass war
+  ein Fehlerbild, das wie ein Cache aussah und keiner war: Eine korrigierte Fassung wird
+  hochgeladen, landet aber wegen eines minimal abweichenden Dateinamens **neben** der
+  eingestellten Datei statt sie zu ersetzen (Contao ersetzt beim Hochladen weder Leerzeichen
+  noch Großbuchstaben – `Basistabelle 2026.xlsx` überschreibt `basistabelle-2026.xlsx` also
+  nicht). Der Workflow liest weiter das unveränderte Original, jeder Import meldet Erfolg, und
+  nichts widerspricht der Annahme, die neuen Daten seien drin. Genau dort steht jetzt „**Stand
+  des letzten Imports** – die Datei wurde seitdem nicht verändert", mit dem Hinweis, im Ordner
+  nach der zweiten Datei zu sehen. Hat ein früherer Lauf tatsächlich eine **andere** Datei
+  gelesen, wird auch das benannt, mit deren Pfad.
 - **Der Ort in der Unterschriftszeile kann aus dem Briefpapier kommen.** Bei aktiver Option
   „Unterschrift benötigt" steht jetzt darüber eine **Quelle für den Ort**: *Datenfeld aus der
   Quelldatei* (wie bisher, voreingestellt – der Wohnort der Person) oder *Briefpapier-Variable*
@@ -40,6 +52,10 @@ Währungsspalten) und der Wegfall des absoluten Importmodus.
   ZIP-Sammeldownload und als Name des Mail-Anhangs. Leerzeichen und Satzzeichen werden weiterhin
   zu „_", und der Name bleibt auf eine Länge begrenzt, die jedes Dateisystem trägt. **Bereits
   erzeugte Dokumente behalten ihren bisherigen Namen**; erst neu erzeugte tragen die Umlaute.
+- **Das Importprotokoll zeigt bei der Quelldatei den Pfad statt nur den Dateinamen.** Zwei
+  Dateien, die sich nur im Ordner oder in der Schreibweise unterscheiden, waren am Dateinamen
+  allein nicht auseinanderzuhalten – und genau das auseinanderzuhalten ist der Zweck dieser
+  Spalte. Pfad und Prüfsumme standen bereits in der Tabelle; sie werden jetzt auch angezeigt.
 - **Übersicht und Bearbeitungsmaske laden spürbar schneller.** Gemessen mit 12 Workflows: die
   Übersicht von 156 ms / 198 Datenbankabfragen auf 79 ms / 129 Abfragen, die Bearbeitungsmaske
   von 129 ms auf 80 ms. Der größere Hebel greift erst bei größeren Quelldateien: die

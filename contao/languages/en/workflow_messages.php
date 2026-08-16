@@ -101,6 +101,21 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
 ];
 
+// SourceFileInfoListener – the summary under the source-file picker. "current" is the one that
+// matters: whoever believes they have just uploaded a new version and reads "as of the last
+// import" here has put the file somewhere else – most often under a slightly different name
+// (Contao's upload replaces neither spaces nor capitals, so "Table 2026.xlsx" does not overwrite
+// "table-2026.xlsx").
+$GLOBALS['TL_LANG']['workflow_source'] = [
+    'missing'         => 'The source file cannot be found any more – it was deleted, moved or renamed. Please select it again.',
+    'never'           => 'This file has not been imported yet.',
+    'changed'         => 'The file was changed after the last import (%s) – the stored data still comes from the previous version.',
+    'changed_unknown' => 'The file does not match the state of the last import – the stored data still comes from the previous version.',
+    'current'         => 'As of the last import (%s) – the file has not changed since. If a new version was uploaded in the meantime, it was stored under a different name; please check the folder in the file manager.',
+    'current_unknown' => 'The file matches the state of the last import.',
+    'other_file'      => 'Careful: the last import (%2$s) read a <strong>different</strong> file – "%1$s". The stored data comes from that one, not from the file selected above.',
+];
+
 // WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the stored data no
 // longer matches the source file. Two situations, one rule (WorkflowValidator::isSourceDirty)
 // but two wordings: "never imported" reads very differently from "the file changed".

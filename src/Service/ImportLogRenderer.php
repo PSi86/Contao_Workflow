@@ -26,6 +26,7 @@ class ImportLogRenderer
     public function __construct(
         private readonly ImportLog $log,
         private readonly ImportSummary $summary,
+        private readonly SourceFileStatus $sourceStatus,
     ) {
     }
 
@@ -122,16 +123,19 @@ class ImportLogRenderer
     }
 
     /**
-     * File name plus the first characters of its checksum: the name alone does not tell two
-     * runs apart when the file was overwritten in place, which is the case that produces the
-     * most confusing results.
+     * Path plus the first characters of its checksum: the name alone does not tell two runs
+     * apart when the file was overwritten in place – nor when a second, similarly named file
+     * was read instead. Both are the cases that produce the most confusing results.
      *
      * @param array<string, mixed> $row
      */
     private function source(array $row): string
     {
         $file = (string) $row['sourceFile'];
-        $name = '' !== $file ? basename($file) : '–';
+        // The whole path, not just the file name: two files that differ only in their folder –
+        // or only in spelling, like "Tabelle 2026.xlsx" beside "tabelle-2026.xlsx" – are
+        // indistinguishable by name alone, and telling them apart is the point of this column.
+        $name = '' !== $file ? $this->sourceStatus->relative($file) : '–';
         $sheet = (string) $row['sourceSheet'];
         $hash = (string) $row['sourceHash'];
 

@@ -102,6 +102,21 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_domain_mismatch'=> 'Die Absenderdomain „%s“ weicht von der Website-Domain (%s) ab. Bitte die SPF-/DKIM-/DMARC-Ausrichtung prüfen, sonst landen die Mails leicht im Spam.',
 ];
 
+// SourceFileInfoListener – die Kurzauskunft unter der Quelldatei-Auswahl. „current“ ist der
+// wichtigste Text: Wer gerade eine neue Fassung hochgeladen zu haben glaubt und hier „Stand des
+// letzten Imports“ liest, hat die Datei woanders abgelegt – der häufigste Fall ist ein
+// abweichender Dateiname (Contao ersetzt beim Hochladen weder Leerzeichen noch Großbuchstaben,
+// „Tabelle 2026.xlsx“ überschreibt „tabelle-2026.xlsx“ also nicht).
+$GLOBALS['TL_LANG']['workflow_source'] = [
+    'missing'         => 'Die Quelldatei ist nicht (mehr) auffindbar – sie wurde gelöscht, verschoben oder umbenannt. Bitte erneut auswählen.',
+    'never'           => 'Diese Datei wurde noch nicht importiert.',
+    'changed'         => 'Die Datei wurde seit dem letzten Import (%s) geändert – die gespeicherten Daten stammen noch aus der vorherigen Fassung.',
+    'changed_unknown' => 'Die Datei stimmt nicht mit dem Stand des letzten Imports überein – die gespeicherten Daten stammen noch aus der vorherigen Fassung.',
+    'current'         => 'Stand des letzten Imports (%s) – die Datei wurde seitdem nicht verändert. Wurde inzwischen eine neue Fassung hochgeladen, ist sie unter einem anderen Namen abgelegt worden; bitte den Ordner in der Dateiverwaltung prüfen.',
+    'current_unknown' => 'Die Datei entspricht dem Stand des letzten Imports.',
+    'other_file'      => 'Achtung: Der letzte Import (%2$s) las eine <strong>andere</strong> Datei – „%1$s“. Die gespeicherten Daten stammen von dort, nicht aus der oben ausgewählten Datei.',
+];
+
 // WorkflowIntegrityListener::flagStaleSource() – Hinweis in der Bearbeitungsmaske, wenn die
 // gespeicherten Daten nicht mehr zur Quelldatei passen. Zwei Fälle, eine Regel
 // (WorkflowValidator::isSourceDirty), aber zwei Wortlaute: „noch nie importiert“ liest sich
