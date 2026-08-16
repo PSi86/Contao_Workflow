@@ -87,6 +87,10 @@ class SpreadsheetImporter
             $this->log->recordFailure($workflow, $mode, $exception, $sourceFile);
 
             throw $exception;
+        } finally {
+            // The parsed workbook is the largest object in the process; a console run over
+            // several workflows must not carry one file into the next.
+            $this->inspector->releaseSheet();
         }
 
         $this->log->recordSuccess($workflow, $mode, $result, $sourceFile);
@@ -146,9 +150,13 @@ class SpreadsheetImporter
 
         // Not read-data-only: the number formats are needed (see CellReader). Cannot be null
         // here – assertSheetExists() has already ruled out the only case that returns null.
-        $reader = $this->inspector->readerFor($path, $sheetName, false);
-        $spreadsheet = $reader->load($path);
-        $sheet = ('' !== $sheetName ? $spreadsheet->getSheetByName($sheetName) : null) ?? $spreadsheet->getActiveSheet();
+        // The format refresh above parsed the same file with the same flags, so this shares
+        // that parse instead of repeating it.
+        $sheet = $this->inspector->loadSheet($path, $sheetName, false);
+
+        if (null === $sheet) {
+            throw new \RuntimeException(sprintf('Das Tabellenblatt „%s" ist in der Quelldatei nicht enthalten.', $sheetName));
+        }
 
         $highestRow = $sheet->getHighestDataRow();
         $inserted = 0;

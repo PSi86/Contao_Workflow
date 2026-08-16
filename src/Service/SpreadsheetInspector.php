@@ -17,9 +17,43 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  * Reads structural information (sheet names, column headers) from a workflow's
  * source spreadsheet. Used by the back end field pickers and the importer so all
  * three agree on the exact (de-duplicated) column names.
+ *
+ * Everything here is memoised for the lifetime of the request, because the back end asks
+ * the same questions many times over: rendering one workflow's edit mask used to parse the
+ * same file about seven times (the validator's problem list, the orphaned-field check, the
+ * slug-collision warning, the placeholder helper, and the option callbacks of sourceSheet,
+ * emailField and the two signature fields), and the overview did it two to three times per
+ * workflow. The answers cannot change within a request – nothing here writes the source
+ * file – so the cache is a pure cost saving, not a behaviour change. Its keys still carry
+ * the file's mtime and size, so a file replaced underneath us can never be answered from a
+ * stale entry.
  */
 class SpreadsheetInspector
 {
+    /**
+     * Resolved absolute paths, keyed by the source file's UUID – NOT by workflow id:
+     * SourceFileGuardListener inspects a clone that carries a different file than the
+     * stored record, and both must get their own answer.
+     *
+     * @var array<string, string|null>
+     */
+    private array $paths = [];
+
+    /** @var array<string, array<int, string>> */
+    private array $sheetNames = [];
+
+    /** @var array<string, array<int, string>> */
+    private array $headers = [];
+
+    /**
+     * The one parsed workbook kept alive (see loadSheet()). Holding exactly one means the
+     * peak memory is unchanged – a second file evicts the first – while every consumer of
+     * the same file within a request shares a single parse.
+     */
+    private ?Spreadsheet $loaded = null;
+
+    private ?string $loadedKey = null;
+
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly string $projectDir,
@@ -33,14 +67,28 @@ class SpreadsheetInspector
     {
         $path = $this->resolvePath($workflow);
 
-        if (null === $path) {
-            return [];
+        return null === $path ? [] : $this->sheetNamesOf($path);
+    }
+
+    /**
+     * Worksheet names of a file. Reads the workbook index only (not the cells), but even
+     * that is asked for repeatedly – by the sheet picker, the validator and readerFor() –
+     * so it is cached like everything else here.
+     *
+     * @return array<int, string>
+     */
+    public function sheetNamesOf(string $path): array
+    {
+        $key = $this->fileKey($path);
+
+        if (!isset($this->sheetNames[$key])) {
+            $reader = IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+
+            $this->sheetNames[$key] = $reader->listWorksheetNames($path);
         }
 
-        $reader = IOFactory::createReaderForFile($path);
-        $reader->setReadDataOnly(true);
-
-        return $reader->listWorksheetNames($path);
+        return $this->sheetNames[$key];
     }
 
     /**
@@ -66,13 +114,57 @@ class SpreadsheetInspector
             return $reader;
         }
 
-        if (!\in_array($sheetName, $reader->listWorksheetNames($path), true)) {
+        // Through the cached list: listWorksheetNames() opens the file, and this method runs
+        // before every load – it used to double the number of file openings on its own.
+        if (!\in_array($sheetName, $this->sheetNamesOf($path), true)) {
             return null;
         }
 
         $reader->setLoadSheetsOnly([$sheetName]);
 
         return $reader;
+    }
+
+    /**
+     * The configured worksheet of $path, parsed at most once per request.
+     *
+     * $dataOnly=false keeps the style layer, which is what the number formats live in – it
+     * is markedly more expensive, so a workbook already parsed WITH styles also answers a
+     * later data-only request: it is a superset, and re-reading it would be pure waste.
+     *
+     * Returns null when the file does not contain $sheetName (see readerFor()).
+     */
+    public function loadSheet(string $path, string $sheetName, bool $dataOnly): ?Worksheet
+    {
+        $base = $this->fileKey($path).'|'.$sheetName;
+        $key = $base.'|'.($dataOnly ? 'data' : 'full');
+
+        if (null !== $this->loaded && ($this->loadedKey === $key || ($dataOnly && $this->loadedKey === $base.'|full'))) {
+            return $this->sheetOf($this->loaded, $sheetName);
+        }
+
+        $reader = $this->readerFor($path, $sheetName, $dataOnly);
+
+        if (null === $reader) {
+            return null;
+        }
+
+        // Replaces whatever was held before – one workbook at a time.
+        $this->loaded = $reader->load($path);
+        $this->loadedKey = $key;
+
+        return $this->sheetOf($this->loaded, $sheetName);
+    }
+
+    /**
+     * Drops the parsed workbook. Called by the long-running consumers (importer, console
+     * commands) once they are done with a workflow, so a batch over many workflows does not
+     * keep the last file around longer than it needs to.
+     */
+    public function releaseSheet(): void
+    {
+        $this->loaded = null;
+        $this->loadedKey = null;
     }
 
     /**
@@ -90,14 +182,29 @@ class SpreadsheetInspector
         }
 
         $sheetName = (string) $workflow->sourceSheet;
-        $reader = $this->readerFor($path, $sheetName, true);
+        $headerRow = max(1, (int) $workflow->headerRow);
+        $key = $this->fileKey($path).'|'.$sheetName.'|'.$headerRow;
 
-        // Configured sheet not in the file – the validator reports that as its own problem.
-        if (null === $reader) {
-            return [];
+        if (!isset($this->headers[$key])) {
+            $sheet = $this->loadSheet($path, $sheetName, true);
+
+            // Configured sheet not in the file – the validator reports that as its own problem.
+            $this->headers[$key] = null === $sheet ? [] : $this->headersOf($sheet, $headerRow);
         }
 
-        return $this->headersOf($this->sheetOf($reader->load($path), $sheetName), max(1, (int) $workflow->headerRow));
+        return $this->headers[$key];
+    }
+
+    /**
+     * Cache key of a file: its path plus the modification time and size. Those two make the
+     * key change whenever the file is replaced, so no answer can outlive the file it was
+     * read from – cheap insurance for a couple of stat() calls.
+     */
+    private function fileKey(string $path): string
+    {
+        clearstatcache(true, $path);
+
+        return $path.'|'.(int) @filemtime($path).'|'.(int) @filesize($path);
     }
 
     /**
@@ -183,16 +290,17 @@ class SpreadsheetInspector
             return null;
         }
 
-        $this->framework->initialize();
+        $key = bin2hex((string) $workflow->sourceFile);
 
-        $file = $this->framework->getAdapter(FilesModel::class)->findByUuid($workflow->sourceFile);
+        if (!\array_key_exists($key, $this->paths)) {
+            $this->framework->initialize();
 
-        if (null === $file) {
-            return null;
+            $file = $this->framework->getAdapter(FilesModel::class)->findByUuid($workflow->sourceFile);
+            $path = null !== $file ? $this->projectDir.'/'.$file->path : null;
+
+            $this->paths[$key] = null !== $path && is_file($path) ? $path : null;
         }
 
-        $path = $this->projectDir.'/'.$file->path;
-
-        return is_file($path) ? $path : null;
+        return $this->paths[$key];
     }
 }

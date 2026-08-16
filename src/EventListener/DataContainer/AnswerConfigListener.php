@@ -26,9 +26,6 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
  */
 class AnswerConfigListener
 {
-    /** @var array<int, array<int, string>> per-request cache of source headers by workflow id */
-    private static array $headerCache = [];
-
     /**
      * Renders one answer-field row in the workflow's child view.
      *
@@ -580,21 +577,18 @@ class AnswerConfigListener
     }
 
     /**
-     * Source column names of a workflow (cached per request); empty when no
-     * readable source file is configured.
+     * Source column names of a workflow; empty when no readable source file is configured.
+     *
+     * The local cache this used to keep is gone: SpreadsheetInspector memoises the headers
+     * itself now, for every caller rather than just this one.
      *
      * @return array<int, string>
      */
     private function sourceHeaders(WorkflowModel $workflow): array
     {
-        $id = (int) $workflow->id;
+        $inspector = System::getContainer()->get(SpreadsheetInspector::class);
 
-        if (!isset(self::$headerCache[$id])) {
-            $inspector = System::getContainer()->get(SpreadsheetInspector::class);
-            self::$headerCache[$id] = array_keys($inspector->getHeaderOptions($workflow));
-        }
-
-        return self::$headerCache[$id];
+        return array_keys($inspector->getHeaderOptions($workflow));
     }
 
     /**
