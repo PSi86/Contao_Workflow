@@ -109,6 +109,7 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
             // will, and inputmode keeps the numeric keyboard on mobile.
             $inputType = ['text' => 'text', 'date' => 'date', 'number' => 'text'][$q['type']];
             $numAttr = '';
+            $currency = '';
 
             if ('number' === $q['type'] && null !== $q['numberFormat']) {
                 // decimals === null means "General": as many decimals as the value carries.
@@ -116,13 +117,22 @@ $esc = static fn ($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-
                 // "no decimals at all" and rounded 11,56 to 12 – the attribute is left out
                 // instead, and the script then keeps what was typed.
                 $decimals = $q['numberFormat']['decimals'];
+                // The column's currency symbol, if it has one. It is NOT part of the input
+                // value – only the number is typed – but it is part of what the document will
+                // show, so it is displayed next to the field and handed to the live preview.
+                $currency = (string) ($q['numberFormat']['currency'] ?? '');
 
                 $numAttr = ' inputmode="decimal" data-wf-number'
                     .(null === $decimals ? '' : ' data-wf-decimals="'.(int) $decimals.'"')
-                    .' data-wf-grouping="'.($q['numberFormat']['grouping'] ? '1' : '0').'"';
+                    .' data-wf-grouping="'.($q['numberFormat']['grouping'] ? '1' : '0').'"'
+                    .('' !== $currency ? ' data-wf-currency="'.$esc($currency).'"' : '');
             }
           ?>
+          <?php if ('' !== $currency): ?><span class="tw-affixed"><?php endif; ?>
           <input type="<?= $inputType ?>"<?= $numAttr ?> id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" value="<?= $esc(\is_array($answer) ? '' : $answer) ?>"<?= $req.$roInput ?>>
+          <?php // aria-hidden: the symbol is announced through the field's description, not as
+                // a second, meaningless token between the input and its hint. ?>
+          <?php if ('' !== $currency): ?><span class="tw-affix" aria-hidden="true"><?= $esc($currency) ?></span></span><?php endif; ?>
 
         <?php elseif ('textarea' === $q['type']): ?>
           <textarea id="<?= $esc($ctrlId) ?>" name="<?= $esc($fieldName) ?>" rows="4"<?= $req.$roInput ?>><?= $esc(\is_array($answer) ? '' : $answer) ?></textarea>

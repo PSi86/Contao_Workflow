@@ -20,12 +20,6 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class WorkflowValidator
 {
-    /**
-     * tl_workflow fields that store the name of a source column. They share one rule: a
-     * non-empty value has to be among the current headers, or it is orphaned.
-     */
-    private const COLUMN_FIELDS = ['emailField', 'pdfSignatureDate', 'pdfSignatureLocation'];
-
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly LinkGenerator $linkGenerator,
@@ -309,18 +303,27 @@ class WorkflowValidator
     }
 
     /**
-     * Whether the source file has changed since the last import, so the stored entries (and,
-     * crucially, the snapshotted number formats) are stale until a re-import runs. Until then
-     * the form/PDF preview keeps showing the old data and formatting.
+     * Whether the stored data no longer matches the source file – the one condition that makes
+     * the entries and, crucially, the snapshotted number formats stale, so form and PDF preview
+     * keep showing yesterday's data and formatting until an import runs.
      *
-     * Detected by comparing the current file's checksum with the one the importer recorded on
-     * its last successful run (tl_workflow.sourceHash). Deliberately scoped to "changed AFTER an
-     * import": a never-imported workflow (empty sourceHash) is guided by the separate "run
-     * import" hint, and a missing/unreadable file is a separate problem ({@see getProblems()}).
+     * It covers two situations with one rule: the file was changed after an import, and the
+     * workflow was never imported at all (a fresh or copied record – sourceHash is empty and
+     * doNotCopy, so no real checksum can ever equal it). Both mean "run the import", they only
+     * differ in the wording of the hint, which is why {@see hasNeverImported()} exists.
+     *
+     * Deliberately derived from the file rather than kept as a stored flag: a flag would have to
+     * be set by whoever changes the file, and the most common change – overwriting the source
+     * file in place in the file manager – never touches the workflow record at all. It could
+     * also go stale (a run that fails halfway, a configuration import, the console). The
+     * checksum cannot.
+     *
+     * A missing or unreadable file is a separate problem ({@see getProblems()}), not a re-import
+     * prompt.
      */
-    public function isReimportNeeded(WorkflowModel $workflow): bool
+    public function isSourceDirty(WorkflowModel $workflow): bool
     {
-        if (!$workflow->sourceFile || '' === (string) $workflow->sourceHash) {
+        if (!$workflow->sourceFile) {
             return false;
         }
 
@@ -330,9 +333,26 @@ class WorkflowValidator
             return false;
         }
 
-        $hash = @md5_file($path);
+        // Shortcut, not a verdict: identical mtime+size means the file was not written since
+        // the last import, so hashing it again cannot say anything new. This is what keeps the
+        // overview from reading every source file in full on every page load.
+        if ('' !== (string) $workflow->sourceStat && $this->inspector->fileStat($path) === (string) $workflow->sourceStat) {
+            return false;
+        }
 
-        return false !== $hash && $hash !== (string) $workflow->sourceHash;
+        $hash = $this->inspector->fileHash($path);
+
+        return '' !== $hash && $hash !== (string) $workflow->sourceHash;
+    }
+
+    /**
+     * No import has ever run for this workflow. Selects the wording of the hint that
+     * {@see isSourceDirty()} triggers: "not imported yet" reads very differently from
+     * "the file changed".
+     */
+    public function hasNeverImported(WorkflowModel $workflow): bool
+    {
+        return '' === (string) $workflow->sourceHash;
     }
 
     /**
@@ -374,6 +394,27 @@ class WorkflowValidator
     }
 
     /**
+     * tl_workflow fields whose stored value is the name of a source column. They share one
+     * rule: a non-empty value has to be among the current headers, or it is orphaned.
+     *
+     * Which fields those are depends on the record: with the signature place taken from a
+     * letterhead variable, pdfSignatureLocation no longer names a column at all – checking it
+     * would red-outline a field for a value it is not currently using.
+     *
+     * @return array<int, string>
+     */
+    private function columnFields(WorkflowModel $workflow): array
+    {
+        $fields = ['emailField', 'pdfSignatureDate'];
+
+        if ('var' !== (string) $workflow->pdfSignatureLocationSource) {
+            $fields[] = 'pdfSignatureLocation';
+        }
+
+        return $fields;
+    }
+
+    /**
      * tl_workflow fields whose stored value cannot be resolved against the current
      * source columns – marked in the edit mask. When there is no source file at
      * all, every header-dependent field is flagged.
@@ -382,7 +423,10 @@ class WorkflowValidator
      */
     public function orphanedFields(WorkflowModel $workflow): array
     {
-        $headerDependent = ['sourceSheet', 'emailField', 'pdfSignatureDate', 'pdfSignatureLocation', 'questions', 'rules'];
+        $headerDependent = array_merge(
+            ['sourceSheet', 'questions', 'rules'],
+            $this->columnFields($workflow),
+        );
 
         if (!$workflow->sourceFile) {
             return $headerDependent;
@@ -397,10 +441,9 @@ class WorkflowValidator
         $orphaned = [];
 
         // Every field whose stored value is a source column name, checked the same way. The
-        // two signature-line fields belong here as much as emailField does: they name a
-        // column too, and a copy (which drops the source file) leaves them pointing at
-        // nothing.
-        foreach (self::COLUMN_FIELDS as $field) {
+        // signature-line fields belong here as much as emailField does: they name a column
+        // too, and a copy (which drops the source file) leaves them pointing at nothing.
+        foreach ($this->columnFields($workflow) as $field) {
             $value = trim((string) $workflow->{$field});
 
             if ('' !== $value && !\in_array($value, $headers, true)) {

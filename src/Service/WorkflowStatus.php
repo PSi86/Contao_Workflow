@@ -55,6 +55,46 @@ class WorkflowStatus
         return $counts;
     }
 
+    /**
+     * Every headline figure of one workflow, derived from a single GROUP BY query.
+     *
+     * The overview used to ask for them one by one – countByStatus, countCompleted, countOpen
+     * (which is countTotal + countCompleted again) and getBreakdown (countByStatus again) –
+     * six round trips per row for numbers that all come out of the same tally. The individual
+     * methods stay: they are the readable way to ask a single question, and nothing else in
+     * the bundle needs more than one at a time.
+     *
+     * @return array{byStatus: array<int, int>, total: int, completed: int, open: int, breakdown: array<int, array{index: int, label: string, count: int}>}
+     */
+    public function summary(WorkflowModel $workflow): array
+    {
+        $byStatus = $this->countByStatus((int) $workflow->id);
+        $final = $workflow->getFinalStatus();
+
+        $total = array_sum($byStatus);
+        $completed = 0;
+
+        foreach ($byStatus as $status => $count) {
+            if ($status >= $final) {
+                $completed += $count;
+            }
+        }
+
+        $breakdown = [];
+
+        foreach ($workflow->getSteps() as $index => $label) {
+            $breakdown[] = ['index' => $index, 'label' => $label, 'count' => $byStatus[$index] ?? 0];
+        }
+
+        return [
+            'byStatus'  => $byStatus,
+            'total'     => $total,
+            'completed' => $completed,
+            'open'      => $total - $completed,
+            'breakdown' => $breakdown,
+        ];
+    }
+
     public function countTotal(int $workflowId): int
     {
         return (int) $this->connection->fetchOne(

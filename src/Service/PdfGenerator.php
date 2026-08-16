@@ -103,10 +103,16 @@ class PdfGenerator
 
     private function sanitizeFileName(string $name): string
     {
-        // On-disk PDF name (and later a ZIP member): kept ASCII on purpose — a Cyrillic or
-        // umlaut member name in a ZIP is mangled by many desktop unzip tools. The shared
-        // slugger transliterates any script faithfully, so nothing is dropped to empty.
-        return mb_substr($this->slugger->ascii($name), 0, 120);
+        // Keeps the characters of the configured pattern: a document about Frau Müller is
+        // called "…_Müller.pdf", not "…_Mueller.pdf". The name travels on to the ZIP bundle
+        // and the result mail, both of which carry non-ASCII names correctly (the ZIP flags
+        // them as UTF-8, the mail encodes them per RFC 2231).
+        //
+        // Path safety comes from the slugger itself: everything that is not a letter, digit or
+        // combining mark – "/", "\", ".", control characters – becomes "_", so no name can
+        // escape its workflow directory. fileName() also bounds the length in bytes, which is
+        // what the file system limits.
+        return $this->slugger->fileName($name);
     }
 
     /**
@@ -128,7 +134,7 @@ class PdfGenerator
             // columns however they are spelled in the source (Vorname/Nachname,
             // First name/Surname …) – not from the literal "Vorname"/"Name" columns.
             'signerName'   => $this->nameResolver->fullName($data),
-            'ort'          => $this->resolveSignatureLocation($workflow, $data),
+            'ort'          => $this->resolveSignatureLocation($workflow, $data, $extra),
             'datum'        => $this->resolveSignatureDate($workflow, $data),
             'footer'       => (string) ($extra['Footer'] ?? ''),
             // Full letterhead variables, so a master template can build its header
@@ -155,13 +161,24 @@ class PdfGenerator
     }
 
     /**
-     * Place printed in the signature line, taken from a configured data column
-     * (e.g. the participant's town); empty when none is configured.
+     * Place printed in the signature line; empty when none is configured.
      *
-     * @param array<string, mixed> $data
+     * Two sources, chosen per workflow: a data column (one value per participant, e.g. their
+     * town) or a variable of the assigned letterhead (the same value for everyone, e.g. the
+     * club's seat). The letterhead values arrive already completed with the template defaults,
+     * so a declared-but-unfilled variable prints its default rather than nothing.
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $extra letterhead variables completed with defaults
      */
-    private function resolveSignatureLocation(WorkflowModel $workflow, array $data): string
+    private function resolveSignatureLocation(WorkflowModel $workflow, array $data, array $extra): string
     {
+        if ('var' === (string) $workflow->pdfSignatureLocationSource) {
+            $key = trim((string) $workflow->pdfSignatureLocationVar);
+
+            return '' !== $key ? (string) ($extra[$key] ?? '') : '';
+        }
+
         $field = trim((string) $workflow->pdfSignatureLocation);
 
         return '' !== $field ? (string) ($data[$field] ?? '') : '';

@@ -45,6 +45,28 @@
     -webkit-text-fill-color: #555; /* iOS greys disabled text out regardless of "color" */
 }
 
+/* Currency column: the symbol sits NEXT to the input, not inside its value – only the number
+   is typed, while the symbol belongs to the column and is put back when the answer is stored.
+   Showing it here is what makes the field agree with the live preview and the document. */
+.mod_workflow_form .tw-affixed { display: flex; align-items: stretch; }
+.mod_workflow_form .tw-affixed input { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.mod_workflow_form .tw-affix {
+    display: flex;
+    align-items: center;
+    padding: 0 .7rem;
+    border: 1px solid #ccc;
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+    background: #f3f3f3;
+    color: #555;
+    white-space: nowrap;
+}
+
+/* A number field holding something that is not a number. A hint while typing, not a barrier –
+   the server owns the verdict and names the field in its message. */
+.mod_workflow_form .tw-field--invalid input { border-color: #c00; }
+.mod_workflow_form .tw-field--invalid .tw-affix { border-color: #c00; }
+
 .mod_workflow_form .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
 .mod_workflow_form .tw-option input { margin-right: .4rem; }
 .mod_workflow_form .tw-required { color: #c00; }

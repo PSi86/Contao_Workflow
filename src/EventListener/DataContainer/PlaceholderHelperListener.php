@@ -7,10 +7,10 @@ namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Input;
-use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\LetterheadVars;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 
@@ -51,6 +51,7 @@ class PlaceholderHelperListener
     public function __construct(
         private readonly SpreadsheetInspector $inspector,
         private readonly PlaceholderResolver $placeholders,
+        private readonly LetterheadVars $letterheadVars,
     ) {
     }
 
@@ -170,7 +171,7 @@ class PlaceholderHelperListener
                 $add('text_all', 'Alle Textbausteine (in Feld-Reihenfolge)');
             }
 
-            foreach ($this->masterVars($workflow) as $key) {
+            foreach ($this->letterheadVars->keys($workflow) as $key) {
                 $add('letterhead_'.$this->placeholders->normalize($key), 'Briefpapier: '.$key);
             }
         }
@@ -207,49 +208,6 @@ class PlaceholderHelperListener
         }
 
         return $pid > 0 ? WorkflowModel::findByPk($pid) : null;
-    }
-
-    /**
-     * Variable keys (##letterhead_*##) of the workflow's assigned master: the master's own
-     * key/value pairs, completed with the keys declared for its template.
-     *
-     * @return array<int, string>
-     */
-    private function masterVars(WorkflowModel $workflow): array
-    {
-        $master = (int) $workflow->master > 0 ? MasterModel::findByPk((int) $workflow->master) : null;
-
-        if (null === $master) {
-            return [];
-        }
-
-        $declared = $GLOBALS['TL_WORKFLOW_PDF_VARS'][$master->getMasterTemplate()] ?? [];
-
-        // Keys declared as "layout" are page metrics (margins, font sizes …), not
-        // body content – exclude them from the ##letterhead_*## suggestions.
-        $layout = [];
-
-        foreach ($declared as $key => $decl) {
-            if (\is_array($decl) && 'layout' === ($decl['group'] ?? 'content')) {
-                $layout[$key] = true;
-            }
-        }
-
-        $keys = [];
-
-        foreach (array_keys($master->getPdfData()) as $key) {
-            if (!isset($layout[$key])) {
-                $keys[] = $key;
-            }
-        }
-
-        foreach (array_keys($declared) as $key) {
-            if (!isset($layout[$key]) && !\in_array($key, $keys, true)) {
-                $keys[] = $key;
-            }
-        }
-
-        return $keys;
     }
 
     /**

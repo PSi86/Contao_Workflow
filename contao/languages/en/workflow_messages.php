@@ -44,6 +44,9 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'download_result_csv'  => 'Result: one CSV file (.csv).',
     'download_result_zip'  => 'Result: one ZIP archive (.zip) with the selection.',
     'download_result_none' => 'Please select at least one item.',
+    // The import dialog is disabled (see be_workflow_dashboard.html5) – "Run import" starts the
+    // additive run directly. Its four texts stay for a possible reactivation. "import_add" and
+    // "import_absolute" are NOT unused: the import log labels historic absolute runs with them.
     'import_intro'     => '<strong>Hidden rows are skipped either way</strong> – they are never imported. The mode only decides what happens to <em>existing</em> entries whose row is now hidden or missing from the file:',
     'import_add'       => 'Add',
     'import_add_hint'  => 'Such entries remain and are still mailed. Nothing is deleted.',
@@ -98,9 +101,26 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
 ];
 
-// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the source file was
-// changed but not imported yet.
+// SourceFileInfoListener – the summary under the source-file picker. "current" is the one that
+// matters: whoever believes they have just uploaded a new version and reads "as of the last
+// import" here has put the file somewhere else – most often under a slightly different name
+// (Contao's upload replaces neither spaces nor capitals, so "Table 2026.xlsx" does not overwrite
+// "table-2026.xlsx").
+$GLOBALS['TL_LANG']['workflow_source'] = [
+    'missing'         => 'The source file cannot be found any more – it was deleted, moved or renamed. Please select it again.',
+    'never'           => 'This file has not been imported yet.',
+    'changed'         => 'The file was changed after the last import (%s) – the stored data still comes from the previous version.',
+    'changed_unknown' => 'The file does not match the state of the last import – the stored data still comes from the previous version.',
+    'current'         => 'As of the last import (%s) – the file has not changed since. If a new version was uploaded in the meantime, it was stored under a different name; please check the folder in the file manager.',
+    'current_unknown' => 'The file matches the state of the last import.',
+    'other_file'      => 'Careful: the last import (%2$s) read a <strong>different</strong> file – "%1$s". The stored data comes from that one, not from the file selected above.',
+];
+
+// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the stored data no
+// longer matches the source file. Two situations, one rule (WorkflowValidator::isSourceDirty)
+// but two wordings: "never imported" reads very differently from "the file changed".
 $GLOBALS['TL_LANG']['workflow_reimport'] = [
-    'edit_hint'     => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
-    'import_button' => 'Run import now',
+    'edit_hint'         => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
+    'first_import_hint' => 'The import has not been run for this workflow yet – there is no participant data. Until you run it, the form and PDF preview show sample data only and no e-mails can be sent.',
+    'import_button'     => 'Run import now',
 ];

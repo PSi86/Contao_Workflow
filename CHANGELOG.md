@@ -6,6 +6,87 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.3.0] – 2026-08-16
+
+Schwerpunkt: die Backend-Ansichten. Sie lasen dieselbe Quelldatei mehrfach pro Seitenaufruf und
+stellten dieselbe Frage in mehreren Abfragen – beides ist behoben, ohne dass sich etwas an
+ihrer Darstellung ändert. Dazu drei kleinere Korrekturen (Dateinamen, Unterschriftszeile,
+Währungsspalten) und der Wegfall des absoluten Importmodus.
+
+> **Beim Update:** `contao:migrate` ausführen – es legt drei Spalten in `tl_workflow` an
+> (`sourceStat` sowie `pdfSignatureLocationSource`/`pdfSignatureLocationVar`). Anschließend den
+> Cache leeren, sonst gilt die alte Feldkonfiguration weiter.
+
+### Hinzugefügt
+- **Unter der Quelldatei steht jetzt, welche Datei gelesen wird und ob sie noch dem letzten
+  Import entspricht** – Pfad, Größe, Änderungsdatum, Prüfsumme und ein Urteil dazu: *noch nicht
+  importiert*, *seit dem letzten Import geändert* oder *Stand des letzten Imports*. Anlass war
+  ein Fehlerbild, das wie ein Cache aussah und keiner war: Eine korrigierte Fassung wird
+  hochgeladen, landet aber wegen eines minimal abweichenden Dateinamens **neben** der
+  eingestellten Datei statt sie zu ersetzen (Contao ersetzt beim Hochladen weder Leerzeichen
+  noch Großbuchstaben – `Basistabelle 2026.xlsx` überschreibt `basistabelle-2026.xlsx` also
+  nicht). Der Workflow liest weiter das unveränderte Original, jeder Import meldet Erfolg, und
+  nichts widerspricht der Annahme, die neuen Daten seien drin. Genau dort steht jetzt „**Stand
+  des letzten Imports** – die Datei wurde seitdem nicht verändert", mit dem Hinweis, im Ordner
+  nach der zweiten Datei zu sehen. Hat ein früherer Lauf tatsächlich eine **andere** Datei
+  gelesen, wird auch das benannt, mit deren Pfad.
+- **Der Ort in der Unterschriftszeile kann aus dem Briefpapier kommen.** Bei aktiver Option
+  „Unterschrift benötigt" steht jetzt darüber eine **Quelle für den Ort**: *Datenfeld aus der
+  Quelldatei* (wie bisher, voreingestellt – der Wohnort der Person) oder *Briefpapier-Variable*
+  (für alle Teilnehmer gleich – der Vereinssitz). Je nach Wahl erscheint das passende
+  Auswahlfeld. Bisher musste ein für alle identischer Ort als Spalte in der Quelldatei stehen,
+  in jeder Zeile derselbe Text. Die Auswahl zeigt die Inhaltsvariablen des zugeordneten
+  Briefpapiers – dieselbe Liste, aus der auch die `##letterhead_*##`-Vorschläge stammen. Ein
+  gerade gewechseltes Briefpapier erscheint dort erst nach dem Speichern.
+
+### Geändert
+- **Der absolute Importmodus wird nicht mehr angeboten.** „Import ausführen" startet den Import
+  jetzt direkt und **löscht nichts**; der Zwischendialog mit der Modus-Wahl entfällt. Grund: ein
+  Klick auf „Absolut" löschte Einträge samt bereits erzeugter PDFs – auch bereits beantwortete –,
+  sobald ihre Zeile in der Quelldatei fehlte oder ausgeblendet war, und das ließ sich nicht
+  rückgängig machen. Der Modus ist damit auch über die Kommandozeile nicht mehr auslösbar
+  (`workflow:import --mode` entfällt). Das **Importprotokoll** stellt ältere Läufe im Modus
+  „Absolut" unverändert dar.
+- **Die abgelegten Dokumente behalten die Umlaute ihres Dateinamen-Musters.** Aus
+  `Verzicht_Mueller_Juergen.pdf` wird `Verzicht_Müller_Jürgen.pdf` – auf der Platte, im
+  ZIP-Sammeldownload und als Name des Mail-Anhangs. Leerzeichen und Satzzeichen werden weiterhin
+  zu „_", und der Name bleibt auf eine Länge begrenzt, die jedes Dateisystem trägt. **Bereits
+  erzeugte Dokumente behalten ihren bisherigen Namen**; erst neu erzeugte tragen die Umlaute.
+- **Das Importprotokoll zeigt bei der Quelldatei den Pfad statt nur den Dateinamen.** Zwei
+  Dateien, die sich nur im Ordner oder in der Schreibweise unterscheiden, waren am Dateinamen
+  allein nicht auseinanderzuhalten – und genau das auseinanderzuhalten ist der Zweck dieser
+  Spalte. Pfad und Prüfsumme standen bereits in der Tabelle; sie werden jetzt auch angezeigt.
+- **Übersicht und Bearbeitungsmaske laden spürbar schneller.** Gemessen mit 12 Workflows: die
+  Übersicht von 156 ms / 198 Datenbankabfragen auf 79 ms / 129 Abfragen, die Bearbeitungsmaske
+  von 129 ms auf 80 ms. Der größere Hebel greift erst bei größeren Quelldateien: die
+  Bearbeitungsmaske las dieselbe Datei rund **siebenmal** vollständig ein, jetzt einmal. Die
+  Darstellung ist unverändert – die gerenderten Seiten sind vor und nach dem Umbau Byte für Byte
+  gleich.
+
+### Behoben
+- **Die Live-Vorschau „So erscheint dies im Dokument" zeigte bei Währungsspalten das
+  Währungszeichen nicht** – sie versprach „3.000,00", das Dokument enthielt „3.000,00 €". Jetzt
+  zeigt sie denselben Text, der gespeichert und gedruckt wird. Zusätzlich steht das
+  Währungszeichen **sichtbar neben dem Eingabefeld** eines Zahlenfelds, und ein Feld, dessen
+  Inhalt keine Zahl ist, wird sofort rot markiert (die Meldung dazu kommt weiterhin beim
+  Absenden, mit dem Namen des Felds). Getippt wird weiterhin nur die Zahl: das Währungszeichen
+  gehört zur Spalte und wird beim Speichern angehängt, damit die Spalte einheitlich bleibt.
+  *Hinweis:* Ein **Freitextfeld** auf einer Währungsspalte speichert die Antwort weiterhin ohne
+  Währungszeichen und ohne jede Prüfung – für solche Spalten ist der Feldtyp **„Zahl"** der
+  richtige.
+- **Ein neu angelegter oder kopierter Workflow wies in der Bearbeitungsmaske nicht darauf hin,
+  dass noch importiert werden muss.** Der Hinweis erschien dort erst, nachdem einmal importiert
+  und die Quelldatei danach geändert worden war; die Übersicht meldete den Fall dagegen von
+  Anfang an. Beide Ansichten urteilen jetzt nach derselben Regel und zeigen denselben Hinweis –
+  mit dem passenden Wortlaut für „noch nie importiert" bzw. „Quelldatei geändert" – samt Button
+  „Jetzt importieren".
+
+### Bekannte Einschränkung
+- Die Bearbeitungsmaske prüft beim Öffnen weiterhin per DNS, ob die Absenderdomain der
+  Benachrichtigungen zustellbar ist. Antwortet der Namensserver langsam, verzögert das den
+  Seitenaufbau. Das Ergebnis wird bewusst nicht zwischengespeichert, damit eine korrigierte
+  DNS-Einstellung sofort wirkt.
+
 ## [3.2.1] – 2026-07-29
 
 Nachtrag zu 3.2.0: die dort angekündigte Leerzeile am Ende eines Dokument-Texts kam nie in

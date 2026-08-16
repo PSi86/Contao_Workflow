@@ -16,6 +16,9 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class LinkGenerator
 {
+    /** @var array<int, PageModel|null> resolved form pages of this request, by page id */
+    private array $pages = [];
+
     public function __construct(private readonly ContaoFramework $framework)
     {
     }
@@ -35,12 +38,22 @@ class LinkGenerator
     /**
      * Resolves the workflow's configured form page (or null if none/invalid). Used
      * both to build links and to tell – before sending – whether sending is possible.
+     *
+     * Memoised per page id for the request: findWithDetails() walks the whole page tree up to
+     * the root and is not cheap, while the overview asks for it twice per workflow – and every
+     * workflow of a site typically points at the SAME form page.
      */
     public function resolveFormPage(WorkflowModel $workflow): ?PageModel
     {
-        $this->framework->initialize();
+        $id = $this->resolvePageId($workflow);
 
-        return $this->framework->getAdapter(PageModel::class)->findWithDetails($this->resolvePageId($workflow));
+        if (!\array_key_exists($id, $this->pages)) {
+            $this->framework->initialize();
+
+            $this->pages[$id] = $this->framework->getAdapter(PageModel::class)->findWithDetails($id);
+        }
+
+        return $this->pages[$id];
     }
 
     private function resolvePageId(WorkflowModel $workflow): int

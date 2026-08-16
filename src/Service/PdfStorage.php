@@ -33,10 +33,14 @@ class PdfStorage
     }
 
     /**
-     * Stores the PDF bytes under a configurable base name (sanitized; the entry
-     * token is the fallback) and returns the project-relative path. On collision
-     * with another entry's file a short token is appended; re-generating the same
-     * entry overwrites its own existing file (existingRelativePath).
+     * Stores the PDF bytes under a configurable base name (the entry token is the fallback)
+     * and returns the project-relative path. On collision with another entry's file a short
+     * token is appended; re-generating the same entry overwrites its own existing file
+     * (existingRelativePath).
+     *
+     * The base name may carry umlauts and any other script – it comes from the workflow's
+     * file-name pattern via Slugger::fileName() – but it can never leave this workflow's
+     * directory ({@see safeBase()}).
      */
     public function store(int $workflowId, string $baseName, string $token, string $pdfContents, string $existingRelativePath = ''): string
     {
@@ -54,10 +58,27 @@ class PdfStorage
             }
         }
 
-        $name = $this->uniqueName($dir, '' !== $baseName ? $baseName : $token, $token);
+        $name = $this->uniqueName($dir, $this->safeBase($baseName, $token), $token);
         $this->filesystem->dumpFile($dir.'/'.$name.'.pdf', $pdfContents);
 
         return 'var/workflow_pdfs/'.$workflowId.'/'.$name.'.pdf';
+    }
+
+    /**
+     * A base name that can only ever name a file inside the workflow's own directory.
+     *
+     * Callers already sanitise (Slugger::fileName), but this method builds the path, so the
+     * guarantee belongs here: anything up to the last separator is dropped, and a name made of
+     * nothing but dots ("..") falls back to the entry token – both would otherwise write next
+     * to, or above, the directory the caller asked for.
+     */
+    private function safeBase(string $baseName, string $token): string
+    {
+        $base = trim(str_replace('\\', '/', $baseName));
+        $slash = strrpos($base, '/');
+        $base = false === $slash ? $base : substr($base, $slash + 1);
+
+        return '' !== trim($base, '.') ? $base : $token;
     }
 
     /**
@@ -103,7 +124,18 @@ class PdfStorage
             return 0;
         }
 
-        return \count(glob($dir.'/*.pdf') ?: []);
+        // Counted by iteration rather than glob(): the overview asks this for every workflow,
+        // and a run with a few thousand documents would otherwise build an array of paths just
+        // to take its length.
+        $count = 0;
+
+        foreach (new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS) as $file) {
+            if ($file->isFile() && 'pdf' === strtolower($file->getExtension())) {
+                ++$count;
+            }
+        }
+
+        return $count;
     }
 
     /**

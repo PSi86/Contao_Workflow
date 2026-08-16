@@ -87,7 +87,11 @@ class WorkflowConfigExporter
                 'pdfTitle'             => (string) $workflow->pdfTitle,
                 'introText'            => (string) $workflow->introText,
                 'pdfSignatureDate'     => (string) $workflow->pdfSignatureDate,
+                // Which of the two following fields is in force (format 7+); an older file
+                // without this key is imported as "data", the only behaviour it could have had.
+                'pdfSignatureLocationSource' => (string) ($workflow->pdfSignatureLocationSource ?: 'data'),
                 'pdfSignatureLocation' => (string) $workflow->pdfSignatureLocation,
+                'pdfSignatureLocationVar' => (string) $workflow->pdfSignatureLocationVar,
                 'pdfFileName'          => (string) $workflow->pdfFileName,
             ],
             'questions'     => $questions,

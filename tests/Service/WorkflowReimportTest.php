@@ -15,9 +15,10 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 
 /**
- * isReimportNeeded() drives the "source changed, re-import" hint shown on the edit mask and the
- * overview. It must fire exactly when the current file differs from what the last import
- * recorded — and stay quiet for a never-imported or unchanged file, so the hint is trustworthy.
+ * isSourceDirty() drives the "run the import" hint shown on the edit mask and in the overview.
+ * It must fire exactly when the stored data no longer matches the source file — the file changed
+ * after an import, or no import ever ran — and stay quiet for an unchanged one, so the hint is
+ * trustworthy.
  */
 final class WorkflowReimportTest extends TestCase
 {
@@ -39,13 +40,24 @@ final class WorkflowReimportTest extends TestCase
     /**
      * @param array<string, mixed> $values tl_workflow field values
      */
-    private function isReimportNeeded(array $values, ?string $resolvedPath): bool
+    private function validator(array $values, ?string $resolvedPath): array
     {
         $workflow = $this->createMock(WorkflowModel::class);
         $workflow->method('__get')->willReturnCallback(static fn (string $k): mixed => $values[$k] ?? '');
 
         $inspector = $this->createMock(SpreadsheetInspector::class);
         $inspector->method('resolvePath')->willReturn($resolvedPath);
+        // Both delegate to the file system in the real inspector; only the caching is its own.
+        $inspector->method('fileStat')->willReturnCallback(
+            static function (string $p): string {
+                clearstatcache(true, $p);
+
+                return (int) @filemtime($p).':'.(int) @filesize($p);
+            },
+        );
+        $inspector->method('fileHash')->willReturnCallback(
+            static fn (string $p): string => (string) @md5_file($p),
+        );
 
         $validator = new WorkflowValidator(
             $inspector,
@@ -55,56 +67,134 @@ final class WorkflowReimportTest extends TestCase
             new ColumnCompatibility(),
         );
 
-        return $validator->isReimportNeeded($workflow);
+        return [$validator, $workflow];
     }
 
-    public function testChangedFileNeedsReimport(): void
+    /**
+     * @param array<string, mixed> $values
+     */
+    private function isSourceDirty(array $values, ?string $resolvedPath): bool
+    {
+        [$validator, $workflow] = $this->validator($values, $resolvedPath);
+
+        return $validator->isSourceDirty($workflow);
+    }
+
+    private function stat(): string
+    {
+        clearstatcache(true, $this->file);
+
+        return (int) filemtime($this->file).':'.(int) filesize($this->file);
+    }
+
+    public function testChangedFileIsDirty(): void
     {
         // A prior import recorded a DIFFERENT checksum than the file now has.
-        $needed = $this->isReimportNeeded(
+        $dirty = $this->isSourceDirty(
             ['sourceFile' => 'uuid', 'sourceHash' => 'stale-hash-from-the-old-file'],
             $this->file,
         );
 
-        $this->assertTrue($needed);
+        $this->assertTrue($dirty);
     }
 
-    public function testUnchangedFileDoesNotNeedReimport(): void
+    public function testUnchangedFileIsNotDirty(): void
     {
-        $needed = $this->isReimportNeeded(
+        $dirty = $this->isSourceDirty(
             ['sourceFile' => 'uuid', 'sourceHash' => md5_file($this->file)],
             $this->file,
         );
 
-        $this->assertFalse($needed);
+        $this->assertFalse($dirty);
     }
 
     /**
-     * Never imported (empty sourceHash): the separate "run import first" hint covers this, so
-     * the "source changed" hint must stay quiet – otherwise both fire at once.
+     * The reported bug: a freshly created or copied workflow has no checksum (sourceHash is
+     * doNotCopy), and the edit mask stayed silent about it. "Never imported" is the very state
+     * the hint exists for.
      */
-    public function testNeverImportedDoesNotNeedReimport(): void
+    public function testNeverImportedIsDirty(): void
     {
-        $needed = $this->isReimportNeeded(['sourceFile' => 'uuid', 'sourceHash' => ''], $this->file);
+        $dirty = $this->isSourceDirty(['sourceFile' => 'uuid', 'sourceHash' => ''], $this->file);
 
-        $this->assertFalse($needed);
+        $this->assertTrue($dirty);
     }
 
-    public function testNoSourceFileDoesNotNeedReimport(): void
+    public function testNoSourceFileIsNotDirty(): void
     {
-        $needed = $this->isReimportNeeded(['sourceFile' => '', 'sourceHash' => 'anything'], null);
+        $dirty = $this->isSourceDirty(['sourceFile' => '', 'sourceHash' => 'anything'], null);
 
-        $this->assertFalse($needed);
+        $this->assertFalse($dirty);
     }
 
     /**
      * A file that no longer resolves is a separate problem (getProblems() reports "no source"),
-     * not a re-import prompt.
+     * not an import prompt.
      */
-    public function testMissingFileDoesNotNeedReimport(): void
+    public function testMissingFileIsNotDirty(): void
     {
-        $needed = $this->isReimportNeeded(['sourceFile' => 'uuid', 'sourceHash' => 'x'], null);
+        $dirty = $this->isSourceDirty(['sourceFile' => 'uuid', 'sourceHash' => 'x'], null);
 
-        $this->assertFalse($needed);
+        $this->assertFalse($dirty);
+    }
+
+    /**
+     * The stat shortcut: matching mtime+size means the file was not written since the import,
+     * so the checksum is not consulted at all. It must never be able to turn a genuinely
+     * changed file into "clean" — that is covered by the next test.
+     */
+    public function testMatchingStatSkipsTheChecksum(): void
+    {
+        $dirty = $this->isSourceDirty(
+            // A checksum that does NOT match the file: only the stat shortcut can produce
+            // "not dirty" here, which is exactly what is being pinned.
+            ['sourceFile' => 'uuid', 'sourceHash' => 'nonsense', 'sourceStat' => $this->stat()],
+            $this->file,
+        );
+
+        $this->assertFalse($dirty);
+    }
+
+    public function testChangedFileBeatsAStaleStat(): void
+    {
+        $before = $this->stat();
+
+        file_put_contents($this->file, 'a new export was written over the old file');
+        touch($this->file, time() + 5);
+
+        $dirty = $this->isSourceDirty(
+            ['sourceFile' => 'uuid', 'sourceHash' => md5('the current source file contents'), 'sourceStat' => $before],
+            $this->file,
+        );
+
+        $this->assertTrue($dirty);
+    }
+
+    /**
+     * Re-saving a file without changing anything (Excel open + save) moves the mtime but not the
+     * contents. The stat only shortcuts, it never decides — so the checksum still says "clean".
+     */
+    public function testResavedButIdenticalFileIsNotDirty(): void
+    {
+        $hash = (string) md5_file($this->file);
+        $before = $this->stat();
+
+        touch($this->file, time() + 5);
+
+        $dirty = $this->isSourceDirty(
+            ['sourceFile' => 'uuid', 'sourceHash' => $hash, 'sourceStat' => $before],
+            $this->file,
+        );
+
+        $this->assertFalse($dirty);
+    }
+
+    public function testHasNeverImportedFollowsTheChecksum(): void
+    {
+        [$fresh, $freshWorkflow] = $this->validator(['sourceFile' => 'uuid', 'sourceHash' => ''], $this->file);
+        [$done, $doneWorkflow] = $this->validator(['sourceFile' => 'uuid', 'sourceHash' => 'abc'], $this->file);
+
+        $this->assertTrue($fresh->hasNeverImported($freshWorkflow));
+        $this->assertFalse($done->hasNeverImported($doneWorkflow));
     }
 }

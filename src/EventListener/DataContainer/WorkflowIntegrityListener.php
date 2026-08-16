@@ -13,7 +13,7 @@ use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
-use Psimandl\WorkflowBundle\Model\EntryModel;
+use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
@@ -39,6 +39,7 @@ class WorkflowIntegrityListener
         private readonly WorkflowValidator $validator,
         private readonly PlaceholderResolver $placeholders,
         private readonly SpreadsheetInspector $inspector,
+        private readonly Connection $connection,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly string $projectDir,
@@ -121,10 +122,15 @@ class WorkflowIntegrityListener
     }
 
     /**
-     * Reminds, on the edit mask, that the source file was changed but not re-imported yet: the
-     * stored entries and — critically — the snapshotted number formats are stale, so the form
-     * and PDF preview keep showing the old data/formatting. Carries a "run import" link that
-     * returns to this edit mask, so the fix is one click away from where the file was changed.
+     * Reminds, on the edit mask, that the stored data does not match the source file: the
+     * entries and — critically — the snapshotted number formats are stale, so the form and PDF
+     * preview keep showing the old data/formatting. Carries a "run import" link that returns to
+     * this edit mask, so the fix is one click away from where the file was changed.
+     *
+     * Covers both ways to get there, with the same rule the overview uses
+     * ({@see WorkflowValidator::isSourceDirty()}): the file was changed after an import, and the
+     * workflow was never imported at all. The latter used to be silent here – exactly the state
+     * a freshly created or copied workflow is in once its source file has been picked.
      */
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function flagStaleSource(DataContainer $dc): void
@@ -135,7 +141,7 @@ class WorkflowIntegrityListener
 
         $workflow = WorkflowModel::findByPk((int) $dc->id);
 
-        if (null === $workflow || !$this->validator->isReimportNeeded($workflow)) {
+        if (null === $workflow || !$this->validator->isSourceDirty($workflow)) {
             return;
         }
 
@@ -145,9 +151,13 @@ class WorkflowIntegrityListener
         $url = $this->router->generate('workflow_import', ['id' => (int) $workflow->id])
             .'?rt='.$this->csrfTokenManager->getDefaultTokenValue().'&return=edit';
 
+        $hint = $this->validator->hasNeverImported($workflow)
+            ? (string) ($lang['first_import_hint'] ?? 'Für diesen Workflow wurde noch kein Import ausgeführt.')
+            : (string) ($lang['edit_hint'] ?? 'Die Quelldatei wurde geändert, aber noch nicht importiert.');
+
         Message::addInfo(sprintf(
             '%s <a href="%s" class="tl_submit" style="margin-left:.4em;">%s</a>',
-            (string) ($lang['edit_hint'] ?? 'Die Quelldatei wurde geändert, aber noch nicht importiert.'),
+            $hint,
             StringUtil::specialchars($url),
             (string) ($lang['import_button'] ?? 'Jetzt importieren'),
         ));
@@ -431,16 +441,19 @@ class WorkflowIntegrityListener
             return [];
         }
 
-        $entries = EntryModel::findBy('pid', (int) $workflow->id, ['limit' => self::PREFILL_CHECK_LIMIT]);
-
-        if (null === $entries) {
-            return [];
-        }
+        // Only the data blobs, not whole models: this samples up to 500 entries for a warning,
+        // and hydrating (plus registering) that many EntryModels to read one serialized column
+        // is the single most expensive thing the edit mask used to do. StringUtil::deserialize
+        // is exactly what EntryModel::getData() does with the same value.
+        $blobs = $this->connection->fetchFirstColumn(
+            'SELECT data FROM tl_workflow_entry WHERE pid = ? LIMIT '.self::PREFILL_CHECK_LIMIT,
+            [(int) $workflow->id],
+        );
 
         $samples = [];
 
-        foreach ($entries as $entry) {
-            $data = $entry->getData();
+        foreach ($blobs as $blob) {
+            $data = StringUtil::deserialize($blob, true);
 
             foreach ($checks as $question) {
                 $storage = trim((string) $question->storageField);

@@ -25,6 +25,9 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
  */
 class Slugger
 {
+    /** Byte budget of one on-disk file name component, see {@see fileName()}. */
+    private const FILE_NAME_MAX_BYTES = 180;
+
     private readonly AsciiSlugger $slugger;
 
     public function __construct()
@@ -56,17 +59,45 @@ class Slugger
 
     /**
      * A file-name component that KEEPS its Unicode letters and digits (umlauts, Cyrillic, CJK
-     * …), replacing only spaces, punctuation and path-unsafe characters with $separator. For
-     * the human-facing download name, emitted as an RFC 5987 `filename*=UTF-8''…` header with
-     * {@see ascii()} as the ASCII fallback – so a browser downloads "Übungsleiter …" verbatim
-     * instead of a stripped or transliterated name.
+     * …), replacing only spaces, punctuation and path-unsafe characters with $separator. Used
+     * for every human-facing file name: the download header (RFC 5987 `filename*=UTF-8''…`,
+     * with {@see ascii()} as the fallback for old clients) and, via {@see fileName()}, the
+     * documents this bundle writes to disk.
      */
     public function unicode(string $name, string $separator = '_'): string
     {
-        // Keep Unicode letters (\p{L}) and numbers (\p{N}); collapse everything else — spaces,
-        // punctuation, control chars, and crucially the path separators / \ — into $separator.
-        $slug = preg_replace('/[^\p{L}\p{N}]+/u', $separator, $name) ?? '';
+        // Keep Unicode letters (\p{L}), numbers (\p{N}) and combining marks (\p{M}); collapse
+        // everything else — spaces, punctuation, control chars, and crucially the path
+        // separators / \ — into $separator.
+        //
+        // \p{M} matters for text that arrives decomposed (NFD), as it does from macOS: there
+        // an "ü" is "u" plus a combining diaeresis, and without \p{M} the mark would be
+        // dropped and the name silently turn into "u_".
+        $slug = preg_replace('/[^\p{L}\p{N}\p{M}]+/u', $separator, $name) ?? '';
 
         return trim($slug, $separator.'-');
+    }
+
+    /**
+     * A name for a file this bundle writes to disk – {@see unicode()}, but bounded so it can
+     * actually be created.
+     *
+     * Two limits, because they are not the same one: $maxChars keeps the name readable, while
+     * the byte budget is what the file system enforces (NAME_MAX is 255 *bytes* on Linux, and
+     * one CJK character costs three of them). Cutting is always done on character boundaries –
+     * a byte-wise cut would split a multi-byte character and leave an invalid UTF-8 name.
+     *
+     * The budget stops well short of 255 because the caller appends to this: ".pdf" and, on a
+     * name collision, "_" plus up to 32 hex characters (see PdfStorage::uniqueName()).
+     */
+    public function fileName(string $name, int $maxChars = 120): string
+    {
+        $slug = mb_substr($this->unicode($name), 0, $maxChars);
+
+        while ('' !== $slug && \strlen($slug) > self::FILE_NAME_MAX_BYTES) {
+            $slug = mb_substr($slug, 0, mb_strlen($slug) - 1);
+        }
+
+        return trim($slug, '_-');
     }
 }

@@ -130,6 +130,19 @@ nicht mehr im Workflow.
 **Dateiverwaltung → Ordner `files`** → CSV/XLSX hochladen
 (z. B. `files/analyse/basistabelle-2026.xlsx`).
 
+> ⚠ **Eine Ersatzdatei muss exakt so heißen wie die bisherige.** Contao ersetzt beim Hochladen
+> weder Leerzeichen noch Großbuchstaben: `Basistabelle 2026.xlsx` überschreibt
+> `basistabelle-2026.xlsx` **nicht**, sondern landet als **zweite Datei daneben**. Der Workflow
+> liest dann weiter die alte – und weil jeder Import erfolgreich meldet, fällt das lange nicht
+> auf. Das häufigste Symptom: einzelne Teilnehmer fehlen oder Beträge sind veraltet, „als wäre
+> die alte Datei noch im Cache".
+>
+> Die Bearbeitungsmaske sagt es einem: Unter der **Quelldatei** stehen Pfad, Änderungsdatum und
+> Prüfsumme, dazu das Urteil **„Stand des letzten Imports – die Datei wurde seitdem nicht
+> verändert"**. Wer gerade eine neue Fassung hochgeladen hat und das liest, findet die neue
+> Datei im selben Ordner unter anderem Namen. Hat ein Lauf tatsächlich eine andere Datei
+> gelesen, wird auch deren Pfad genannt.
+
 ### 3 b. Workflow anlegen & konfigurieren
 **Workflow → Workflows → Neu.** Die **gesamte** Konfiguration liegt in
 **„Bearbeiten"** (in Abschnitte gegliedert: *Allgemein · Quelldaten ·
@@ -154,9 +167,16 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
    So sieht der Trainer im Formular dieselbe Kopfzeile wie später im Dokument.
 6. **Unterschrift benötigt:** ankreuzen, wenn der Trainer im Formular unterschreiben
    muss (die Unterschrift wird ins PDF eingebettet). Bei aktiver Option erscheinen
-   **darunter** zusätzlich **Datum** und **Ort für die Unterschriftszeile** – je ein **Datenfeld** (z. B. ein
-   „Aktuelle Zeit"-Formularfeld als Datum, die Spalte `Wohnort` als Ort). So steht im PDF
-   genau der gespeicherte Wert (PDF == DB == Export). Sonst entfällt das Unterschriftsfeld.
+   **darunter** zusätzlich **Datum** und **Ort für die Unterschriftszeile**. Sonst entfällt das
+   Unterschriftsfeld.
+   - **Datum für Unterschriftszeile:** ein **Datenfeld** (typischerweise ein „Aktuelle
+     Zeit"-Formularfeld). So steht im PDF genau der gespeicherte Wert (PDF == DB == Export).
+   - **Quelle für den Ort:** entweder ein **Datenfeld aus der Quelldatei** – je Teilnehmer
+     verschieden, z. B. die Spalte `Wohnort` – oder eine **Briefpapier-Variable**, wenn der Ort
+     für alle gleich ist (der Vereinssitz). Je nach Wahl erscheint das passende Auswahlfeld.
+     Die Variablen-Liste ist dieselbe, aus der auch die `##letterhead_*##`-Platzhalter stammen
+     (Abschnitt 2b); Layout-Größen wie Seitenränder stehen bewusst nicht darin. **Ein gerade
+     gewechseltes Briefpapier erscheint dort erst nach dem Speichern.**
 7. **Formularseite** = die Seite aus Abschnitt 1.
 8. **Formularfelder** anlegen (Abschnitt 3 b‑1) – auch schreibgeschützte Anzeige-Felder
    (z. B. Name, Vorname, Abteilung zur Kontrolle) sind jetzt normale Formularfelder mit der
@@ -167,8 +187,11 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
       hier, sondern unter „Briefkopf-Vorlagen" gepflegt (Abschnitt 2b).
     - **PDF-Dateiname:** Muster mit Platzhaltern und `{{Insert-Tags}}` (z. B.
       `Verzicht_##data_name##_##data_vorname##` oder `Verzicht_##data_name##_{{date::Y}}`); die
-      Eingabe von `##` bzw. `{` blendet eine Vorschlagsliste ein. Wird zu einem sicheren
-      Dateinamen bereinigt, bei Namensgleichheit folgt ein kurzer Token. Leer = Eintrags-Token.
+      Eingabe von `##` bzw. `{` blendet eine Vorschlagsliste ein. **Umlaute und andere Zeichen
+      bleiben erhalten** (`Verzicht_Müller.pdf`); Leerzeichen und Satzzeichen werden zu „_",
+      und der Name wird auf eine Länge begrenzt, die jedes Dateisystem trägt. Bei
+      Namensgleichheit folgt ein kurzer Token. Leer = Eintrags-Token. Bereits erzeugte
+      Dokumente behalten ihren Namen – erst neu erzeugte folgen einem geänderten Muster.
     - **Dokument-Inhalt** wählen:
       - **Einfacher Brief** (online, ohne Datei): die **Dokument-Texte** stammen aus dem gleichnamigen Abschnitt
         **Dokument-Texte** (Abschnitt 3 b‑2) — so können sie je nach Antwort variieren.
@@ -331,6 +354,16 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > **deutscher Schreibweise** und identisch – so, wie sie in der Quelldatei formatiert sind
 > (`1.234,50 €`). Eingeben darf man tolerant: `1234`, `1234,5`, `1.234,50` und auch `1234.5`
 > werden verstanden und beim Speichern ins Format der Spalte gebracht.
+>
+> **Währungsspalten:** Trägt die Spalte ein Währungszeichen, steht es **neben dem
+> Eingabefeld** und in der Live-Vorschau – getippt wird nur die Zahl. Das Zeichen gehört zur
+> Spalte und wird beim Speichern angehängt, damit importierte und beantwortete Zeilen gleich
+> geschrieben sind. Wer etwas eingibt, das keine Zahl ist, sieht das Feld sofort rot; abgewiesen
+> wird die Eingabe beim Absenden, mit dem Namen des Felds in der Meldung.
+>
+> ⚠ Für eine Währungsspalte ist **„Zahl"** der richtige Feldtyp. Ein **Freitextfeld** zeigt zwar
+> den importierten Wert samt Währungszeichen, prüft die Eingabe aber **gar nicht** und speichert
+> die Antwort **ohne** Währungszeichen – die Spalte enthielte danach zwei Schreibweisen.
 
 Beispiel (Demo): Typ **Radio**, Speicherfeld `Entscheidung`, zwei Optionen
 „Einverstanden"→`ja` und „Nicht einverstanden"→`nein`, jeweils mit einem vollständigen
@@ -423,28 +456,36 @@ Dann steckt die gesamte Entscheidung **im Template** (Beispiel `pdf_body_verzich
 gleichwertig unterstützt; die Regel-Variante ist für einfache Fälle transparenter.
 
 ### 3 c. Import
-**Workflow → Übersicht** → beim Workflow **„Import ausführen"**. Der Dialog fragt den
-**Modus** – er gilt nur für diesen einen Lauf.
+**Workflow → Übersicht** → beim Workflow **„Import ausführen"**. Der Import startet sofort;
+es gibt keinen Zwischendialog mehr.
 
-**Beiden Modi gemeinsam:** neue sichtbare Zeilen werden angelegt, vorhandene aktualisiert,
-bereits beantwortete eingefroren – und **ausgeblendete Zeilen werden übersprungen, in beiden
-Fällen**. Der Modus entscheidet ausschließlich, was mit **bereits vorhandenen Einträgen**
-geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:
+Was er tut: neue sichtbare Zeilen werden angelegt, vorhandene aktualisiert, bereits
+beantwortete eingefroren – und **ausgeblendete Zeilen werden übersprungen**. **Gelöscht wird
+nichts.** Ein vorhandener Eintrag, dessen Zeile jetzt ausgeblendet ist oder in der Datei fehlt,
+bleibt bestehen und wird weiterhin angeschrieben; die Meldung nach dem Import weist ihn aus.
 
-- **Additiv** (Vorauswahl): sie bleiben bestehen und werden weiterhin angeschrieben.
-  **Nichts wird gelöscht.**
-- **Absolut**: sie werden **gelöscht** – samt bereits erzeugter PDFs, auch wenn sie schon
-  geantwortet haben. Die Quelldatei bestimmt damit die Teilnehmerliste. Bereits beantwortete
-  Einträge, die in der Datei **stehen**, bleiben wie im additiven Modus unverändert.
+> Bis Version 3.2 gab es zusätzlich einen **absoluten** Modus, der solche Einträge samt ihrer
+> PDFs löschte. Er ist entfallen: ein Klick genügte, um beantwortete Vorgänge unwiederbringlich
+> zu entfernen. Sollen Teilnehmer wirklich verschwinden, werden sie in **Einträge** einzeln
+> gelöscht – dort ist sichtbar, was betroffen ist.
 
 Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im Schritt
 **„Importiert"**.
 
+> **Wann muss importiert werden?** Übersicht **und** Bearbeitungsmaske sagen es von selbst:
+> Solange die gespeicherten Daten nicht zur Quelldatei passen, steht dort ein Hinweis samt
+> Button – „noch kein Import ausgeführt" bei einem neuen oder kopierten Workflow, „Quelldatei
+> geändert" nach einem Wechsel oder Überschreiben der Datei. Erkannt wird das an der Prüfsumme
+> der Datei, also auch dann, wenn sie in der Dateiverwaltung **an Ort und Stelle** überschrieben
+> wurde, ohne den Workflow zu öffnen.
+
 > **Importprotokoll.** Jeder Lauf wird festgehalten – in der **Übersicht** über den Button
 > **„Importprotokoll"** und in der Bearbeitungsmaske im gleichnamigen (eingeklappten)
-> Abschnitt zwischen „Quelldaten" und „Inhalt": Zeitpunkt, Modus, wer ihn ausgelöst hat,
-> **welche Datei** (Name, Tabellenblatt und **Prüfsumme** – daran erkennt man zwei Läufe gegen
-> denselben Dateinamen mit unterschiedlichem Inhalt), die Zahlen des Laufs und dieselben
+> Abschnitt zwischen „Quelldaten" und „Inhalt": Zeitpunkt, Modus (bei Läufen bis 3.2 auch
+> „Absolut"), wer ihn ausgelöst hat,
+> **welche Datei** (vollständiger **Pfad**, Tabellenblatt und **Prüfsumme** – daran erkennt man
+> zwei Läufe gegen denselben Dateinamen mit unterschiedlichem Inhalt **und** zwei ähnlich
+> benannte Dateien im selben Ordner), die Zahlen des Laufs und dieselben
 > Meldungen, die damals angezeigt wurden. **Auch gescheiterte Läufe** stehen dort, mit ihrer
 > Fehlermeldung.
 >
@@ -472,9 +513,8 @@ Kontrolle: in **Workflows → (Workflow) → Einträge** stehen die Personen im 
 > der Datei nicht mehr sichtbar vorkommen.
 >
 > ⚠ **Eine in der Quelldatei geänderte E-Mail-Adresse gilt als neue Person**: Der bisherige
-> Eintrag wird nicht wiedergefunden, es entsteht ein zweiter. Im additiven Modus bleiben dann
-> beide (die Meldung weist den alten als „nicht mehr auffindbar" aus), im absoluten Modus
-> ersetzt der neue Eintrag den alten – mit **neuem Link**. Adressen also möglichst im Backend
+> Eintrag wird nicht wiedergefunden, es entsteht ein zweiter, und **beide bleiben** – die
+> Meldung weist den alten als „nicht mehr auffindbar" aus. Adressen also möglichst im Backend
 > korrigieren (**Einträge → Eintrag bearbeiten**), nicht in der Quelldatei.
 
 > **Der Import läuft immer** – auch dann, wenn die Quelldatei unverändert ist. Genau das ist
@@ -620,7 +660,6 @@ SMTP, SPF/DKIM/DMARC): siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 **CLI-Alternativen** zu den Übersicht-Buttons (`<id>` = Workflow-ID):
 ```bash
 vendor/bin/contao-console workflow:import <id>
-vendor/bin/contao-console workflow:import <id> --mode=absolute  # nicht sichtbare Einträge löschen
 vendor/bin/contao-console workflow:send <id>             # Einladungen
 vendor/bin/contao-console workflow:send <id> --reminder  # Erinnerungen
 vendor/bin/contao-console workflow:export <id> --out=export.xlsx

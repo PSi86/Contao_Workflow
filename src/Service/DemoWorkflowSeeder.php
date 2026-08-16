@@ -179,6 +179,10 @@ class DemoWorkflowSeeder
                 'pdfTitle'             => 'Einverständniserklärung (Demo)',
                 'introText'            => 'Bitte prüfen Sie die folgenden Angaben und treffen Sie Ihre Entscheidung für den ##letterhead_verein##.',
                 'pdfSignatureDate'     => 'Unterschriftsdatum',
+                // Explicit, so the demo shows the default configuration rather than relying on
+                // it: the place comes from the participant's own "Ort" column. The alternative
+                // is a letterhead variable (pdfSignatureLocationSource = 'var').
+                'pdfSignatureLocationSource' => 'data',
                 'pdfSignatureLocation' => 'Ort',
                 'pdfFileName'          => 'Einverstaendnis_##data_nachname##_##data_vorname##',
             ],

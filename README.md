@@ -102,8 +102,9 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - **Inhalt (Formular & Dokument):** **Überschrift** und optionaler **Einleitungstext** –
      erscheinen **identisch** oben im Formular und im PDF (Platzhalter und `{{Insert-Tags}}` erlaubt;
      der Einleitungstext zusätzlich mit **Textauszeichnung** `[b]`/`[i]`/`[u]`, die Überschrift ohne).
-   - **Formular & Formularfelder:** *Unterschrift benötigt* (mit Auswahl der
-     Datenfelder für **Datum** und **Ort** der Unterschriftszeile), Formularseite und die
+   - **Formular & Formularfelder:** *Unterschrift benötigt* (mit Auswahl des Datenfelds für
+     das **Datum** der Unterschriftszeile sowie der **Quelle für den Ort** – ein Datenfeld der
+     Quelldatei oder eine Variable des Briefpapiers), Formularseite und die
      eingebetteten **Formularfelder** (Reihenfolge per **Drag & Drop** direkt in der Liste) –
      pro Feld **Überschrift**, Typ (Freitext, **Zahl**, Datum, Dropdown, Radio, Checkboxen,
      **Aktuelle Zeit**, **Erklärung**), Speicherfeld (Quellspalte – **gesperrt**, sobald
@@ -124,7 +125,7 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
    - **Dokument-Einstellungen:** Briefpapier, **PDF-Dateiname** (Muster mit Platzhaltern und
      `{{Insert-Tags}}`, z. B. `Verzicht_##data_name##_##data_vorname##` oder
      `Verzicht_##data_name##_{{date::Y}}`; die Eingabe von `##` bzw. `{` blendet eine
-     Vorschlagsliste ein) + **Dokument-Inhalt**. **Einfacher Brief**
+     Vorschlagsliste ein; Umlaute bleiben im Dateinamen erhalten) + **Dokument-Inhalt**. **Einfacher Brief**
      → die Texte stehen in den **Dokument-Texten**. **Spezielle Vorlage** → eine Datei
      `pdf_body_*`, die ihre Logik selbst enthält (dann **keine** Dokument-Texte).
    - **Dokument-Texte** (nur bei *Einfacher Brief*): die Texte als Liste. Jede Regel =
@@ -154,8 +155,9 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
 ## Verifikation (End-to-End)
 1. `contao:migrate` läuft fehlerfrei; Backend zeigt „Übersicht“ und „Workflows“.
 2. In der Übersicht **Import ausführen** → Einträge mit Schritt „Importiert“, Token, E-Mail,
-   Daten. Der Import läuft **immer**, auch bei unveränderter Quelldatei; bereits beantwortete
-   Teilnehmer bleiben dabei vollständig unangetastet und werden in der Meldung ausgewiesen.
+   Daten. Der Import startet ohne Rückfrage, legt an und aktualisiert, **löscht aber nichts**.
+   Er läuft **immer**, auch bei unveränderter Quelldatei; bereits beantwortete Teilnehmer
+   bleiben dabei vollständig unangetastet und werden in der Meldung ausgewiesen.
 3. **E-Mails senden → Automatisch → Einladungen senden** (Empfänger bestätigen) → Mail
    (Mailpit) mit `##link##`; Schritt → „Eingeladen“, `sentAt` gesetzt.
 4. Link öffnen → Formular vorausgefüllt; Antwortfelder ausfüllen + (falls aktiv)

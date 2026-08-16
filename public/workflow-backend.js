@@ -216,9 +216,12 @@
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
-            // The import dialog offers plain links and the log dialog is read-only, so both
-            // need nothing beyond open/close.
-            wireDialog(box, '.wf-dialog--import', '.wf-open-import');
+            // STILLGELEGT zusammen mit dem Import-Dialog (siehe be_workflow_dashboard.html5):
+            // „Import ausführen" ist jetzt ein Direktlink auf den additiven Import. Zum
+            // Reaktivieren diese Zeile einkommentieren.
+            // wireDialog(box, '.wf-dialog--import', '.wf-open-import');
+
+            // The log dialog is read-only, so it needs nothing beyond open/close.
             wireDialog(box, '.wf-dialog--log', '.wf-open-log');
             setupDownload(wireDialog(box, '.wf-dialog--download', '.wf-open-download'));
         });

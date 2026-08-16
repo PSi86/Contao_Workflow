@@ -76,6 +76,29 @@ class ImportLog
     }
 
     /**
+     * The last run that actually completed, or null when there is none on record.
+     *
+     * This is the reference the source-file summary compares against: which file was read, and
+     * with which content. A failed run is deliberately skipped – it may have read the file, but
+     * it did not establish a state anyone can rely on.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function lastSuccessful(int $workflowId): ?array
+    {
+        if ($workflowId < 1 || !$this->tableExists()) {
+            return null;
+        }
+
+        $row = $this->connection->fetchAssociative(
+            "SELECT * FROM tl_workflow_import WHERE pid = ? AND state = 'ok' ORDER BY tstamp DESC, id DESC LIMIT 1",
+            [$workflowId],
+        );
+
+        return false !== $row ? $row : null;
+    }
+
+    /**
      * How many runs a workflow has on record (for "… und N weitere").
      */
     public function count(int $workflowId): int

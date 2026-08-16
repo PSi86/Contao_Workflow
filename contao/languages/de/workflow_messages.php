@@ -44,6 +44,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'download_result_csv'  => 'Ergebnis: eine CSV-Datei (.csv).',
     'download_result_zip'  => 'Ergebnis: ein ZIP-Archiv (.zip) mit der Auswahl.',
     'download_result_none' => 'Bitte mindestens einen Eintrag auswählen.',
+    // Der Import-Dialog ist stillgelegt (siehe be_workflow_dashboard.html5) – „Import
+    // ausführen“ startet direkt den additiven Lauf. Seine vier Texte bleiben für eine
+    // Reaktivierung stehen. „import_add“ und „import_absolute“ sind NICHT ungenutzt: das
+    // Importprotokoll beschriftet damit auch alte Läufe im absoluten Modus.
     'import_intro'     => '<strong>Ausgeblendete Zeilen werden in beiden Fällen übersprungen</strong> – sie werden nie importiert. Der Modus entscheidet nur, was mit <em>bereits vorhandenen</em> Einträgen geschieht, deren Zeile jetzt ausgeblendet ist oder in der Datei fehlt:',
     'import_add'       => 'Additiv',
     'import_add_hint'  => 'Solche Einträge bleiben bestehen und werden weiterhin angeschrieben. Es wird nichts gelöscht.',
@@ -98,9 +102,27 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_domain_mismatch'=> 'Die Absenderdomain „%s“ weicht von der Website-Domain (%s) ab. Bitte die SPF-/DKIM-/DMARC-Ausrichtung prüfen, sonst landen die Mails leicht im Spam.',
 ];
 
+// SourceFileInfoListener – die Kurzauskunft unter der Quelldatei-Auswahl. „current“ ist der
+// wichtigste Text: Wer gerade eine neue Fassung hochgeladen zu haben glaubt und hier „Stand des
+// letzten Imports“ liest, hat die Datei woanders abgelegt – der häufigste Fall ist ein
+// abweichender Dateiname (Contao ersetzt beim Hochladen weder Leerzeichen noch Großbuchstaben,
+// „Tabelle 2026.xlsx“ überschreibt „tabelle-2026.xlsx“ also nicht).
+$GLOBALS['TL_LANG']['workflow_source'] = [
+    'missing'         => 'Die Quelldatei ist nicht (mehr) auffindbar – sie wurde gelöscht, verschoben oder umbenannt. Bitte erneut auswählen.',
+    'never'           => 'Diese Datei wurde noch nicht importiert.',
+    'changed'         => 'Die Datei wurde seit dem letzten Import (%s) geändert – die gespeicherten Daten stammen noch aus der vorherigen Fassung.',
+    'changed_unknown' => 'Die Datei stimmt nicht mit dem Stand des letzten Imports überein – die gespeicherten Daten stammen noch aus der vorherigen Fassung.',
+    'current'         => 'Stand des letzten Imports (%s) – die Datei wurde seitdem nicht verändert. Wurde inzwischen eine neue Fassung hochgeladen, ist sie unter einem anderen Namen abgelegt worden; bitte den Ordner in der Dateiverwaltung prüfen.',
+    'current_unknown' => 'Die Datei entspricht dem Stand des letzten Imports.',
+    'other_file'      => 'Achtung: Der letzte Import (%2$s) las eine <strong>andere</strong> Datei – „%1$s“. Die gespeicherten Daten stammen von dort, nicht aus der oben ausgewählten Datei.',
+];
+
 // WorkflowIntegrityListener::flagStaleSource() – Hinweis in der Bearbeitungsmaske, wenn die
-// Quelldatei geändert, aber noch nicht importiert wurde.
+// gespeicherten Daten nicht mehr zur Quelldatei passen. Zwei Fälle, eine Regel
+// (WorkflowValidator::isSourceDirty), aber zwei Wortlaute: „noch nie importiert“ liest sich
+// anders als „die Datei hat sich geändert“.
 $GLOBALS['TL_LANG']['workflow_reimport'] = [
-    'edit_hint'     => 'Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und Vorschau-PDF zeigen bis dahin die alten Daten und Zahlenformate. Bitte den Import ausführen, um die aktuellen Daten und Feldformatierungen zu laden.',
-    'import_button' => 'Jetzt importieren',
+    'edit_hint'         => 'Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und Vorschau-PDF zeigen bis dahin die alten Daten und Zahlenformate. Bitte den Import ausführen, um die aktuellen Daten und Feldformatierungen zu laden.',
+    'first_import_hint' => 'Für diesen Workflow wurde noch kein Import ausgeführt – es liegen keine Teilnehmerdaten vor. Vorschau-Formular und Vorschau-PDF zeigen bis dahin nur Beispieldaten, und es können keine E-Mails versendet werden.',
+    'import_button'     => 'Jetzt importieren',
 ];

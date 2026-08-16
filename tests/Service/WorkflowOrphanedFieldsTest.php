@@ -126,4 +126,59 @@ final class WorkflowOrphanedFieldsTest extends TestCase
 
         $this->assertSame([], $orphaned);
     }
+
+    /**
+     * With the place taken from a letterhead variable, pdfSignatureLocation does not name a
+     * column at all – outlining it red for a value it is not using would send the user off to
+     * fix something that has no effect.
+     */
+    public function testLocationFieldIsIgnoredWhenThePlaceComesFromTheLetterhead(): void
+    {
+        $orphaned = $this->orphaned(
+            [
+                'emailField'                 => 'E-Mail',
+                'pdfSignatureLocationSource' => 'var',
+                'pdfSignatureLocation'       => 'Ort von frueher',
+                'pdfSignatureLocationVar'    => 'Ort',
+            ],
+            ['E-Mail'],
+        );
+
+        $this->assertSame([], $orphaned);
+    }
+
+    /**
+     * The same value, but the place IS taken from the source file: then it must be flagged.
+     */
+    public function testLocationFieldIsCheckedWhenThePlaceComesFromTheSourceFile(): void
+    {
+        $orphaned = $this->orphaned(
+            [
+                'emailField'                 => 'E-Mail',
+                'pdfSignatureLocationSource' => 'data',
+                'pdfSignatureLocation'       => 'Ort von frueher',
+            ],
+            ['E-Mail'],
+        );
+
+        $this->assertSame(['pdfSignatureLocation'], $orphaned);
+    }
+
+    /**
+     * A copy loses its source file, so every column-dependent field is flagged wholesale – but
+     * a place that comes from the letterhead survives a copy untouched and must not be in that
+     * list either.
+     */
+    public function testCopyWithoutSourceFileKeepsTheLetterheadPlace(): void
+    {
+        $orphaned = $this->orphaned(
+            ['pdfSignatureLocationSource' => 'var', 'pdfSignatureLocationVar' => 'Ort'],
+            [],
+            false,
+        );
+
+        $this->assertNotContains('pdfSignatureLocation', $orphaned);
+        $this->assertContains('emailField', $orphaned);
+        $this->assertContains('pdfSignatureDate', $orphaned);
+    }
 }

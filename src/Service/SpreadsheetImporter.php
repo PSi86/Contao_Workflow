@@ -24,7 +24,7 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  *
  * It always runs, even when the source file is unchanged: re-importing is how the original
  * source values are restored after a reset. The file checksum is still recorded, but only to
- * drive the "source changed, re-import needed" hint (see WorkflowValidator::isReimportNeeded).
+ * drive the "import needed" hint (see WorkflowValidator::isSourceDirty).
  *
  * Hidden rows are skipped: hiding rows in the source file is how a run is narrowed down to
  * the people it is meant for. What that means for rows imported earlier is the run's mode
@@ -87,6 +87,10 @@ class SpreadsheetImporter
             $this->log->recordFailure($workflow, $mode, $exception, $sourceFile);
 
             throw $exception;
+        } finally {
+            // The parsed workbook is the largest object in the process; a console run over
+            // several workflows must not carry one file into the next.
+            $this->inspector->releaseSheet();
         }
 
         $this->log->recordSuccess($workflow, $mode, $result, $sourceFile);
@@ -146,9 +150,13 @@ class SpreadsheetImporter
 
         // Not read-data-only: the number formats are needed (see CellReader). Cannot be null
         // here – assertSheetExists() has already ruled out the only case that returns null.
-        $reader = $this->inspector->readerFor($path, $sheetName, false);
-        $spreadsheet = $reader->load($path);
-        $sheet = ('' !== $sheetName ? $spreadsheet->getSheetByName($sheetName) : null) ?? $spreadsheet->getActiveSheet();
+        // The format refresh above parsed the same file with the same flags, so this shares
+        // that parse instead of repeating it.
+        $sheet = $this->inspector->loadSheet($path, $sheetName, false);
+
+        if (null === $sheet) {
+            throw new \RuntimeException(sprintf('Das Tabellenblatt „%s" ist in der Quelldatei nicht enthalten.', $sheetName));
+        }
 
         $highestRow = $sheet->getHighestDataRow();
         $inserted = 0;
@@ -290,6 +298,9 @@ class SpreadsheetImporter
         }
 
         $workflow->sourceHash = $hash;
+        // Alongside the checksum, so the change detection can rule out an untouched file with
+        // a stat() instead of hashing it (see WorkflowValidator::isSourceDirty).
+        $workflow->sourceStat = $this->inspector->fileStat($path);
         $workflow->tstamp = time();
         $workflow->save();
 

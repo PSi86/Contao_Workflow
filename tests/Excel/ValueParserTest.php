@@ -46,6 +46,9 @@ final class ValueParserTest extends TestCase
             'currency symbol'        => ['3.000,00 €', 3000.0],
             'iso code'               => ['3.000,00 EUR', 3000.0],
             'currency prefix'        => ['$1,234.50', 1234.5],
+            // Pasted back from the document, where the symbol trails, or typed with the symbol
+            // in front – the field shows the symbol next to it, so both happen.
+            'euro prefix'            => ['€ 3.000,00', 3000.0],
             'non breaking space'     => ["1.234,50\u{00A0}€", 1234.5],
 
             // Lenient participant input – not our own notation, but obvious in meaning.

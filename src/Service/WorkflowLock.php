@@ -22,6 +22,15 @@ use Doctrine\DBAL\Connection;
  */
 class WorkflowLock
 {
+    /**
+     * Answered-count per workflow for this request. Whoever asks about the lock asks more than
+     * once – the edit mask does it twice in one callback – and the number cannot change while a
+     * page is being rendered: resetting participants is its own route and redirects afterwards.
+     *
+     * @var array<int, int>
+     */
+    private array $answered = [];
+
     public function __construct(private readonly Connection $connection)
     {
     }
@@ -41,7 +50,7 @@ class WorkflowLock
             return 0;
         }
 
-        return (int) $this->connection->fetchOne(
+        return $this->answered[$workflowId] ??= (int) $this->connection->fetchOne(
             'SELECT COUNT(*) FROM tl_workflow_entry WHERE pid = ? AND respondedAt > 0',
             [$workflowId],
         );

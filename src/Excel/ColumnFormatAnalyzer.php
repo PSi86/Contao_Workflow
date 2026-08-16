@@ -14,9 +14,11 @@ use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
  * Note the deliberate absence of setReadDataOnly(true): that flag makes PhpSpreadsheet
  * skip the style layer entirely, so the format codes – the very thing this class is after
  * – would all come back empty. It is why the back-end pickers (which do set the flag)
- * could never have validated a column's formatting. Reading styles is expensive, so this
- * runs only when a "number" question is saved, and its verdict is snapshotted onto the
- * question afterwards.
+ * could never have validated a column's formatting. Reading styles is expensive, which is why
+ * the verdict is snapshotted onto the question afterwards – and why the parse goes through
+ * {@see SpreadsheetInspector::loadSheet()}: a workflow with several number fields, or a page
+ * that also asks for the column headers, then pays for exactly one parse instead of one per
+ * question.
  */
 class ColumnFormatAnalyzer
 {
@@ -49,14 +51,14 @@ class ColumnFormatAnalyzer
 
         // Not read-data-only: this class exists to look at the number formats. Null means the
         // configured sheet is not in the file – nothing to analyse, and the validator reports
-        // the missing sheet on its own.
-        $reader = $this->inspector->readerFor($path, $sheetName, false);
+        // the missing sheet on its own. Through loadSheet(), so analysing several columns of
+        // one workflow (and the header lookups around it) share a single parse.
+        $sheet = $this->inspector->loadSheet($path, $sheetName, false);
 
-        if (null === $reader) {
+        if (null === $sheet) {
             return [];
         }
 
-        $sheet = $this->inspector->sheetOf($reader->load($path), $sheetName);
         $headers = $this->inspector->headersOf($sheet, $headerRow);
         $column = array_search($header, $headers, true);
 
