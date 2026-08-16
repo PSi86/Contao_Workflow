@@ -19,6 +19,7 @@ use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
+use Psimandl\WorkflowBundle\Service\FieldVisibility;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
@@ -37,6 +38,7 @@ class WorkflowFormController extends AbstractFrontendModuleController
         private readonly SubmissionProcessor $submissionProcessor,
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly WorkflowFormView $formView,
+        private readonly FieldVisibility $visibility,
         private readonly QuestionWidgetFactory $widgetFactory,
         private readonly ValueParser $valueParser,
         private readonly ValueFormatter $valueFormatter,
@@ -55,6 +57,9 @@ class WorkflowFormController extends AbstractFrontendModuleController
         // Before workflow-form.js: the live hint calls into WorkflowNumber.
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-number.js';
         $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-form.js';
+        // Conditional fields: shows/hides them while the form is filled in. Independent of
+        // the scripts above; the server decides the same question again on submission.
+        $GLOBALS['TL_JAVASCRIPT'][] = $assetDir.'/workflow-conditions.js';
 
         $token = (string) $this->framework->getAdapter(Input::class)->get('auto_item');
 
@@ -134,8 +139,33 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
         $answers = [];
 
+        // The answers as they accumulate, used to decide the visibility of the fields that
+        // follow. This is why a condition may only reference a PRECEDING field: by the time a
+        // conditional field is reached, its trigger's submitted value is already in here.
+        $effective = $entry->getData();
+        $hiddenColumns = [];
+        $writtenColumns = [];
+
         foreach ($questions as $question) {
             $storage = trim((string) $question->storageField);
+
+            // A field whose conditions do not apply was not asked. It is not validated (a
+            // hidden mandatory field must never block the submission), not stored, and its
+            // column is emptied below – otherwise a value the participant revoked by changing
+            // the trigger would survive in the export and in the document.
+            if (!$this->visibility->isVisible($question, $effective)) {
+                if ('' !== $storage) {
+                    // Counts as empty for every following condition (the cascade).
+                    $effective[$storage] = '';
+
+                    // Read-only fields never own their column – they only display it.
+                    if (!$question->isReadOnly()) {
+                        $hiddenColumns[$storage] = true;
+                    }
+                }
+
+                continue;
+            }
 
             // Read-only fields are output only – never validated, never stored.
             if ($question->isReadOnly() && !$question->isCurrentTime()) {
@@ -150,6 +180,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
                 if ('' !== $storage) {
                     $answers[$storage] = $value;
+                    $effective[$storage] = $value;
+                    $writtenColumns[$storage] = true;
                 }
 
                 continue;
@@ -178,6 +210,8 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
                 if ('' !== $storage) {
                     $answers[$storage] = implode(', ', $values);
+                    $effective[$storage] = $answers[$storage];
+                    $writtenColumns[$storage] = true;
                 }
 
                 continue;
@@ -206,6 +240,16 @@ class WorkflowFormController extends AbstractFrontendModuleController
 
             if ('' !== $storage) {
                 $answers[$storage] = $value;
+                $effective[$storage] = $value;
+                $writtenColumns[$storage] = true;
+            }
+        }
+
+        // Empty the columns of the fields that were not asked. Skipped when a VISIBLE field
+        // writes the same column – then the answer that was given owns it.
+        foreach (array_keys($hiddenColumns) as $column) {
+            if (!isset($writtenColumns[$column])) {
+                $answers[$column] = '';
             }
         }
 

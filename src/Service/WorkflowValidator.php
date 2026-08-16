@@ -90,6 +90,10 @@ class WorkflowValidator
             }
         }
 
+        foreach ($this->conditionProblems($workflow, $headers) as $problem) {
+            $problems[] = $problem;
+        }
+
         $unknownRuleFields = [];
 
         foreach ($workflow->getRules() as $rule) {
@@ -111,6 +115,51 @@ class WorkflowValidator
         // letterhead. Treated as "not runnable" so it is fixed before running.
         if ((int) $workflow->master > 0 && !$this->recordExists('tl_workflow_master', (int) $workflow->master)) {
             $problems[] = $this->msg('master_missing');
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Problems with the visibility conditions of the answer fields ("bedingte Formularfelder").
+     *
+     * Both cases make the condition unevaluable, and both are invisible until someone opens the
+     * form: a column that the source file no longer has always reads as empty, and a condition
+     * on a field that comes LATER can never have a value when it is checked. The save callbacks
+     * refuse to create either state, but a configuration import, a replaced source file or a
+     * version restore can still produce it.
+     *
+     * @param array<int, string> $headers
+     *
+     * @return array<int, string>
+     */
+    private function conditionProblems(WorkflowModel $workflow, array $headers): array
+    {
+        $problems = [];
+        $available = [];
+
+        foreach ($workflow->getQuestions() as $question) {
+            if ($question->isConditional()) {
+                foreach ($question->getConditions() as $condition) {
+                    $field = $condition['field'];
+
+                    if (!\in_array($field, $headers, true)) {
+                        $problems[] = sprintf($this->msg('condition_unknown_field'), (string) $question->label, $field);
+
+                        continue;
+                    }
+
+                    if (!isset($available[$field])) {
+                        $problems[] = sprintf($this->msg('condition_forward_ref'), (string) $question->label, $field);
+                    }
+                }
+            }
+
+            $column = trim((string) $question->storageField);
+
+            if ('' !== $column) {
+                $available[$column] = true;
+            }
         }
 
         return $problems;
@@ -457,6 +506,14 @@ class WorkflowValidator
             if ('' !== $field && !\in_array($field, $headers, true)) {
                 $orphaned[] = 'questions';
                 break;
+            }
+
+            // A visibility condition names a column too – it orphans just as easily.
+            foreach ($question->isConditional() ? $question->getConditions() : [] as $condition) {
+                if (!\in_array($condition['field'], $headers, true)) {
+                    $orphaned[] = 'questions';
+                    break 2;
+                }
             }
         }
 

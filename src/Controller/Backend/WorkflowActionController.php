@@ -373,6 +373,9 @@ class WorkflowActionController
             // Before workflow-form.js: the live hint calls into WorkflowNumber.
             .'<script src="'.$asset.'/workflow-number.js"></script>'
             .'<script src="'.$asset.'/workflow-form.js"></script>'
+            // Conditional fields behave in the preview exactly as they will in the form –
+            // that is the point of the preview reusing the same view and template.
+            .'<script src="'.$asset.'/workflow-conditions.js"></script>'
             .'</body></html>';
     }
 

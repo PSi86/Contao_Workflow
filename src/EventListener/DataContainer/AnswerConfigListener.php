@@ -38,11 +38,27 @@ class AnswerConfigListener
         $typeLabel = $GLOBALS['TL_LANG']['tl_workflow_question']['typeOptions'][$type] ?? $type;
         $storage = StringUtil::specialchars((string) ($row['storageField'] ?? ''));
 
+        // Conditional fields state their condition here as well; this view has no marker
+        // column, so the plain sentence (with column names, no sibling labels) has to do.
+        $mode = (string) ($row['conditionMode'] ?? '');
+        $conditions = \in_array($mode, ['show', 'hide'], true) ? $this->extractConditions($row['conditions'] ?? null) : [];
+        $condition = '';
+
+        if ([] !== $conditions) {
+            $condition = ' <span style="color:#999">&#x21B3; '.StringUtil::specialchars($this->formatQuestionCondition([
+                'label'      => (string) ($row['label'] ?? ''),
+                'mode'       => $mode,
+                'logic'      => 'or' === (string) ($row['conditionLogic'] ?? 'and') ? 'or' : 'and',
+                'conditions' => $conditions,
+            ], [])).'</span>';
+        }
+
         return sprintf(
-            '<div class="tl_content_left"><strong>%s</strong> <span style="color:#999">[%s &rarr; %s]</span></div>',
+            '<div class="tl_content_left"><strong>%s</strong> <span style="color:#999">[%s &rarr; %s]</span>%s</div>',
             $label,
             StringUtil::specialchars((string) $typeLabel),
             $storage,
+            $condition,
         );
     }
 
@@ -68,6 +84,7 @@ class AnswerConfigListener
 
         $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
         $GLOBALS['TL_JAVASCRIPT']['wf_qsort'] = 'bundles/contaoworkflow/workflow-question-sort.js|static';
+        $GLOBALS['TL_JAVASCRIPT']['wf_qdeps'] = 'bundles/contaoworkflow/workflow-question-deps.js|static';
 
         $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
         $hLabel = $lang['label'][0] ?? 'Überschrift';
@@ -75,6 +92,8 @@ class AnswerConfigListener
         $hStorage = $lang['storageField'][0] ?? 'Speicherfeld';
         $hMandatory = $lang['mandatory'][0] ?? 'Pflichtfeld';
         $typeLabels = $lang['typeOptions'] ?? [];
+
+        $dependencies = $this->dependencyMarkers($records);
 
         $body = '';
 
@@ -96,10 +115,12 @@ class AnswerConfigListener
                 .([] !== $flags ? ' <span style="color:#999">('.StringUtil::specialchars(implode(', ', $flags)).')</span>' : '');
 
             $operations = $widget->generateRowOperation('edit', $row).$widget->generateRowOperation('delete', $row);
+            $marker = $dependencies[(int) $row['id']] ?? ['cell' => '', 'attributes' => ''];
 
-            $body .= '<tr class="hover-row" data-question-id="'.(int) $row['id'].'">'
+            $body .= '<tr class="hover-row" data-question-id="'.(int) $row['id'].'"'.$marker['attributes'].'>'
                 .'<td class="tl_file_list tw-drag-handle" draggable="true" title="'
                 .StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['questionsDrag'] ?? 'Ziehen, um die Reihenfolge zu ändern')).'">&#x2630;</td>'
+                .'<td class="tl_file_list tw-dep-cell">'.$marker['cell'].'</td>'
                 .'<td class="tl_file_list"><strong>'.StringUtil::specialchars((string) ($row['label'] ?? '')).'</strong></td>'
                 .'<td class="tl_file_list">'.$typeText.'</td>'
                 .'<td class="tl_file_list">'.StringUtil::specialchars((string) ($row['storageField'] ?? '')).'</td>'
@@ -108,15 +129,154 @@ class AnswerConfigListener
                 .'</tr>';
         }
 
-        return '<div data-question-sort>'
+        return '<div data-question-sort data-wf-order-error="'
+            .StringUtil::specialchars((string) ($lang['depOrderError'] ?? 'Dieses Feld steht vor seinem Auslösefeld.')).'">'
             .'<table class="tl_listing showColumns"><thead><tr>'
             .'<th class="tl_folder_tlist"></th>'
+            .'<th class="tl_folder_tlist" title="'.StringUtil::specialchars((string) ($lang['depColumn'] ?? 'Abhängigkeit')).'"></th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hLabel).'</th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hType).'</th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hStorage).'</th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hMandatory).'</th>'
             .'<th class="tl_folder_tlist"></th>'
             .'</tr></thead><tbody>'.$body.'</tbody></table></div>';
+    }
+
+    /**
+     * Dependency markers for the answer-field list: a numbered badge on every field that other
+     * fields depend on, and an arrow with those numbers on the fields that depend on it. The
+     * readable condition ("anzeigen, wenn „Haben Sie Kinder?" ist gleich ja") rides along as
+     * the badge's tooltip, in both directions.
+     *
+     * Deliberately markers instead of indentation: the list order is free (a dependent field
+     * need not follow its trigger directly) and a field may have several triggers – neither
+     * fits a tree, and a server-rendered indentation would be stale the moment a row is
+     * dragged. The numbers are assigned here, in list order, and are NOT renumbered by the
+     * browser after a drop; only the order check runs again (workflow-question-deps.js).
+     *
+     * @param array<int, array<string, mixed>> $records
+     *
+     * @return array<int, array{cell: string, attributes: string}>
+     */
+    private function dependencyMarkers(array $records): array
+    {
+        $rows = [];
+        $labelByColumn = [];
+        $referenced = [];
+
+        foreach ($records as $record) {
+            $column = trim((string) ($record['storageField'] ?? ''));
+            $mode = (string) ($record['conditionMode'] ?? '');
+            $conditions = \in_array($mode, ['show', 'hide'], true) ? $this->extractConditions($record['conditions'] ?? null) : [];
+
+            $rows[] = [
+                'id'         => (int) ($record['id'] ?? 0),
+                'label'      => trim((string) ($record['label'] ?? '')),
+                'column'     => $column,
+                'mode'       => $mode,
+                'logic'      => 'or' === (string) ($record['conditionLogic'] ?? 'and') ? 'or' : 'and',
+                'conditions' => $conditions,
+            ];
+
+            if ('' !== $column && !isset($labelByColumn[$column])) {
+                $labelByColumn[$column] = trim((string) ($record['label'] ?? '')) ?: $column;
+            }
+
+            foreach ($conditions as $condition) {
+                $referenced[$condition['field']][] = trim((string) ($record['label'] ?? '')) ?: $column;
+            }
+        }
+
+        // Number the trigger columns in list order.
+        $numbers = [];
+
+        foreach ($rows as $row) {
+            if ('' !== $row['column'] && isset($referenced[$row['column']]) && !isset($numbers[$row['column']])) {
+                $numbers[$row['column']] = \count($numbers) + 1;
+            }
+        }
+
+        $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
+        $markers = [];
+
+        foreach ($rows as $row) {
+            $badges = [];
+            $columns = [];
+
+            if ('' !== $row['column'] && isset($numbers[$row['column']])) {
+                $badges[] = '<span class="tw-dep tw-dep-trigger" title="'
+                    .StringUtil::specialchars(sprintf(
+                        (string) ($lang['depTrigger'] ?? 'Steuert: %s'),
+                        implode(', ', array_map(static fn (string $l): string => '„'.$l.'“', $referenced[$row['column']])),
+                    )).'">'.$this->circledNumber($numbers[$row['column']]).'</span>';
+            }
+
+            if ([] !== $row['conditions']) {
+                $refs = '';
+
+                foreach ($row['conditions'] as $condition) {
+                    $columns[$condition['field']] = true;
+                    // A condition on a column no field writes cannot be numbered – it is one
+                    // of the states WorkflowValidator reports, and "!" is how it looks here.
+                    $refs .= isset($numbers[$condition['field']]) ? $this->circledNumber($numbers[$condition['field']]) : '!';
+                }
+
+                $badges[] = '<span class="tw-dep tw-dep-child" title="'
+                    .StringUtil::specialchars($this->formatQuestionCondition($row, $labelByColumn)).'">&#x21B3;'.$refs.'</span>';
+            }
+
+            $markers[$row['id']] = [
+                'cell'       => implode(' ', $badges),
+                'attributes' => ('' !== $row['column'] ? ' data-wf-col="'.StringUtil::specialchars($row['column']).'"' : '')
+                    .([] !== $columns ? ' data-wf-depends="'.StringUtil::specialchars(implode(',', array_keys($columns))).'"' : ''),
+            ];
+        }
+
+        return $markers;
+    }
+
+    /**
+     * One field's visibility condition as a readable sentence, e.g.
+     * «anzeigen, wenn „Haben Sie Kinder?" ist gleich ja». The tooltip of the list marker.
+     *
+     * @param array{label: string, mode: string, logic: string, conditions: array<int, array{field: string, operator: string, value: string}>} $row
+     * @param array<string, string> $labelByColumn
+     */
+    private function formatQuestionCondition(array $row, array $labelByColumn): string
+    {
+        System::loadLanguageFile('tl_workflow_rule');
+
+        $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
+        $operators = $GLOBALS['TL_LANG']['tl_workflow_rule']['operatorOptions'] ?? [];
+        $parts = [];
+
+        foreach ($row['conditions'] as $condition) {
+            $field = $labelByColumn[$condition['field']] ?? $condition['field'];
+            // The operator labels carry their symbol in brackets ("ist gleich (=)"), which is
+            // helpful in the dropdown and noise inside a sentence.
+            $operator = (string) preg_replace(
+                '/\s*\([^)]*\)$/u',
+                '',
+                (string) ($operators[$condition['operator']] ?? $condition['operator']),
+            );
+            $value = \in_array($condition['operator'], ['empty', 'notempty'], true) ? '' : ' '.$condition['value'];
+
+            $parts[] = trim('„'.$field.'“ '.$operator.$value);
+        }
+
+        $glue = ' '.(string) ('or' === $row['logic'] ? ($lang['depOr'] ?? 'oder') : ($lang['depAnd'] ?? 'und')).' ';
+        $template = (string) ('hide' === $row['mode'] ? ($lang['depHideIf'] ?? 'ausblenden, wenn %s') : ($lang['depShowIf'] ?? 'anzeigen, wenn %s'));
+
+        return sprintf($template, implode($glue, $parts));
+    }
+
+    /**
+     * 1 → ①. Beyond the circled digits Unicode has (20) the plain number is used – a list that
+     * long has other problems.
+     */
+    private function circledNumber(int $number): string
+    {
+        return $number >= 1 && $number <= 20 ? '&#'.(0x2460 + $number - 1).';' : (string) $number;
     }
 
     /**
@@ -217,9 +377,71 @@ class AnswerConfigListener
             return $value;
         }
 
-        $ordered = $this->renumberQuestions((int) $dc->id, (string) $value);
+        $workflowId = (int) $dc->id;
+        $current = $this->questionIdsInOrder($workflowId);
+        $target = $this->targetOrder($current, (string) $value);
 
-        return implode(',', $ordered);
+        // A visibility condition may only reference a PRECEDING field, so the list order is
+        // part of the configuration, not a display preference. Dragging a trigger below the
+        // field that depends on it would leave a condition that can never be evaluated – and
+        // it would do so from the parent mask, past the child record's own save callback.
+        $violation = $this->firstOrderViolation($workflowId, $target);
+
+        if (null !== $violation) {
+            Message::addError($violation);
+
+            // Keep the stored order: the reordering is discarded, not half applied.
+            return implode(',', $current);
+        }
+
+        return implode(',', $this->renumberQuestions($workflowId, (string) $value));
+    }
+
+    /**
+     * The first order violation of a proposed answer-field order, or null when every
+     * conditional field follows the fields it depends on.
+     *
+     * @param array<int, int> $order question ids in the proposed order
+     */
+    private function firstOrderViolation(int $workflowId, array $order): ?string
+    {
+        System::loadLanguageFile('tl_workflow_question');
+
+        $questions = [];
+
+        foreach (QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']) ?? [] as $question) {
+            $questions[(int) $question->id] = $question;
+        }
+
+        $available = [];
+
+        foreach ($order as $id) {
+            $question = $questions[$id] ?? null;
+
+            if (null === $question) {
+                continue;
+            }
+
+            if ($question->isConditional()) {
+                foreach ($question->getConditions() as $condition) {
+                    if (!isset($available[$condition['field']])) {
+                        return sprintf(
+                            (string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condOrderViolation'] ?? 'condOrderViolation'),
+                            StringUtil::specialchars((string) $question->label),
+                            StringUtil::specialchars($condition['field']),
+                        );
+                    }
+                }
+            }
+
+            $column = trim((string) $question->storageField);
+
+            if ('' !== $column) {
+                $available[$column] = true;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -267,17 +489,7 @@ class AnswerConfigListener
     private function renumberQuestions(int $workflowId, string $order): array
     {
         $current = $this->questionIdsInOrder($workflowId);
-
-        // Requested ids that actually belong to the workflow, in requested order.
-        $requested = array_values(array_unique(array_filter(array_map('intval', explode(',', $order)))));
-        $target = array_values(array_intersect($requested, $current));
-
-        // Append any questions the posted order did not mention.
-        foreach ($current as $id) {
-            if (!\in_array($id, $target, true)) {
-                $target[] = $id;
-            }
-        }
+        $target = $this->targetOrder($current, $order);
 
         if ($target === $current) {
             return $current;
@@ -292,6 +504,28 @@ class AnswerConfigListener
                 $question->sorting = $sorting += 64;
                 $question->tstamp = time();
                 $question->save();
+            }
+        }
+
+        return $target;
+    }
+
+    /**
+     * The order a posted id list actually results in: ids that belong to the workflow, in the
+     * requested order, with the ones the list did not mention appended in their current order.
+     *
+     * @param array<int, int> $current
+     *
+     * @return array<int, int>
+     */
+    private function targetOrder(array $current, string $order): array
+    {
+        $requested = array_values(array_unique(array_filter(array_map('intval', explode(',', $order)))));
+        $target = array_values(array_intersect($requested, $current));
+
+        foreach ($current as $id) {
+            if (!\in_array($id, $target, true)) {
+                $target[] = $id;
             }
         }
 
@@ -459,6 +693,352 @@ class AnswerConfigListener
         }
 
         return $options;
+    }
+
+    /**
+     * Options for a visibility condition's "field" column: the storage columns of the form
+     * fields that PRECEDE the one being edited.
+     *
+     * Only preceding fields, because that is what makes the whole feature simple: no cycles,
+     * a single evaluation pass in list order, and a form that can be filled top-down. Only
+     * fields WITH a storage column, because a condition names the column (not the field) –
+     * that is what survives a copy and lets the document composer recompute the visibility
+     * from the stored data alone. Fields that never reach the form ("Aktuelle Zeit" hidden in
+     * the form) are left out as well: the browser cannot read a value that has no input.
+     *
+     * @return array<string, string>
+     */
+    public function getConditionSourceOptions(): array
+    {
+        $options = [];
+
+        foreach ($this->conditionSourceQuestions() as $column => $question) {
+            $options[$column] = trim((string) $question->label).' ('.$column.')';
+        }
+
+        // Keep a stored value that is no longer offered visible and selectable, mirroring the
+        // answer-field dropdown – otherwise saving the record would silently drop it.
+        $label = (string) ($GLOBALS['TL_LANG']['tl_workflow_question']['unknownOption'] ?? 'Unbekannte Option: %s');
+        [, $questionId] = $this->resolveQuestionContext();
+
+        foreach ($this->currentQuestionConditionFields($questionId) as $field) {
+            if (!isset($options[$field])) {
+                $options[$field] = sprintf($label, $field);
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * The form fields that may act as a trigger for the one being edited, keyed by their
+     * storage column: everything PRECEDING it in the list that has a storage column and
+     * actually appears in the form.
+     *
+     * @return array<string, QuestionModel>
+     */
+    private function conditionSourceQuestions(): array
+    {
+        [$workflowId, $questionId] = $this->resolveQuestionContext();
+
+        if ($workflowId < 1) {
+            return [];
+        }
+
+        $sources = [];
+
+        foreach (QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']) ?? [] as $question) {
+            // Everything from the edited field onwards is "not preceding".
+            if ($questionId > 0 && (int) $question->id === $questionId) {
+                break;
+            }
+
+            $column = trim((string) $question->storageField);
+
+            if ('' === $column || isset($sources[$column]) || $question->isHiddenInForm()) {
+                continue;
+            }
+
+            $sources[$column] = $question;
+        }
+
+        return $sources;
+    }
+
+    /**
+     * load_callback for tl_workflow_question.conditions: hands the browser the answer options
+     * of the possible trigger fields, so the "Vergleichswert" column can offer them instead of
+     * asking the user to retype a value.
+     *
+     * What is compared is the STORED value ("ja"), not the visible option text
+     * ("Einverstanden") – a distinction that is easy to get wrong by hand and impossible to
+     * get wrong from a list. Only choice fields have a closed set of answers; for a text,
+     * number or date trigger the column stays a plain input, and a small switch next to the
+     * control moves between list and free text in both directions.
+     *
+     * The options travel as JSON in a script tag rather than as widget attributes: the
+     * MultiColumnWizard builds its columns from a fixed configuration, and which options
+     * belong in a row only becomes clear from the field chosen IN that row – a question that
+     * can only be answered in the browser (see workflow-condition-value.js).
+     *
+     * @param mixed $value
+     */
+    public function loadConditionValueOptions(mixed $value, DataContainer $dc): mixed
+    {
+        $columns = [];
+
+        foreach ($this->conditionSourceQuestions() as $column => $question) {
+            if (!$question->hasOptions()) {
+                continue;
+            }
+
+            $options = [];
+
+            foreach ($question->getOptions() as $option) {
+                $options[] = ['v' => $option['value'], 'l' => $option['label']];
+            }
+
+            if ([] !== $options) {
+                $columns[$column] = $options;
+            }
+        }
+
+        $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
+        // Shipped even without a single choice field among the predecessors: the script also
+        // greys out the value of an operator that does not use one ("ist leer"), and that must
+        // behave the same in every mask.
+        $payload = [
+            // Cast: an empty PHP array encodes as "[]", and the browser looks columns up by
+            // name – an object is what it expects, empty or not.
+            'columns' => (object) $columns,
+            'labels'  => [
+                'blank'   => '-',
+                'unknown' => (string) ($lang['condValueOffList'] ?? '%s (nicht in der Optionsliste)'),
+                'free'    => (string) ($lang['condValueFree'] ?? 'Freitext eingeben'),
+                'list'    => (string) ($lang['condValueList'] ?? 'Aus Liste wählen'),
+                'inert'   => (string) ($lang['condValueInert'] ?? 'Dieser Operator verwendet keinen Vergleichswert.'),
+            ],
+        ];
+
+        $GLOBALS['TL_JAVASCRIPT']['wf_condvalue'] = 'bundles/contaoworkflow/workflow-condition-value.js|static';
+        // TL_MOOTOOLS, not TL_HEAD: the back-end template renders only the former (at the end
+        // of the body, which is in time for DOMContentLoaded).
+        //
+        // JSON_HEX_TAG: the payload carries user-authored option labels and is embedded in the
+        // page, so a "</script>" in a label must not be able to end the tag.
+        $GLOBALS['TL_MOOTOOLS']['wf_condvalue'] = '<script type="application/json" id="wf-condition-options">'
+            .json_encode($payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE).'</script>';
+
+        return $value;
+    }
+
+    /**
+     * Operators offered for a visibility condition: deliberately a SUBSET of the PDF rule
+     * operators (no ordering comparisons).
+     *
+     * The browser mirrors this comparison live while the form is being filled in. String
+     * operators mirror in a few lines and cannot disagree with PHP; "greater than" would drag
+     * the German number parsing and the date normalisation into the mirror, where a single
+     * divergence means the participant sees a different form than the server assumes. The
+     * ordering operators stay available where only PHP evaluates them – the PDF rules.
+     *
+     * @return array<string, string>
+     */
+    public function getConditionOperatorOptions(): array
+    {
+        // The wording lives with the rules; there must be one set of operator labels.
+        System::loadLanguageFile('tl_workflow_rule');
+
+        $labels = $GLOBALS['TL_LANG']['tl_workflow_rule']['operatorOptions'] ?? [];
+        $options = [];
+
+        foreach (['eq', 'neq', 'contains', 'empty', 'notempty'] as $operator) {
+            $options[$operator] = (string) ($labels[$operator] ?? $operator);
+        }
+
+        return $options;
+    }
+
+    /**
+     * save_callback for tl_workflow_question.conditions: normalises the wizard rows and
+     * refuses a configuration that cannot work.
+     *
+     * Refused (the save fails): a condition on the field itself or on a field that does not
+     * precede it, and a visibility mode without a single complete condition – the latter
+     * would otherwise reach the runtime, which deliberately falls back to "visible" and would
+     * leave the user wondering why their setting does nothing.
+     *
+     * Reported without blocking: a comparison value that matches none of the trigger's
+     * options (the classic "Ja" vs. "ja"), and a value comparison on a number/date trigger,
+     * where the stored spelling decides (see getConditionOperatorOptions).
+     *
+     * @param mixed $value serialized conditions
+     */
+    public function validateConditions(mixed $value, DataContainer $dc): mixed
+    {
+        System::loadLanguageFile('tl_workflow_question');
+
+        [$workflowId, $questionId] = $this->resolveQuestionContext();
+        $question = $questionId > 0 ? QuestionModel::findByPk($questionId) : null;
+
+        // The stored mode when the field was not posted at all (a mass edit posts suffixed
+        // names) – same rule as postedDecimals(). Reading a missing POST value as "immer
+        // anzeigen" would silently drop the conditions of every field it touches.
+        $posted = Input::post('conditionMode');
+        $mode = (string) (null !== $posted ? $posted : ($question->conditionMode ?? ''));
+
+        // "immer anzeigen": the wizard is hidden client-side, its leftover value goes here –
+        // same contract as the PDF rules' default text.
+        if (!\in_array($mode, ['show', 'hide'], true)) {
+            return serialize([]);
+        }
+
+        $conditions = $this->extractConditions($value);
+
+        if ([] === $conditions) {
+            throw new \RuntimeException((string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condEmpty'] ?? 'condEmpty'));
+        }
+
+        $allowed = $this->getConditionSourceOptions();
+        $own = trim((string) ($question->storageField ?? ''));
+
+        foreach ($conditions as $condition) {
+            $field = $condition['field'];
+
+            if ('' !== $own && $field === $own) {
+                throw new \RuntimeException(sprintf(
+                    (string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condSelfRef'] ?? 'condSelfRef'),
+                    $field,
+                ));
+            }
+
+            if (!isset($allowed[$field])) {
+                throw new \RuntimeException(sprintf(
+                    (string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condForwardRef'] ?? 'condForwardRef'),
+                    $field,
+                ));
+            }
+
+            $this->reportConditionHints($condition, $workflowId);
+        }
+
+        return serialize($conditions);
+    }
+
+    /**
+     * Non-blocking hints for one condition (see validateConditions).
+     *
+     * @param array{field: string, operator: string, value: string} $condition
+     */
+    private function reportConditionHints(array $condition, int $workflowId): void
+    {
+        $trigger = $this->findQuestionByColumn($workflowId, $condition['field']);
+
+        if (null === $trigger || \in_array($condition['operator'], ['empty', 'notempty'], true)) {
+            return;
+        }
+
+        $label = trim((string) $trigger->label);
+
+        if ($trigger->hasOptions()) {
+            $values = $trigger->getAllowedValues();
+
+            if ([] !== $values && !\in_array($condition['value'], $values, true)) {
+                Message::addInfo(sprintf(
+                    StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condValueUnknown'] ?? 'condValueUnknown')),
+                    StringUtil::specialchars($condition['value']),
+                    StringUtil::specialchars($label),
+                ));
+            }
+
+            return;
+        }
+
+        if (\in_array((string) $trigger->type, ['number', 'date'], true)) {
+            Message::addInfo(sprintf(
+                StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_question']['condTypeHint'] ?? 'condTypeHint')),
+                StringUtil::specialchars($label),
+            ));
+        }
+    }
+
+    /**
+     * The form field of a workflow that stores into the given column (the first one in list
+     * order), or null.
+     */
+    private function findQuestionByColumn(int $workflowId, string $column): ?QuestionModel
+    {
+        foreach (QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']) ?? [] as $question) {
+            if (trim((string) $question->storageField) === $column) {
+                return $question;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Condition fields of the form field currently being edited (raw, incl. rows that are no
+     * longer valid), so a stored value stays visible in the dropdown.
+     *
+     * @return array<int, string>
+     */
+    private function currentQuestionConditionFields(int $questionId): array
+    {
+        $question = $questionId > 0 ? QuestionModel::findByPk($questionId) : null;
+
+        if (null === $question) {
+            return [];
+        }
+
+        $fields = [];
+
+        foreach (StringUtil::deserialize($question->conditions, true) as $row) {
+            $field = trim((string) ($row['field'] ?? ''));
+
+            if ('' !== $field) {
+                $fields[] = $field;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Parent workflow and id of the form field a callback is currently working on, resolved
+     * from the request (the MultiColumnWizard callbacks receive the wizard, not the
+     * DataContainer – see getStorageFieldOptions).
+     *
+     * On create the id is 0: the new record is appended at the end of the list, so every
+     * existing field of the workflow precedes it.
+     *
+     * @return array{0: int, 1: int} [workflow id, question id]
+     */
+    private function resolveQuestionContext(): array
+    {
+        $questionId = (int) Input::get('id');
+
+        if ($questionId > 0 && 'create' !== Input::get('act')) {
+            $question = QuestionModel::findByPk($questionId);
+
+            if (null !== $question) {
+                return [(int) $question->pid, $questionId];
+            }
+        }
+
+        $pid = (int) Input::get('pid');
+
+        if ($pid < 1) {
+            return [0, 0];
+        }
+
+        if (1 === (int) Input::get('mode')) {
+            $sibling = QuestionModel::findByPk($pid);
+
+            return [null !== $sibling ? (int) $sibling->pid : 0, 0];
+        }
+
+        return [$pid, 0];
     }
 
     /**

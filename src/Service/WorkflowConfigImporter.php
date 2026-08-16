@@ -39,7 +39,11 @@ class WorkflowConfigImporter
     // place may now come from a letterhead variable instead of a source column). A file of
     // version 6 or below has no such key and is imported as "data", which is the only
     // behaviour it could have described.
-    public const VERSION = 7;
+    // v8: per-question visibility conditions ("bedingte Formularfelder": conditionMode,
+    // conditionLogic, conditions). A file of version 7 or below has none, so every field is
+    // imported as "always visible" – exactly how it behaved. The conditions name storage
+    // COLUMNS, so they need no remapping on the target site.
+    public const VERSION = 8;
 
     public function __construct(
         private readonly ContaoFramework $framework,
@@ -537,9 +541,29 @@ class WorkflowConfigImporter
             // their fields keep showing the document-text hint in the form.
             $showStatement = ($q['showStatementInForm'] ?? true) ? '1' : '';
 
+            // Visibility conditions (v8+). Kept only when the mode says they apply, and only
+            // as complete rows – an import must not create the half-configured state the edit
+            // mask refuses to save.
+            $mode = (string) ($q['conditionMode'] ?? '');
+            $mode = \in_array($mode, ['show', 'hide'], true) ? $mode : '';
+            $conditions = [];
+
+            foreach ('' !== $mode ? (array) ($q['conditions'] ?? []) : [] as $condition) {
+                $field = trim((string) ($condition['field'] ?? ''));
+                $operator = trim((string) ($condition['operator'] ?? ''));
+
+                if ('' !== $field && '' !== $operator) {
+                    $conditions[] = ['field' => $field, 'operator' => $operator, 'value' => (string) ($condition['value'] ?? '')];
+                }
+            }
+
+            if ([] === $conditions) {
+                $mode = '';
+            }
+
             $this->connection->executeStatement(
-                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, numberDecimals, mandatory, prefill, readOnly, hideInForm, description, showStatementInForm, pdfStatement, options) '
-                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO tl_workflow_question (pid, sorting, tstamp, label, type, storageField, numberDecimals, mandatory, prefill, readOnly, hideInForm, description, showStatementInForm, pdfStatement, options, conditionMode, conditionLogic, conditions) '
+                .'VALUES (?, ?, UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $workflowId,
                     $sorting,
@@ -557,6 +581,9 @@ class WorkflowConfigImporter
                     $showStatement,
                     (string) ($q['pdfStatement'] ?? ''),
                     $options ? serialize($options) : null,
+                    $mode,
+                    'or' === (string) ($q['conditionLogic'] ?? 'and') ? 'or' : 'and',
+                    $conditions ? serialize($conditions) : null,
                 ],
             );
         }

@@ -6,6 +6,76 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.4.0] – 2026-08-16
+
+Schwerpunkt: **bedingte Formularfelder**. Ein Formularfeld kann jetzt von der Antwort auf ein
+vorangehendes Feld abhängen – „Haben Sie Kinder?" = *ja* blendet „Wie viele Kinder haben Sie?"
+ein. Bisher musste jedes Feld immer sichtbar sein, was Formulare erzwang, die für einen Teil
+der Teilnehmer Fragen enthielten, die sie nichts angingen (und deren Antworten dann im Dokument
+standen).
+
+> **Beim Update:** `contao:migrate` ausführen – es legt drei Spalten in `tl_workflow_question`
+> an (`conditionMode`, `conditionLogic`, `conditions`). Anschließend den Cache leeren.
+> Bestehende Felder stehen auf „immer anzeigen" und verhalten sich unverändert.
+
+### Hinzugefügt
+- **Abschnitt „Sichtbarkeit" an jedem Formularfeld:** `immer anzeigen` (Standard),
+  `nur anzeigen, wenn …` oder `ausblenden, wenn …`, dazu die Verknüpfung (UND/ODER) und eine
+  Bedingungsliste aus **Feld + Operator + Vergleichswert** – dieselbe Bedienung wie bei den
+  Bedingungen der Dokument-Texte. Verfügbar für **jeden** Feldtyp, „Erklärung" eingeschlossen
+  (der Hinweis, der nur in einem bestimmten Fall gilt).
+- **Der Vergleichswert wird zur Auswahlliste**, sobald das gewählte Bedingungsfeld feste
+  Antworten hat (Dropdown, Radio, Checkboxen) – mit beiden Hälften der Information:
+  `Einverstanden (ja)`. Verglichen wird nämlich der **gespeicherte Wert**, nicht der
+  Options-Text, und von Hand getippt fällt eine Verwechslung niemandem auf (ein Wert ohne
+  Entsprechung ist eine zulässige Eingabe). Ein kleiner Schalter daneben wechselt in **beide
+  Richtungen** zwischen Liste und Freitext; Freitext bleibt für Werte nötig, die nicht in der
+  Optionsliste stehen (vorbelegte oder schreibgeschützte Auslösefelder tragen importierte
+  Daten) und für Teiltexte bei „enthält". Ein listenfremder Wert bleibt als markierter Eintrag
+  erhalten. Freitext-, Zahl- und Datumsfelder behalten das Eingabefeld.
+- **„ist leer"/„ist nicht leer" grauen das Wertfeld aus** und sperren es – diese Operatoren
+  verwenden keinen Vergleichswert. Der eingetragene Wert bleibt dabei erhalten (und wird weiter
+  gespeichert), damit ein Wechsel des Operators ihn nicht verschluckt.
+- **Abhängigkeiten in der Formularfelder-Liste:** Marker ① am Auslösefeld, ⤷① am abhängigen
+  Feld (⤷①② bei mehreren Auslösern), die Bedingung im Klartext als Tooltip, und beim Überfahren
+  einer Zeile werden die verbundenen Zeilen hervorgehoben. Bewusst keine Einrückung: Die
+  Reihenfolge ist frei und ein Feld kann mehrere Auslöser haben – beides kann eine
+  Baumdarstellung nicht abbilden.
+- **Der Demo-Workflow zeigt das Feature:** Bei „Nicht einverstanden" erscheint ein Pflichtfeld
+  „Bitte begründen Sie Ihre Entscheidung" (neue Spalte `Begruendung` in der Demo-Quelldatei).
+
+### Geändert
+- **Konfigurations-Export/-Import kennt Version 8** (die drei neuen Felder). Eine Datei bis
+  Version 7 wird unverändert importiert; ihre Felder sind „immer sichtbar". Bedingungen
+  referenzieren **Speicherspalten**, keine Feld-IDs – sie überstehen damit das Kopieren eines
+  Workflows und den Import auf einer anderen Installation ohne Nacharbeit.
+- **Die Operator-Auswertung liegt jetzt an einer Stelle** (`ConditionMatcher`, aus dem
+  `RuleEvaluator` herausgelöst): Dokument-Texte und Formularbedingungen können sich nicht mehr
+  darüber uneinig werden, was „ist gleich" bedeutet. Im Formular ist die Auswahl bewusst auf
+  *ist gleich*, *ist ungleich*, *enthält*, *ist leer* und *ist nicht leer* beschränkt – der
+  Browser spiegelt diesen Vergleich live, und reine Zeichenketten-Operatoren lassen sich dort
+  ohne Zahlen- und Datumslogik nachbilden. Die Dokument-Texte behalten das volle Set.
+
+### Sicherheit / Korrektheit
+- **Der Server entscheidet, nicht der Browser.** Beim Absenden wird die Sichtbarkeit erneut
+  berechnet: Ein ausgeblendetes Feld wird nicht geprüft (auch ein **Pflichtfeld** blockiert
+  dann nicht), nicht gespeichert, und **seine Speicherspalte wird geleert** – wer „ja" wählt,
+  eine Zahl einträgt und dann auf „nein" zurückstellt, hinterlässt keine Zahl. Ein
+  mitgeschickter Wert für ein ausgeblendetes Feld wird verworfen.
+- **Das Dokument folgt derselben Regel:** `##text_all##` und `##text_<speicherfeld>##` lassen
+  ein Feld weg, dessen Bedingung nicht zutrifft. Das wird aus den gespeicherten Daten neu
+  berechnet, sodass ein später neu erzeugtes PDF identisch bleibt.
+- **Ohne JavaScript bleibt das Formular vollständig bedienbar:** Alle bedingten Felder werden
+  angezeigt, der Server verwirft beim Absenden, was nicht zutrifft. Andernfalls wären
+  Rückfragen unerreichbar – eine stille Lücke in den Antworten.
+- **Konfigurationen, die nicht funktionieren können, werden abgelehnt:** eine Bedingung auf das
+  Feld selbst oder auf ein Feld weiter unten, und eine Sichtbarkeitsregel ohne Bedingung. Ein
+  **Umsortieren per Drag & Drop**, das ein Feld über sein Auslösefeld zieht, wird ebenfalls
+  abgewiesen (und vorher rot markiert). Nicht blockierende Hinweise gibt es für einen
+  Vergleichswert, der zu keiner Option passt („Ja" statt „ja"), und für einen Wertvergleich auf
+  einem Zahlen-/Datumsfeld. Die Workflow-Prüfung meldet Bedingungen auf Spalten, die es in der
+  Quelldatei nicht (mehr) gibt.
+
 ## [3.3.0] – 2026-08-16
 
 Schwerpunkt: die Backend-Ansichten. Sie lasen dieselbe Quelldatei mehrfach pro Seitenaufruf und

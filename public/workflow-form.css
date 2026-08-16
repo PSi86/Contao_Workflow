@@ -67,6 +67,12 @@
 .mod_workflow_form .tw-field--invalid input { border-color: #c00; }
 .mod_workflow_form .tw-field--invalid .tw-affix { border-color: #c00; }
 
+/* Conditional fields (workflow-conditions.js). The "hidden" attribute is spelled out
+   rather than left to the browser's default: this form renders inside the site's own
+   theme, and any theme rule that gives .tw-field a display value would beat the user
+   agent's [hidden] and show a field that is supposed to be gone. */
+.mod_workflow_form .tw-field[hidden] { display: none; }
+
 .mod_workflow_form .tw-option { display: block; margin: .25rem 0; font-weight: normal; }
 .mod_workflow_form .tw-option input { margin-right: .4rem; }
 .mod_workflow_form .tw-required { color: #c00; }

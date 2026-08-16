@@ -23,6 +23,7 @@ class WorkflowFormView
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly ValueParser $valueParser,
         private readonly ValueFormatter $formatter,
+        private readonly FieldVisibility $visibility,
     ) {
     }
 
@@ -37,6 +38,12 @@ class WorkflowFormView
         $data = $entry->getData();
         $extra = $workflow->getMasterVars();
         $email = (string) $entry->email;
+
+        // Which conditional fields start out visible. Only the INITIAL state: from here on the
+        // browser re-evaluates the same conditions on every keystroke, and the server decides
+        // again when the form is submitted. Every field is rendered either way – a hidden one
+        // is merely marked as such, so it can appear without a round trip.
+        $visible = $this->visibility->resolve($questions, $data);
 
         foreach ($questions as $question) {
             // "Aktuelle Zeit" fields flagged hidden never appear in the form –
@@ -55,6 +62,11 @@ class WorkflowFormView
                     'label'       => (string) $question->label,
                     'description' => $this->bodyComposer->resolveFormText($question->getDescription(), $workflow, $data, $extra, $email),
                     'text'        => $this->bodyComposer->formatBlock($this->bodyComposer->renderFormStatement($question, '', $data, $extra, $email, (string) $workflow->title)),
+                    // A static paragraph can be conditional too – the typical "this note only
+                    // applies if …" case – it just has no value of its own to trigger anything.
+                    'column'      => '',
+                    'visible'     => $visible[(int) $question->id] ?? true,
+                    'condition'   => $this->conditionData($question),
                 ];
 
                 continue;
@@ -108,10 +120,44 @@ class WorkflowFormView
                 // formats the live preview exactly like the PDF will. Null for every
                 // other type.
                 'numberFormat'      => $question->isNumber() ? $this->numberFormat($question, $storedValue)->toArray() : null,
+                // Conditional visibility: the storage column identifies this field as a
+                // possible trigger, "condition" carries its own rules for the browser.
+                'column'            => $storage,
+                'visible'           => $visible[(int) $question->id] ?? true,
+                'condition'         => $this->conditionData($question),
             ];
         }
 
         return $views;
+    }
+
+    /**
+     * The field's visibility rules for the browser, or null when it is always shown. Short
+     * keys: this ends up in a data attribute on every conditional field.
+     *
+     * @return array{mode: string, logic: string, rules: array<int, array{f: string, o: string, v: string}>}|null
+     */
+    private function conditionData(QuestionModel $question): ?array
+    {
+        if (!$question->isConditional()) {
+            return null;
+        }
+
+        $rules = [];
+
+        foreach ($question->getConditions() as $condition) {
+            $rules[] = [
+                'f' => $condition['field'],
+                'o' => $condition['operator'],
+                'v' => $condition['value'],
+            ];
+        }
+
+        return [
+            'mode'  => $question->getConditionMode(),
+            'logic' => $question->getConditionLogic(),
+            'rules' => $rules,
+        ];
     }
 
     /**

@@ -29,6 +29,7 @@ class DocumentBodyComposer
         private readonly ContaoFramework $framework,
         private readonly RuleEvaluator $ruleEvaluator,
         private readonly PlaceholderResolver $placeholderResolver,
+        private readonly FieldVisibility $visibility,
     ) {
     }
 
@@ -175,6 +176,12 @@ class DocumentBodyComposer
      * Questions hidden in the form (auto-filled "Aktuelle Zeit") are excluded
      * from ##text_all##: the participant never saw them.
      *
+     * The same goes for a conditional field whose conditions do not apply – it was never
+     * asked, so it says nothing here. Recomputed from the stored data rather than remembered,
+     * which is what lets a PDF regenerated months later come out identical. It also covers
+     * the one case the emptied answer column cannot: a conditional "Erklärung" has no value
+     * of its own and would otherwise print regardless.
+     *
      * @param array<string, mixed>  $data
      * @param array<string, string> $extra
      *
@@ -185,12 +192,20 @@ class DocumentBodyComposer
         $tokens = [];
         $all = '';
         $title = (string) $workflow->title;
+        $questions = $workflow->getQuestions();
+        $visible = $this->visibility->resolve($questions, $data);
 
-        foreach ($workflow->getQuestions() as $question) {
+        foreach ($questions as $question) {
+            $isVisible = $visible[(int) $question->id] ?? true;
+
             // "Erklärung": a static text block with no storage field – its resolved
             // text is carried into the document (##text_all##) but gets no own
             // ##text_<slug>## token.
             if ($question->isExplanation()) {
+                if (!$isVisible) {
+                    continue;
+                }
+
                 $statement = $this->renderStatement($question, '', $data, $extra, $email, $title);
 
                 if ('' === $statement) {
@@ -208,7 +223,9 @@ class DocumentBodyComposer
                 continue;
             }
 
-            $statement = $this->renderStatement($question, (string) ($data[$storage] ?? ''), $data, $extra, $email, $title);
+            $statement = $isVisible
+                ? $this->renderStatement($question, (string) ($data[$storage] ?? ''), $data, $extra, $email, $title)
+                : '';
             $tokens['text_'.$this->placeholderResolver->normalize($storage)] = $statement;
 
             if ('' === $statement || $question->isHiddenInForm()) {

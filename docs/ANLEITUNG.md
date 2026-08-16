@@ -297,6 +297,9 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
     wird sie nicht mit angezeigt – dort steht jeder Baustein ohnehin für sich.
 - **Textbaustein im Formular anzeigen** (Standard: **an**): schaltet die Live-Vorschau
   „So erscheint dies im Dokument" des Dokument-Texts im Formular ein oder aus.
+- **Sichtbarkeit** (Abschnitt am Ende des Dialogs, Standard: **immer anzeigen**): lässt das
+  Feld nur erscheinen, wenn die Antwort auf ein **vorangehendes** Feld eine Bedingung erfüllt –
+  siehe den Kasten „Bedingte Formularfelder" weiter unten.
 - **Erklärung**: ein **statischer Text-Absatz** – **kein** Eingabefeld und **ohne**
   Speicherfeld. Der Text wird im **Dokument-Text** des Felds eingegeben, erscheint im
   Formular als **Fließtext** und wird ins Dokument übernommen – dort, wo `##text_all##`
@@ -365,11 +368,68 @@ links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des W
 > den importierten Wert samt Währungszeichen, prüft die Eingabe aber **gar nicht** und speichert
 > die Antwort **ohne** Währungszeichen – die Spalte enthielte danach zwei Schreibweisen.
 
+> **Bedingte Formularfelder: ein Feld nur bei bestimmten Antworten zeigen**
+>
+> Beispiel: Auf die Dropdown-Frage „Haben Sie Kinder?" soll bei **ja** ein Zahlenfeld
+> „Wie viele Kinder haben Sie?" erscheinen. Eingestellt wird das **am Zahlenfeld**, im
+> Abschnitt **Sichtbarkeit**:
+>
+> - **Anzeigen:** `immer anzeigen` (Standard) · `nur anzeigen, wenn …` · `ausblenden, wenn …`
+> - **Verknüpfung:** alle Bedingungen müssen zutreffen (UND) oder eine genügt (ODER)
+> - **Bedingungen:** je Zeile **Feld** + **Operator** + **Vergleichswert**
+>
+> Zu wissen:
+>
+> - **Nur vorangehende Felder.** Im Feld-Auswahlmenü stehen ausschließlich Felder, die in der
+>   Liste **weiter oben** stehen und ein **Speicherfeld** haben. Das Formular wird von oben
+>   nach unten ausgefüllt – eine Bedingung auf ein Feld weiter unten könnte nie zutreffen.
+>   Deshalb wird auch eine **Umsortierung abgelehnt**, die ein Feld über sein Auslösefeld
+>   zieht; in der Feldliste wird die betroffene Zeile sofort rot markiert.
+> - **Verglichen wird der gespeicherte Wert**, nicht der angezeigte Options-Text: bei
+>   Auswahlfeldern also die Spalte **„Wert"** der Optionsliste (`ja`, nicht `Einverstanden`) –
+>   **Groß-/Kleinschreibung** inklusive. Deshalb wird der **Vergleichswert zur Auswahlliste**,
+>   sobald das gewählte Bedingungsfeld feste Antworten hat (Dropdown, Radio, Checkboxen); sie
+>   zeigt beides: `Einverstanden (ja)`. Der kleine Schalter daneben wechselt jederzeit in
+>   **beide Richtungen** zwischen Liste (☰) und Freitext (✎) – Freitext braucht man für Werte,
+>   die nicht in der Optionsliste stehen (etwa bei vorbelegten oder schreibgeschützten
+>   Auslösefeldern, deren Spalte importierte Daten enthält) und für Teiltexte bei „enthält".
+>   Ein Wert außerhalb der Liste geht nicht verloren: Er bleibt beim nächsten Öffnen als
+>   markierter Eintrag („… (nicht in der Optionsliste)") wählbar, und ein Hinweis beim Speichern
+>   weist darauf hin. Bei Freitext-, Zahl- und Datumsfeldern bleibt es beim Eingabefeld.
+> - **„ist leer"/„ist nicht leer" brauchen keinen Vergleichswert:** Das Wertfeld wird dann
+>   ausgegraut und gesperrt. Ein bereits eingetragener Wert bleibt erhalten und ist wieder da,
+>   sobald ein Operator gewählt wird, der ihn benutzt.
+> - **Operatoren:** *ist gleich*, *ist ungleich*, *enthält*, *ist leer*, *ist nicht leer*. Bei
+>   **Checkboxen** (Mehrfachauswahl) prüft *enthält*, ob eine bestimmte Option angehakt ist.
+>   Bei Auslösefeldern vom Typ **Zahl** oder **Datum** ist nur *ist (nicht) leer* zuverlässig –
+>   ein Wertvergleich kann an der Schreibweise scheitern (`1.000,00 €` gegenüber `1000`); auch
+>   darauf weist eine Meldung beim Speichern hin.
+> - **Pflichtfeld nur, solange sichtbar.** Ein ausgeblendetes Pflichtfeld blockiert das
+>   Absenden nicht.
+> - **Ausgeblendet = nicht gefragt.** Beim Absenden wird die Sichtbarkeit **erneut geprüft**.
+>   Was dann ausgeblendet ist, wird nicht gespeichert, erscheint **nicht im Dokument**
+>   (`##text_all##` und `##text_<speicherfeld>##` bleiben leer) – und seine **Speicherspalte
+>   wird geleert**. Wer also „ja" wählt, eine Zahl einträgt und dann auf „nein" zurückstellt,
+>   hinterlässt keine Zahl. ⚠ Die Spalte eines bedingten Feldes ist damit eine reine
+>   **Antwortspalte**: Stehen dort auch importierte Quelldaten, werden sie beim Absenden
+>   überschrieben.
+> - **Kette:** Ein ausgeblendetes Feld zählt für **nachfolgende** Bedingungen als **leer** –
+>   eine Kette aus mehreren Bedingungen bricht also vollständig ab, nicht nur an einer Stelle.
+> - **Erklärungen** (statische Textabsätze) lassen sich ebenso bedingt schalten – der typische
+>   Hinweis, der nur in einem bestimmten Fall gilt.
+> - **Ohne JavaScript** werden alle bedingten Felder angezeigt; der Server verwirft beim
+>   Absenden, was nicht zutrifft. Es geht also nichts verloren.
+> - **In der Feldliste** kennzeichnen kleine Marker die Abhängigkeiten: ① am Auslösefeld,
+>   ⤷① am abhängigen Feld (bei mehreren Auslösern ⤷①②). Der Tooltip nennt die Bedingung im
+>   Klartext, und wer eine Zeile überfährt, sieht die verbundenen Zeilen farbig hervorgehoben.
+
 Beispiel (Demo): Typ **Radio**, Speicherfeld `Entscheidung`, zwei Optionen
 „Einverstanden"→`ja` und „Nicht einverstanden"→`nein`, jeweils mit einem vollständigen
 Satz als **Dokument-Text**; dazu schreibgeschützte Felder `Vorname`/`Nachname`/`Abteilung`,
-ein **vorbelegtes** Feld `Funktion` und ein **Aktuelle Zeit**-Feld (im Formular
-ausgeblendet) mit Speicherfeld `Unterschriftsdatum`, das als Unterschriftsdatum dient.
+ein **vorbelegtes** Feld `Funktion`, ein **bedingtes** Feld „Bitte begründen Sie Ihre
+Entscheidung" (Speicherfeld `Begruendung`), das nur bei `Entscheidung = nein` erscheint,
+und ein **Aktuelle Zeit**-Feld (im Formular ausgeblendet) mit Speicherfeld
+`Unterschriftsdatum`, das als Unterschriftsdatum dient.
 
 ### 3 b‑2. Dokument-Texte = die Texte des Briefs  *(Abschnitt „Dokument-Texte" in „Bearbeiten")*
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
-use Psimandl\WorkflowBundle\Excel\ValueParser;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -17,7 +16,7 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  */
 class RuleEvaluator
 {
-    public function __construct(private readonly ValueParser $valueParser)
+    public function __construct(private readonly ConditionMatcher $matcher)
     {
     }
 
@@ -54,54 +53,13 @@ class RuleEvaluator
         foreach ($conditions as $condition) {
             $actual = (string) ($data[$condition['field']] ?? '');
 
-            if (!$this->evaluate($actual, $condition['operator'], $condition['value'])) {
+            // Shared with the conditional form fields, so "ist gleich" cannot mean one thing
+            // in the form and another in the document (see ConditionMatcher).
+            if (!$this->matcher->matches($actual, $condition['operator'], $condition['value'])) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    private function evaluate(string $actual, string $operator, string $expected): bool
-    {
-        switch ($operator) {
-            case 'empty':
-                return '' === trim($actual);
-            case 'notempty':
-                return '' !== trim($actual);
-            case 'contains':
-                return '' !== $expected && false !== mb_stripos($actual, $expected);
-        }
-
-        // Numeric comparison when both sides hold a number, string comparison otherwise.
-        // Parsed rather than cast: a stored value carries its column's formatting
-        // ("3.000,00 €"), which is not is_numeric() – so a "greater than" on a currency
-        // column used to silently degrade into a strcmp, where "500" > "3.000,00 €".
-        $a = $this->valueParser->parse($actual);
-        $b = $this->valueParser->parse($expected);
-
-        if (null !== $a && null !== $b) {
-            return match ($operator) {
-                'eq'  => $a === $b,
-                'neq' => $a !== $b,
-                'lt'  => $a < $b,
-                'lte' => $a <= $b,
-                'gt'  => $a > $b,
-                'gte' => $a >= $b,
-                default => false,
-            };
-        }
-
-        $cmp = strcmp($actual, $expected);
-
-        return match ($operator) {
-            'eq'  => $actual === $expected,
-            'neq' => $actual !== $expected,
-            'lt'  => $cmp < 0,
-            'lte' => $cmp <= 0,
-            'gt'  => $cmp > 0,
-            'gte' => $cmp >= 0,
-            default => false,
-        };
     }
 }

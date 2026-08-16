@@ -233,6 +233,22 @@ class DemoWorkflowSeeder
                         ],
                     ],
                 ],
+                // Conditional field: only asked when the decision was "nein". It shows the
+                // whole mechanism in one place – the follow-up question appears while the form
+                // is being filled in, is mandatory only while it is visible, and neither its
+                // answer nor its document text exists when the participant agreed.
+                [
+                    'label'          => 'Bitte begründen Sie Ihre Entscheidung',
+                    'type'           => 'textarea',
+                    'storageField'   => 'Begruendung',
+                    'mandatory'      => true,
+                    'description'    => 'Dieses Feld erscheint nur, wenn Sie oben „Nicht einverstanden“ gewählt haben.',
+                    'pdfStatement'   => 'Begründung: ##answer##',
+                    'options'        => [],
+                    'conditionMode'  => 'show',
+                    'conditionLogic' => 'and',
+                    'conditions'     => [['field' => 'Entscheidung', 'operator' => 'eq', 'value' => 'nein']],
+                ],
                 [
                     'label'        => 'Datum',
                     'type'         => 'currentTime',
