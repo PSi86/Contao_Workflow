@@ -309,18 +309,27 @@ class WorkflowValidator
     }
 
     /**
-     * Whether the source file has changed since the last import, so the stored entries (and,
-     * crucially, the snapshotted number formats) are stale until a re-import runs. Until then
-     * the form/PDF preview keeps showing the old data and formatting.
+     * Whether the stored data no longer matches the source file – the one condition that makes
+     * the entries and, crucially, the snapshotted number formats stale, so form and PDF preview
+     * keep showing yesterday's data and formatting until an import runs.
      *
-     * Detected by comparing the current file's checksum with the one the importer recorded on
-     * its last successful run (tl_workflow.sourceHash). Deliberately scoped to "changed AFTER an
-     * import": a never-imported workflow (empty sourceHash) is guided by the separate "run
-     * import" hint, and a missing/unreadable file is a separate problem ({@see getProblems()}).
+     * It covers two situations with one rule: the file was changed after an import, and the
+     * workflow was never imported at all (a fresh or copied record – sourceHash is empty and
+     * doNotCopy, so no real checksum can ever equal it). Both mean "run the import", they only
+     * differ in the wording of the hint, which is why {@see hasNeverImported()} exists.
+     *
+     * Deliberately derived from the file rather than kept as a stored flag: a flag would have to
+     * be set by whoever changes the file, and the most common change – overwriting the source
+     * file in place in the file manager – never touches the workflow record at all. It could
+     * also go stale (a run that fails halfway, a configuration import, the console). The
+     * checksum cannot.
+     *
+     * A missing or unreadable file is a separate problem ({@see getProblems()}), not a re-import
+     * prompt.
      */
-    public function isReimportNeeded(WorkflowModel $workflow): bool
+    public function isSourceDirty(WorkflowModel $workflow): bool
     {
-        if (!$workflow->sourceFile || '' === (string) $workflow->sourceHash) {
+        if (!$workflow->sourceFile) {
             return false;
         }
 
@@ -330,9 +339,26 @@ class WorkflowValidator
             return false;
         }
 
+        // Shortcut, not a verdict: identical mtime+size means the file was not written since
+        // the last import, so hashing it again cannot say anything new. This is what keeps the
+        // overview from reading every source file in full on every page load.
+        if ('' !== (string) $workflow->sourceStat && $this->inspector->fileStat($path) === (string) $workflow->sourceStat) {
+            return false;
+        }
+
         $hash = @md5_file($path);
 
         return false !== $hash && $hash !== (string) $workflow->sourceHash;
+    }
+
+    /**
+     * No import has ever run for this workflow. Selects the wording of the hint that
+     * {@see isSourceDirty()} triggers: "not imported yet" reads very differently from
+     * "the file changed".
+     */
+    public function hasNeverImported(WorkflowModel $workflow): bool
+    {
+        return '' === (string) $workflow->sourceHash;
     }
 
     /**

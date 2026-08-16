@@ -99,8 +99,11 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
 ];
 
 // WorkflowIntegrityListener::flagStaleSource() – Hinweis in der Bearbeitungsmaske, wenn die
-// Quelldatei geändert, aber noch nicht importiert wurde.
+// gespeicherten Daten nicht mehr zur Quelldatei passen. Zwei Fälle, eine Regel
+// (WorkflowValidator::isSourceDirty), aber zwei Wortlaute: „noch nie importiert“ liest sich
+// anders als „die Datei hat sich geändert“.
 $GLOBALS['TL_LANG']['workflow_reimport'] = [
-    'edit_hint'     => 'Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und Vorschau-PDF zeigen bis dahin die alten Daten und Zahlenformate. Bitte den Import ausführen, um die aktuellen Daten und Feldformatierungen zu laden.',
-    'import_button' => 'Jetzt importieren',
+    'edit_hint'         => 'Die Quelldatei wurde geändert, aber noch nicht importiert. Vorschau-Formular und Vorschau-PDF zeigen bis dahin die alten Daten und Zahlenformate. Bitte den Import ausführen, um die aktuellen Daten und Feldformatierungen zu laden.',
+    'first_import_hint' => 'Für diesen Workflow wurde noch kein Import ausgeführt – es liegen keine Teilnehmerdaten vor. Vorschau-Formular und Vorschau-PDF zeigen bis dahin nur Beispieldaten, und es können keine E-Mails versendet werden.',
+    'import_button'     => 'Jetzt importieren',
 ];

@@ -57,11 +57,16 @@ $l = $this->dash;
           <?= $l['not_runnable_msg'] ?> <?= $esc(implode(' ', $wf['problems'])) ?>
         </p>
       <?php else: ?>
-        <?php if (0 === (int) $wf['total']): ?>
+        <?php // Die Daten passen nicht (mehr) zur Quelldatei – dieselbe Regel wie in der
+              // Bearbeitungsmaske (WorkflowValidator::isSourceDirty), nur zwei Wortlaute. ?>
+        <?php if (!empty($wf['sourceDirty'])): ?>
+          <p class="tl_error" style="margin-bottom:1em;font-weight:bold;">
+            <?= !empty($wf['neverImported']) ? $l['no_import'] : $l['reimport_needed'] ?>
+          </p>
+        <?php elseif (0 === (int) $wf['total']): ?>
+          <?php // Restfall: importiert, danach wurden alle Einträge entfernt. Nur hier, sonst
+                // stünden zwei Hinweisboxen mit derselben Aufforderung übereinander. ?>
           <p class="wf-warn"><?= $l['no_import'] ?></p>
-        <?php endif; ?>
-        <?php if (!empty($wf['reimportNeeded'])): ?>
-          <p class="tl_error" style="margin-bottom:1em;font-weight:bold;"><?= $l['reimport_needed'] ?></p>
         <?php endif; ?>
         <?php if (!$wf['canSend']): ?>
           <p class="wf-warn">Versand nicht möglich: <?= $esc(implode('; ', $wf['sendBlockers'])) ?>. (Formularseite + Benachrichtigung – siehe ANLEITUNG.md, Abschnitt 1–2.)</p>

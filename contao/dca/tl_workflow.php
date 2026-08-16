@@ -332,6 +332,16 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'eval' => ['doNotCopy' => true],
             'sql'  => "varchar(64) NOT NULL default ''",
         ],
+        // Internal: "mtime:size" of the source file at the last import. Purely a shortcut for
+        // the change detection (WorkflowValidator::isSourceDirty): matching stats mean the
+        // file is untouched, so the checksum – which reads the whole file and used to run once
+        // per workflow on every overview page – can be skipped. Never the sole verdict: on any
+        // difference the checksum still decides, so a file saved without a content change is
+        // still recognised as unchanged.
+        'sourceStat' => [
+            'eval' => ['doNotCopy' => true],
+            'sql'  => "varchar(64) NOT NULL default ''",
+        ],
         // Internal: reference fields (form page, letterhead, notifications) that a
         // configuration import could not link on this site. Serialized list of field
         // names; drives the red outline + notice in the edit mask (WorkflowIntegrityListener)

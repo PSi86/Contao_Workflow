@@ -24,7 +24,7 @@ use Psimandl\WorkflowBundle\Model\WorkflowModel;
  *
  * It always runs, even when the source file is unchanged: re-importing is how the original
  * source values are restored after a reset. The file checksum is still recorded, but only to
- * drive the "source changed, re-import needed" hint (see WorkflowValidator::isReimportNeeded).
+ * drive the "import needed" hint (see WorkflowValidator::isSourceDirty).
  *
  * Hidden rows are skipped: hiding rows in the source file is how a run is narrowed down to
  * the people it is meant for. What that means for rows imported earlier is the run's mode
@@ -298,6 +298,9 @@ class SpreadsheetImporter
         }
 
         $workflow->sourceHash = $hash;
+        // Alongside the checksum, so the change detection can rule out an untouched file with
+        // a stat() instead of hashing it (see WorkflowValidator::isSourceDirty).
+        $workflow->sourceStat = $this->inspector->fileStat($path);
         $workflow->tstamp = time();
         $workflow->save();
 

@@ -90,9 +90,12 @@ class DashboardModule extends BackendModule
                     'published'     => (bool) $workflow->published,
                     'runnable'      => [] === $problems,
                     'problems'      => $problems,
-                    // Source file changed but not re-imported yet: entries and number formats
-                    // are stale (form/PDF preview show the old data) until an import runs.
-                    'reimportNeeded' => [] === $problems && $validator->isReimportNeeded($workflow),
+                    // The stored data no longer matches the source file – never imported, or
+                    // the file changed since. Entries and number formats are stale (form/PDF
+                    // preview show the old data) until an import runs. Same rule as the edit
+                    // mask (WorkflowIntegrityListener::flagStaleSource), so both agree.
+                    'sourceDirty'   => [] === $problems && $validator->isSourceDirty($workflow),
+                    'neverImported' => $validator->hasNeverImported($workflow),
                     'canSend'       => [] === $problems && [] === $sendBlockers,
                     'sendBlockers'  => $sendBlockers,
                     'completed'     => $status->countCompleted($workflow),

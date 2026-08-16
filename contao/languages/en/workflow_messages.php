@@ -98,9 +98,11 @@ $GLOBALS['TL_LANG']['workflow_validator'] = [
     'sender_domain_mismatch'=> 'The sender domain “%s” differs from the website domain (%s). Please check the SPF/DKIM/DMARC alignment, otherwise mail may be treated as spam.',
 ];
 
-// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the source file was
-// changed but not imported yet.
+// WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the stored data no
+// longer matches the source file. Two situations, one rule (WorkflowValidator::isSourceDirty)
+// but two wordings: "never imported" reads very differently from "the file changed".
 $GLOBALS['TL_LANG']['workflow_reimport'] = [
-    'edit_hint'     => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
-    'import_button' => 'Run import now',
+    'edit_hint'         => 'The source file was changed but not imported yet. Until you do, the form and PDF preview show the old data and number formats. Please run the import to load the current data and field formatting.',
+    'first_import_hint' => 'The import has not been run for this workflow yet – there is no participant data. Until you run it, the form and PDF preview show sample data only and no e-mails can be sent.',
+    'import_button'     => 'Run import now',
 ];

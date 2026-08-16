@@ -196,15 +196,27 @@ class SpreadsheetInspector
     }
 
     /**
-     * Cache key of a file: its path plus the modification time and size. Those two make the
-     * key change whenever the file is replaced, so no answer can outlive the file it was
-     * read from – cheap insurance for a couple of stat() calls.
+     * "mtime:size" of a file – a fingerprint that changes whenever the file is written, at the
+     * cost of a stat() instead of reading the whole file.
+     *
+     * Used twice: as part of every cache key here, so no cached answer can outlive the file it
+     * came from, and as tl_workflow.sourceStat, which lets the change detection skip the
+     * checksum for an untouched file ({@see WorkflowValidator::isSourceDirty()}). Both sides
+     * must spell it the same way, so it is written in exactly one place.
      */
-    private function fileKey(string $path): string
+    public function fileStat(string $path): string
     {
         clearstatcache(true, $path);
 
-        return $path.'|'.(int) @filemtime($path).'|'.(int) @filesize($path);
+        return (int) @filemtime($path).':'.(int) @filesize($path);
+    }
+
+    /**
+     * Cache key of a file: its path plus {@see fileStat()}.
+     */
+    private function fileKey(string $path): string
+    {
+        return $path.'|'.$this->fileStat($path);
     }
 
     /**
