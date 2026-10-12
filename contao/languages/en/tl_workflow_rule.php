@@ -31,7 +31,8 @@ $GLOBALS['TL_LANG']['tl_workflow_rule']['untitled']        = 'Rule';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['alwaysLabel']     = 'default text';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['condAnd']         = 'and';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['defaultRuleError'] = 'There may be only one rule without conditions (default text). Please add a condition or edit the existing default-text rule.';
-$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing']   = 'Note: there is no default-text rule (without conditions). If no condition matches an entry, the body text stays empty. Add a rule without conditions as the default text.';
+$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultNotLast']   = 'The default text is not last. It always matches, so the document texts below it are never used. Drag it to the end and save.';
+$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing']   ='Note: there is no default-text rule (without conditions). If no condition matches an entry, the body text stays empty. Add a rule without conditions as the default text.';
 
 $GLOBALS['TL_LANG']['tl_workflow_rule']['new']    = ['New document text', 'Add a document text (rule).'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['edit']   = ['Edit', 'Edit rule.'];

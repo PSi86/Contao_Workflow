@@ -6,6 +6,56 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+Schwerpunkt: **Contao 5.7 LTS** und **sortierbare Dokument-Texte**. Das Back-End lädt seit
+Contao 5.4 Seiten per Turbo nach, statt sie neu zu laden; 5.7 speichert außerdem Felder ohne
+eigene Spalte automatisch in einer JSON-Spalte, und „Zurück" im Dialog eines Formularfelds
+führte unter 5.7 in eine Liste, die Änderungen an der Versionierung vorbei schrieb. Das Bundle
+läuft weiterhin auch unter Contao 5.3.
+
+> **Beim Update:** `contao:migrate` ausführen – es legt die Spalte `ruleOrder` in `tl_workflow`
+> an. Anschließend den Cache leeren. Bestehende Dokument-Texte behalten ihre Reihenfolge.
+> Versionen aus der Zeit davor enthalten keine Reihenfolge der Dokument-Texte; stellt man eine
+> solche Version wieder her, bleibt die aktuelle Reihenfolge stehen.
+
+### Hinzugefügt
+- **Dokument-Texte lassen sich sortieren.** Die Regeln werden von oben nach unten geprüft, die
+  erste passende liefert den Text – die Reihenfolge entscheidet also über den Inhalt des
+  Dokuments. Bisher ließ sie sich nicht ändern: „Neu" legt eine Regel oben an, und ein später
+  angelegter Standardtext stand dann vor allen anderen Regeln, die damit nie mehr griffen. Jetzt
+  wird die Reihenfolge wie bei den Formularfeldern am Griff ☰ gezogen und beim Speichern des
+  Workflows übernommen, als neue Version und damit wiederherstellbar.
+- **Warnung, wenn der Standardtext nicht zuletzt steht.** Die Liste der Dokument-Texte zeigt
+  sie sofort beim Ziehen an, nicht erst nach dem Speichern.
+
+### Behoben
+- **„Zurück" im Dialog eines Formularfelds oder Dokument-Texts (Contao 5.7).** Statt den Dialog
+  zu schließen, öffnete sich darin Contaos eigene Liste mit Sortiergriffen, „Neu", „Mehrere
+  bearbeiten" und Kopieren. Eine Verschiebung dort wurde sofort gespeichert, ohne Version des
+  Workflows, und ließ sich weder finden noch rückgängig machen. Diese Liste ist jetzt
+  geschlossen: Im Dialog schließt „Zurück" den Dialog, außerhalb führt sie zur Workflow-Maske.
+  Contaos eigenes Verschieben ist für beide Tabellen abgeschaltet; die Reihenfolge ändert sich
+  nur noch in der Workflow-Maske. Nach dem Löschen eines Eintrags landet man wieder in der
+  Workflow-Maske.
+- **Sperre beantworteter Workflows in Contaos eigener Liste.** Dort bot die Liste trotz Sperre
+  „Neu" und „Löschen" an (die Aktionen selbst wurden abgewiesen); die Sperre ermittelte in der
+  Listenansicht den falschen Workflow.
+- **Back-End-Skripte nach einem Seitenwechsel.** Unter Contao 5.4 und neuer richteten sich
+  mehrere Skripte nur beim ersten Laden ein und waren nach dem ersten Klick ins Back-End ohne
+  Funktion: in der Übersicht Sortierung, Auswahl und die Dialoge „E-Mails senden",
+  „Datendownload" und „Importprotokoll", dazu der Editor der Briefpapier-Variablen, die Sortierung
+  der Formularfelder und der Kopier-Link am Teilnehmer. Sie richten sich jetzt nach jedem
+  Seitenwechsel neu ein. Feld-Umschaltung und Platzhalter-Vorschläge funktionieren jetzt auch
+  nach „Zurück" im Browser, weil Turbo dabei eine Kopie der Seite ohne Ereignisse zeigt.
+- **Download, Konfigurations-Export und -Import unter Turbo.** Der Download aus der Übersicht
+  kam unter Contao 5.4 und neuer nicht an, weil Turbo die Datei abholte und verwarf; der
+  Konfigurations-Export wurde doppelt erzeugt. Diese drei laufen jetzt an Turbo vorbei.
+- **Kopier-Link unter Contao 5.7.** Der neue Tooltip zeigte beim zweiten Überfahren des Links
+  den Text „null".
+- **Keine JSON-Spalte in `tl_workflow` unter Contao 5.7.** Die Listen der Formularfelder und
+  der Dokument-Texte in der Workflow-Maske sind reine Anzeige. Contao 5.7 hätte für sie eine
+  Spalte `jsonData` angelegt und beim Speichern Werte darin abgelegt. Sie sind jetzt
+  ausdrücklich als Felder ohne Spalte gekennzeichnet.
+
 ## [3.4.1] – 2026-08-16
 
 Fehlerkorrektur zu 3.4.0: gelöschte Workflows ließen Aufzeichnungen zurück.

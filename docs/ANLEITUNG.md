@@ -248,9 +248,11 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 ### 3 b‑1. Formularfelder  *(Abschnitt „Formular & Formularfelder" in „Bearbeiten")*
 
 Im Abschnitt **Formularfelder** mit **„Neu"** ein Feld anlegen, mit **„Bearbeiten"** im Dialog
-öffnen. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
+öffnen. Der Dialog bearbeitet immer **ein** Feld; **„Zurück"** und **„Speichern und schließen"**
+schließen ihn. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
 links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des Workflows**
-übernommen und gilt für Formular **und** `##text_all##` im PDF). Pro Feld:
+übernommen, als neue Version des Workflows, und gilt für Formular **und** `##text_all##` im PDF).
+Pro Feld:
 - **Überschrift** (die Frage im Formular; die Feld-Überschrift, vormals „Beschriftung"),
 - **Beschreibung** (optional): ein **nur im Formular** angezeigter Hinweis unterhalb der
   Überschrift (erscheint nur, wenn ausgefüllt); im **Dokument** taucht er **nie** auf –
@@ -440,7 +442,8 @@ Bei **Dokument-Inhalt = Einfacher Brief** stehen **alle Dokument-Texte** als Reg
 - **Standardtext** (Checkbox): aktivieren für den „Sonst"-Fall — die Regel gilt dann **immer**,
   und die **Bedingungen werden ausgeblendet**. In der Liste erscheint automatisch **„(Standardtext)"**.
   Es darf **nur eine** Standardtext-Regel geben; gibt es mehrere bzw. keine, zeigt die Regel-Liste
-  einen entsprechenden **Hinweis/Fehler**. Standardtext-Regel ans Ende stellen.
+  einen entsprechenden **Hinweis/Fehler**. Die Standardtext-Regel gehört **ans Ende**: Sie passt
+  immer, Regeln darunter kämen nie zum Zug. Steht sie nicht zuletzt, warnt die Liste.
 - **Bedingungen** (nur ohne Standardtext sichtbar; je Zeile **Formularfeld / Operator / Wert**,
   alle UND-verknüpft; Operatoren u. a. =, ≠, <, ≤, >, ≥, enthält, ist leer).
 - **Dokument-Text** mit `##Platzhaltern##` (Überschrift/Einleitung/Logo/Unterschrift/Footer
@@ -449,7 +452,10 @@ Bei **Dokument-Inhalt = Einfacher Brief** stehen **alle Dokument-Texte** als Reg
   `##text_all##` für **alle** Felder (Abschnitt 3 b‑3).
 
 Die Liste zeigt je Regel **Bezeichnung und Bedingung** (bzw. „(Standardtext)"). Geprüft wird
-**von oben nach unten**; die **erste passende** Regel liefert den Text.
+**von oben nach unten**; die **erste passende** Regel liefert den Text. Die **Reihenfolge** wird
+wie bei den Formularfeldern **direkt in der Liste per Drag & Drop** geändert (Griff ☰ links) und
+beim **Speichern des Workflows** übernommen – als neue Version, also auch wiederherstellbar.
+**„Neu"** legt eine Regel **oben** an; danach an die richtige Stelle ziehen.
 
 ### 3 b‑3. Wie kommt der Text ins PDF? (Dokument-Texte + Regeln)
 

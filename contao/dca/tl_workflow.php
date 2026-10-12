@@ -22,13 +22,13 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // onload: drop never-saved (tstamp=0) child rows left behind when a
         // "new question/rule" dialog is closed without saving (the embedded
         // dcaWizard lists never trigger Contao's own cleanup).
-        // onrestore_version: re-apply a restored answer-field order (stored in the
-        // versioned "questionOrder" field) to the child rows' sorting.
-        // The order itself is written by the questionOrder field's save_callback –
-        // because questionOrder is a real column, reordering is detected by Contao's
-        // versioning (new version + visible diff) and is restorable.
+        // onrestore_version: re-apply a restored answer-field and document-text order
+        // (stored in the versioned "questionOrder" / "ruleOrder" fields) to the child
+        // rows' sorting. The order itself is written by those fields' save_callbacks –
+        // because they are real columns, reordering is detected by Contao's versioning
+        // (new version + visible diff) and is restorable.
         'onload_callback'           => [[AnswerConfigListener::class, 'cleanupAbandonedChildren']],
-        'onrestore_version_callback' => [[AnswerConfigListener::class, 'restoreQuestionOrder']],
+        'onrestore_version_callback' => [[AnswerConfigListener::class, 'restoreChildOrder']],
         'sql' => [
             'keys' => [
                 'id' => 'primary',
@@ -102,7 +102,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,ruleOrder,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -185,8 +185,9 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // hideButton: only the inline list (with its own new/edit/delete that
         // open clean record popups). Custom list_callback renders the rows with
         // a drag handle – the order is changed directly in this list and written
-        // only when the workflow is saved (config.onsubmit persistQuestionOrder,
-        // posted via the hidden wfQuestionOrder field; see workflow-question-sort.js).
+        // only when the workflow is saved, through the hidden questionOrder field
+        // (see workflow-list-sort.js). Contao's own list of the table is closed
+        // (ChildListGuardListener), so this is the only place to reorder.
         'questions' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
@@ -200,9 +201,13 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'global_operations' => ['new'],
                 'list_callback'     => [AnswerConfigListener::class, 'renderQuestionsList'],
             ],
+            // Display only: the rows live in tl_workflow_question. An explicit null keeps
+            // Contao 5.7 from treating the field as "virtual" and storing it in a jsonData
+            // column; older versions skip a null sql as well (same as core's serpPreview).
+            'sql'       => null,
         ],
         // Versioned answer-field order (comma-separated question ids). Hidden field,
-        // written by drag&drop in the questions list (workflow-question-sort.js sets
+        // written by drag&drop in the questions list (workflow-list-sort.js sets
         // #ctrl_questionOrder). load: current order from the child sorting; save:
         // renumbers the child sorting and stores the normalized order. Being a real
         // column makes the reordering part of the workflow's version history.
@@ -211,12 +216,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'inputType' => 'text',
             'load_callback' => [[AnswerConfigListener::class, 'loadQuestionOrder']],
             'save_callback' => [[AnswerConfigListener::class, 'saveQuestionOrder']],
-            'eval'      => ['tl_class' => 'wf-question-order', 'doNotCopy' => true],
+            'eval'      => ['tl_class' => 'wf-order-field', 'doNotCopy' => true],
             'sql'       => 'text NULL',
         ],
         // PDF rules (tl_workflow_rule), embedded in the edit mask (letter mode only).
         // Custom list_callback shows label + readable conditions ("(Standardtext)"
-        // for a rule without conditions) and keeps the edit/delete operations.
+        // for a rule without conditions), a drag handle and the edit/delete
+        // operations. The order decides which text a document gets (the first
+        // matching rule wins), so it is versioned like the answer-field order.
         'rules' => [
             'exclude'   => true,
             'inputType' => 'dcaWizard',
@@ -230,6 +237,19 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'global_operations' => ['new'],
                 'list_callback'     => [AnswerConfigListener::class, 'renderRulesList'],
             ],
+            // Display only, see "questions".
+            'sql'       => null,
+        ],
+        // Versioned document-text order (comma-separated rule ids), same mechanism as
+        // questionOrder: written by drag&drop in the rules list, renumbers the child
+        // sorting on save, restored together with a workflow version.
+        'ruleOrder' => [
+            'exclude'   => true,
+            'inputType' => 'text',
+            'load_callback' => [[AnswerConfigListener::class, 'loadRuleOrder']],
+            'save_callback' => [[AnswerConfigListener::class, 'saveRuleOrder']],
+            'eval'      => ['tl_class' => 'wf-order-field', 'doNotCopy' => true],
+            'sql'       => 'text NULL',
         ],
         'master' => [
             'exclude'    => true,
@@ -302,7 +322,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'reference' => &$GLOBALS['TL_LANG']['tl_workflow']['pdfBodyTypeOptions'],
             // data-wf-toggle: "letter" shows the PDF rules, "template" the body
             // template – switched client-side, no save. See workflow-field-toggle.js.
-            'eval'      => ['tl_class' => 'w50', 'data-wf-toggle' => '{"mode":"select","map":{"letter":["rules"],"template":["pdfBodyTemplate"]}}'],
+            'eval'      => ['tl_class' => 'w50', 'data-wf-toggle' => '{"mode":"select","map":{"letter":["rules","ruleOrder"],"template":["pdfBodyTemplate"]}}'],
             'sql'       => "varchar(16) NOT NULL default 'letter'",
         ],
         // Shared heading: shown at the top of the FORM and as the PDF heading.

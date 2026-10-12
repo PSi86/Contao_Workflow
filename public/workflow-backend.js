@@ -211,19 +211,29 @@
         update();
     }
 
-    ready(function () {
+    function init() {
         document.querySelectorAll('.wf-box').forEach(function (box) {
+            // A JS property, not a data attribute: Turbo restores pages from a cloned snapshot
+            // that keeps attributes but drops listeners, so the box must be wired again there.
+            if (box.wfBound) { return; }
+            box.wfBound = true;
+
             setupSorting(box);
             setupSelection(box);
             setupDialog(box);
-            // STILLGELEGT zusammen mit dem Import-Dialog (siehe be_workflow_dashboard.html5):
-            // „Import ausführen" ist jetzt ein Direktlink auf den additiven Import. Zum
-            // Reaktivieren diese Zeile einkommentieren.
+            // DISABLED together with the import dialog (see be_workflow_dashboard.html5):
+            // "Import ausführen" is now a direct link to the additive import. Uncomment this
+            // line to re-enable it.
             // wireDialog(box, '.wf-dialog--import', '.wf-open-import');
 
             // The log dialog is read-only, so it needs nothing beyond open/close.
             wireDialog(box, '.wf-dialog--log', '.wf-open-log');
             setupDownload(wireDialog(box, '.wf-dialog--download', '.wf-open-download'));
         });
-    });
+    }
+
+    ready(init);
+    // The back end navigates with Turbo (Contao 5.4+): this script runs once, the page
+    // content arrives again without a page load.
+    document.addEventListener('turbo:render', init);
 })();
