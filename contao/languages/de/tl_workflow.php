@@ -44,7 +44,9 @@ $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Formularfelder', 'Felder, di
 $GLOBALS['TL_LANG']['tl_workflow']['questionOrder'] = ['Reihenfolge der Formularfelder', 'Technisches Feld (ausgeblendet): hält die per Drag & Drop gewählte Reihenfolge für die Versionierung.'];
 $GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] = 'Noch keine Formularfelder. Mit „Neu" anlegen.';
 $GLOBALS['TL_LANG']['tl_workflow']['questionsDrag']  = 'Ziehen, um die Reihenfolge zu ändern';
-$GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['Dokument-Texte', 'Jede Regel = Bedingungen + Dokument-Text. Die erste passende Regel liefert den Text; eine Regel OHNE Bedingung wird als „(Standardtext)" geführt und gilt immer (ans Ende stellen, nur eine erlaubt).'];
+$GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['Dokument-Texte', 'Jede Regel = Bedingungen + Dokument-Text. Die erste passende Regel liefert den Text; die Reihenfolge ändern Sie durch Ziehen am Griff, gespeichert wird sie mit „Speichern". Eine Regel OHNE Bedingung wird als „(Standardtext)" geführt und gilt immer – sie gehört deshalb ans Ende; nur eine ist erlaubt.'];
+$GLOBALS['TL_LANG']['tl_workflow']['ruleOrder'] = ['Reihenfolge der Dokument-Texte', 'Technisches Feld (ausgeblendet): hält die per Drag & Drop gewählte Reihenfolge für die Versionierung.'];
+$GLOBALS['TL_LANG']['tl_workflow']['rulesDrag']  = 'Ziehen, um die Reihenfolge zu ändern';
 $GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] = 'Noch keine Dokument-Texte. Mit „Neu" anlegen – eine Regel ohne Bedingung ist der „(Standardtext)".';
 $GLOBALS['TL_LANG']['tl_workflow']['entries'] = ['Einträge', 'Einträge dieses Workflows verwalten.'];
 $GLOBALS['TL_LANG']['tl_workflow']['exportConfig'] = ['Konfiguration herunterladen', 'Workflow-Konfiguration als JSON-Datei herunterladen.'];
