@@ -200,6 +200,10 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'global_operations' => ['new'],
                 'list_callback'     => [AnswerConfigListener::class, 'renderQuestionsList'],
             ],
+            // Display only: the rows live in tl_workflow_question. An explicit null keeps
+            // Contao 5.7 from treating the field as "virtual" and storing it in a jsonData
+            // column; older versions skip a null sql as well (same as core's serpPreview).
+            'sql'       => null,
         ],
         // Versioned answer-field order (comma-separated question ids). Hidden field,
         // written by drag&drop in the questions list (workflow-question-sort.js sets
@@ -230,6 +234,8 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
                 'global_operations' => ['new'],
                 'list_callback'     => [AnswerConfigListener::class, 'renderRulesList'],
             ],
+            // Display only, see "questions".
+            'sql'       => null,
         ],
         'master' => [
             'exclude'    => true,

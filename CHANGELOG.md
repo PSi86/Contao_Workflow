@@ -7,8 +7,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 ## [Unreleased]
 
 Schwerpunkt: **Contao 5.7 LTS**. Das Back-End lädt seit Contao 5.4 Seiten per Turbo nach,
-statt sie neu zu laden; das traf mehrere Skripte des Bundles. Das Bundle läuft weiterhin auch
-unter Contao 5.3.
+statt sie neu zu laden; 5.7 speichert außerdem Felder ohne eigene Spalte automatisch in einer
+JSON-Spalte. Das Bundle läuft weiterhin auch unter Contao 5.3.
 
 ### Behoben
 - **Back-End-Skripte nach einem Seitenwechsel.** Unter Contao 5.4 und neuer richteten sich
@@ -23,6 +23,10 @@ unter Contao 5.3.
   Konfigurations-Export wurde doppelt erzeugt. Diese drei laufen jetzt an Turbo vorbei.
 - **Kopier-Link unter Contao 5.7.** Der neue Tooltip zeigte beim zweiten Überfahren des Links
   den Text „null".
+- **Keine JSON-Spalte in `tl_workflow` unter Contao 5.7.** Die Listen der Formularfelder und
+  der Dokument-Texte in der Workflow-Maske sind reine Anzeige. Contao 5.7 hätte für sie eine
+  Spalte `jsonData` angelegt und beim Speichern Werte darin abgelegt. Sie sind jetzt
+  ausdrücklich als Felder ohne Spalte gekennzeichnet.
 
 ## [3.4.1] – 2026-08-16
 
