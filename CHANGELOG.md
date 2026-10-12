@@ -6,6 +6,21 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+Schwerpunkt: **Contao 5.7 LTS**. Das Back-End lädt seit Contao 5.4 Seiten per Turbo nach,
+statt sie neu zu laden; das traf mehrere Skripte des Bundles. Das Bundle läuft weiterhin auch
+unter Contao 5.3.
+
+### Behoben
+- **Back-End-Skripte nach einem Seitenwechsel.** Unter Contao 5.4 und neuer richteten sich
+  mehrere Skripte nur beim ersten Laden ein und waren nach dem ersten Klick ins Back-End ohne
+  Funktion: in der Übersicht Sortierung, Auswahl und die Dialoge „E-Mails senden",
+  „Datendownload" und „Importprotokoll", dazu der Editor der Briefpapier-Variablen, die Sortierung
+  der Formularfelder und der Kopier-Link am Teilnehmer. Sie richten sich jetzt nach jedem
+  Seitenwechsel neu ein. Feld-Umschaltung und Platzhalter-Vorschläge funktionieren jetzt auch
+  nach „Zurück" im Browser, weil Turbo dabei eine Kopie der Seite ohne Ereignisse zeigt.
+- **Kopier-Link unter Contao 5.7.** Der neue Tooltip zeigte beim zweiten Überfahren des Links
+  den Text „null".
+
 ## [3.4.1] – 2026-08-16
 
 Fehlerkorrektur zu 3.4.0: gelöschte Workflows ließen Aufzeichnungen zurück.

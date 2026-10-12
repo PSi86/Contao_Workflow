@@ -10,6 +10,10 @@
  *    towards it. The paragraph is therefore swapped for a clone without that class: a clone
  *    carries no event listeners, so this works whether or not tips.js has already bound, and
  *    the MutationObserver in tips.js skips the clone because it no longer matches.
+ *    Contao 5.7 replaced tips.js with a Stimulus controller that shows a tooltip for every
+ *    element carrying data-contao--tooltips-target. The clone would keep that attribute; with
+ *    neither the class nor a title, the controller then writes title="null" on the first
+ *    hover and shows "null" on the next one. So the clone loses the attribute as well.
  *  - The link itself carries no title attribute, which tips.js would pick up as well (and
  *    which is useless on touch devices anyway) – the visible label says what a click does.
  *
@@ -22,6 +26,7 @@
     function detachTooltip(help) {
         var clone = help.cloneNode(true);
         clone.classList.remove('tl_tip');
+        clone.removeAttribute('data-contao--tooltips-target');
         help.replaceWith(clone);
 
         return clone;
@@ -58,11 +63,13 @@
         document.querySelectorAll('.tw-linkhelp p.tl_tip').forEach(detachTooltip);
 
         document.querySelectorAll('.wf-copylink').forEach(function (link) {
-            if (link.dataset.wfCopyBound) {
+            // A JS property, not a data attribute: Turbo restores pages from a cloned snapshot
+            // that keeps attributes but drops listeners.
+            if (link.wfCopyBound) {
                 return;
             }
 
-            link.dataset.wfCopyBound = '1';
+            link.wfCopyBound = true;
             link.addEventListener('click', function () {
                 copy(link);
             });
@@ -74,4 +81,7 @@
     } else {
         init();
     }
+
+    // The back end navigates with Turbo (Contao 5.4+): the mask can arrive without a page load.
+    document.addEventListener('turbo:render', init);
 })();

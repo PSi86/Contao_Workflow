@@ -127,8 +127,10 @@
 
             selectors.push({ el: el, cfg: cfg });
 
-            if (!el.dataset.wfToggleBound) {
-                el.dataset.wfToggleBound = '1';
+            // A JS property, not a data attribute: Turbo restores pages from a cloned snapshot
+            // that keeps attributes but drops listeners, so the selector must be bound again.
+            if (!el.wfToggleBound) {
+                el.wfToggleBound = true;
                 el.addEventListener('change', recompute);
             }
         });

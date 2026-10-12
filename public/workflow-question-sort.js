@@ -145,4 +145,7 @@
     }
 
     ready(observe);
+    // The back end navigates with Turbo (Contao 5.4+): the mask can arrive without a page
+    // load. The drag listeners above sit on the document and need no re-binding.
+    document.addEventListener('turbo:render', observe);
 })();
