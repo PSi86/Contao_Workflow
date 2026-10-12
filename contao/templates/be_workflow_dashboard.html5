@@ -25,7 +25,7 @@ $l = $this->dash;
 
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
   <summary style="cursor:pointer;font-weight:bold;">Workflow-Konfiguration importieren</summary>
-  <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" style="margin-top:1em;">
+  <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" data-turbo="false" style="margin-top:1em;">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->rt) ?>">
     <p style="margin:.3em 0;">Konfigurationsdatei (JSON-Export): <input type="file" name="configFile" accept=".json,application/json" required></p>
     <p style="margin:.3em 0;">
@@ -181,7 +181,8 @@ $l = $this->dash;
           <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
           <h3><?= $l['btn_download'] ?></h3>
 
-          <form method="get" action="<?= $esc($wf['urls']['download']) ?>" class="wf-download">
+          <?php // data-turbo="false": the answer is a file; Turbo (Contao 5.4+) would fetch it and drop it. ?>
+          <form method="get" action="<?= $esc($wf['urls']['download']) ?>" class="wf-download" data-turbo="false">
             <input type="hidden" name="rt" value="<?= $esc($wf['rt']) ?>">
 
             <p class="wf-choice">

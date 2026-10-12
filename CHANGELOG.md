@@ -18,6 +18,9 @@ unter Contao 5.3.
   der Formularfelder und der Kopier-Link am Teilnehmer. Sie richten sich jetzt nach jedem
   Seitenwechsel neu ein. Feld-Umschaltung und Platzhalter-Vorschläge funktionieren jetzt auch
   nach „Zurück" im Browser, weil Turbo dabei eine Kopie der Seite ohne Ereignisse zeigt.
+- **Download, Konfigurations-Export und -Import unter Turbo.** Der Download aus der Übersicht
+  kam unter Contao 5.4 und neuer nicht an, weil Turbo die Datei abholte und verwarf; der
+  Konfigurations-Export wurde doppelt erzeugt. Diese drei laufen jetzt an Turbo vorbei.
 - **Kopier-Link unter Contao 5.7.** Der neue Tooltip zeigte beim zweiten Überfahren des Links
   den Text „null".
 
