@@ -8,9 +8,22 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 Schwerpunkt: **Contao 5.7 LTS**. Das Back-End lädt seit Contao 5.4 Seiten per Turbo nach,
 statt sie neu zu laden; 5.7 speichert außerdem Felder ohne eigene Spalte automatisch in einer
-JSON-Spalte. Das Bundle läuft weiterhin auch unter Contao 5.3.
+JSON-Spalte, und „Zurück" im Dialog eines Formularfelds führte unter 5.7 in eine Liste, die
+Änderungen an der Versionierung vorbei schrieb. Das Bundle läuft weiterhin auch unter
+Contao 5.3.
 
 ### Behoben
+- **„Zurück" im Dialog eines Formularfelds oder Dokument-Texts (Contao 5.7).** Statt den Dialog
+  zu schließen, öffnete sich darin Contaos eigene Liste mit Sortiergriffen, „Neu", „Mehrere
+  bearbeiten" und Kopieren. Eine Verschiebung dort wurde sofort gespeichert, ohne Version des
+  Workflows, und ließ sich weder finden noch rückgängig machen. Diese Liste ist jetzt
+  geschlossen: Im Dialog schließt „Zurück" den Dialog, außerhalb führt sie zur Workflow-Maske.
+  Contaos eigenes Verschieben ist für beide Tabellen abgeschaltet; die Reihenfolge ändert sich
+  nur noch in der Workflow-Maske. Nach dem Löschen eines Eintrags landet man wieder in der
+  Workflow-Maske.
+- **Sperre beantworteter Workflows in Contaos eigener Liste.** Dort bot die Liste trotz Sperre
+  „Neu" und „Löschen" an (die Aktionen selbst wurden abgewiesen); die Sperre ermittelte in der
+  Listenansicht den falschen Workflow.
 - **Back-End-Skripte nach einem Seitenwechsel.** Unter Contao 5.4 und neuer richteten sich
   mehrere Skripte nur beim ersten Laden ein und waren nach dem ersten Klick ins Back-End ohne
   Funktion: in der Übersicht Sortierung, Auswahl und die Dialoge „E-Mails senden",

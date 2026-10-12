@@ -248,9 +248,11 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 ### 3 b‑1. Formularfelder  *(Abschnitt „Formular & Formularfelder" in „Bearbeiten")*
 
 Im Abschnitt **Formularfelder** mit **„Neu"** ein Feld anlegen, mit **„Bearbeiten"** im Dialog
-öffnen. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
+öffnen. Der Dialog bearbeitet immer **ein** Feld; **„Zurück"** und **„Speichern und schließen"**
+schließen ihn. Die **Reihenfolge** wird **direkt in der Liste per Drag & Drop** geändert (Griff ☰
 links in jeder Zeile ziehen – die neue Reihenfolge wird beim **Speichern des Workflows**
-übernommen und gilt für Formular **und** `##text_all##` im PDF). Pro Feld:
+übernommen, als neue Version des Workflows, und gilt für Formular **und** `##text_all##` im PDF).
+Pro Feld:
 - **Überschrift** (die Frage im Formular; die Feld-Überschrift, vormals „Beschriftung"),
 - **Beschreibung** (optional): ein **nur im Formular** angezeigter Hinweis unterhalb der
   Überschrift (erscheint nur, wenn ausgefüllt); im **Dokument** taucht er **nie** auf –
