@@ -12,6 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceParser;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
 use Psimandl\WorkflowBundle\Service\CronHealth;
@@ -316,6 +317,40 @@ final class BounceCollectorTest extends TestCase
         $scan = ['mailbox' => self::MAILBOX, 'uidValidity' => 0, 'lastUid' => 42, 'foreignCount' => 0];
 
         self::assertSame(0, BounceCollector::resumeAfter($scan, self::MAILBOX, 0));
+    }
+
+    /**
+     * A "+" in the user or password of the DSN is a plus. URL-decoding it like a form value
+     * turned it into a space, and the login failed. A DSN built from the back-end settings
+     * (BounceMailbox::buildDsn) must come back exactly as entered, also with special characters.
+     */
+    public function testImapConfigKeepsAPlusAndRoundTripsSpecialCharacters(): void
+    {
+        $config = BounceCollector::imapConfig('imap://bounces+wf%40example.org:pa+ss@mail.example.org:993?ssl=true');
+
+        self::assertSame('bounces+wf@example.org', $config['username']);
+        self::assertSame('pa+ss', $config['password']);
+
+        $password = 'a+b c%d/e:f@g?h#i&j';
+        $config = BounceCollector::imapConfig(BounceMailbox::buildDsn('mail.example.org', 143, 'tls', 'bounces+wf@example.org', $password));
+
+        self::assertSame('bounces+wf@example.org', $config['username']);
+        self::assertSame($password, $config['password']);
+        self::assertSame('mail.example.org', $config['host']);
+        self::assertSame(143, $config['port']);
+        self::assertSame('tls', $config['encryption']);
+    }
+
+    public function testWatermarkClosesGapsOnlyAfterACompletePass(): void
+    {
+        // UIDs 1 and 2 were looked at, UID 3 was moved out or deleted, UIDNEXT is 4.
+        self::assertSame(3, BounceCollector::watermarkAfterRun(2, 4, true));
+        // Batch limit hit or stopped: only what was looked at counts.
+        self::assertSame(2, BounceCollector::watermarkAfterRun(2, 4, false));
+        // A message that arrived during the run and was looked at already lies above UIDNEXT.
+        self::assertSame(5, BounceCollector::watermarkAfterRun(5, 4, true));
+        // No UIDNEXT from the server: unchanged.
+        self::assertSame(2, BounceCollector::watermarkAfterRun(2, 0, true));
     }
 
     public function testLeftInInbox(): void

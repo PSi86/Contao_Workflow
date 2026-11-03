@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Controller\Backend;
 
 use Contao\BackendModule;
+use Contao\BackendUser;
 use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceProbe;
+use Psimandl\WorkflowBundle\Service\Bounce\PasswordCipher;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
 use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
@@ -154,7 +157,13 @@ class DashboardModule extends BackendModule
 
         // Bounce-detection state, spanning all workflows: a hint when no mailbox is configured,
         // an error when the configured one is unreachable (from the cron's last verdict).
-        $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class));
+        $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class), $container->get(BounceMailbox::class));
+
+        // The bounce mailbox dialog, for administrators only (decision E11 of the 3.6.0 plan).
+        $this->Template->mailboxDialog = BackendUser::getInstance()->isAdmin
+            ? $this->mailboxDialog($container->get(BounceMailbox::class))
+            : null;
+        $this->Template->mailboxUrl = $router->generate('workflow_bounce_mailbox');
 
         // Whether a real cron calls Contao, and when the bounce mailbox was/will be read.
         $this->Template->cronStatus = $this->cronStatus(
@@ -192,11 +201,15 @@ class DashboardModule extends BackendModule
      *
      * @return array{level: string, message: string}|null
      */
-    private function bounceBanner(BounceHealth $health): ?array
+    private function bounceBanner(BounceHealth $health, BounceMailbox $mailbox): ?array
     {
         $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
 
         if (!$health->isConfigured()) {
+            if ($mailbox->passwordUnreadable()) {
+                return ['level' => 'error', 'message' => (string) ($lang['mailbox_password_unreadable'] ?? '')];
+            }
+
             return ['level' => 'notice', 'message' => (string) ($lang['bounce_unconfigured'] ?? '')];
         }
 
@@ -311,6 +324,35 @@ class DashboardModule extends BackendModule
         };
 
         return ['text' => $text, 'warn' => \in_array($test['state'], [BounceProbe::STATE_FAILED, BounceProbe::STATE_TIMEOUT], true)];
+    }
+
+    /**
+     * What the bounce mailbox dialog shows: the effective source, the values of
+     * WORKFLOW_BOUNCE_IMAP_DSN when that one rules (read-only), otherwise the back-end settings
+     * for the form – never the password, only whether one is stored and readable.
+     *
+     * @return array{source: ?string, env: ?array{host: string, port: int, user: string}, address: ?string, form: array{address: string, host: string, port: int, encryption: string, user: string}, passwordSet: bool, passwordUnreadable: bool, stored: bool, sodium: bool}
+     */
+    private function mailboxDialog(BounceMailbox $mailbox): array
+    {
+        $settings = $mailbox->backend();
+
+        return [
+            'source' => $mailbox->source(),
+            'env' => $mailbox->envSummary(),
+            'address' => $mailbox->address(),
+            'form' => [
+                'address' => (string) ($settings['address'] ?? ''),
+                'host' => (string) ($settings['host'] ?? ''),
+                'port' => (int) ($settings['port'] ?? 993),
+                'encryption' => (string) ($settings['encryption'] ?? 'ssl'),
+                'user' => (string) ($settings['user'] ?? ''),
+            ],
+            'passwordSet' => (bool) ($settings['passwordSet'] ?? false),
+            'passwordUnreadable' => $mailbox->passwordUnreadable(),
+            'stored' => null !== $settings,
+            'sodium' => PasswordCipher::isAvailable(),
+        ];
     }
 
     /**

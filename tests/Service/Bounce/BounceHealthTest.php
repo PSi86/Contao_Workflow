@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox;
 
 /**
  * The memory that lets the background cron and the on-demand overview agree on the mailbox
@@ -88,11 +89,11 @@ final class BounceHealthTest extends TestCase
         self::assertSame(BounceHealth::STATE_OK, $health->read()['state']);
     }
 
-    public function testIsConfiguredReflectsTheDsn(): void
+    public function testIsConfiguredReflectsTheMailbox(): void
     {
         self::assertFalse((new BounceHealth($this->connection, null))->isConfigured());
-        self::assertFalse((new BounceHealth($this->connection, '   '))->isConfigured());
-        self::assertTrue((new BounceHealth($this->connection, 'imap://u:p@host:993'))->isConfigured());
+        self::assertFalse((new BounceHealth($this->connection, new BounceMailbox('   ')))->isConfigured());
+        self::assertTrue((new BounceHealth($this->connection, new BounceMailbox('imap://u:p@host:993')))->isConfigured());
     }
 
     public function testRecordReturnsThePreviousState(): void

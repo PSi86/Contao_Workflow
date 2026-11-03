@@ -17,8 +17,9 @@ use Doctrine\DBAL\Connection;
  * tl_workflow_bounce_health, upserted by {@see BounceCollector::reconcileHealth()} and read
  * by the overview.
  *
- * "Is it configured?" is a separate, cheap question answered live from the bound DSN — no
- * cron run needed, so a site whose config did not load is flagged immediately.
+ * "Is it configured?" is a separate question answered live by {@see BounceMailbox} (the bound
+ * DSN, or the back-end settings – one small query) — no cron run needed, so a site whose
+ * config did not load is flagged immediately.
  *
  * Every database access is guarded: right after a deploy the table may not exist yet (the
  * schema diff runs on contao:migrate), and the collector's contract is to never throw.
@@ -39,19 +40,20 @@ class BounceHealth
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly ?string $bounceImapDsn = null,
+        private readonly ?BounceMailbox $mailbox = null,
     ) {
     }
 
     /**
-     * Whether a bounce mailbox DSN is present and loaded. Cheap (no I/O), so the overview can
-     * ask on every render. An empty result means either "never configured" or "configured but
-     * not loaded" (e.g. a Managed Edition with .env.local.php that never picked up .env.local)
-     * – the application cannot tell the two apart, and both mean bounces go undetected.
+     * Whether a usable bounce mailbox is set up. Cheap (no IMAP), so the overview can ask on
+     * every render. False means "never set up", "set in .env.local but not loaded" (e.g. a
+     * Managed Edition with .env.local.php that never picked up .env.local) or "stored password
+     * no longer readable" ({@see BounceMailbox::passwordUnreadable()}) – all of them mean
+     * bounces go undetected.
      */
     public function isConfigured(): bool
     {
-        return '' !== trim((string) $this->bounceImapDsn);
+        return null !== $this->mailbox && '' !== $this->mailbox->imapDsn();
     }
 
     /**

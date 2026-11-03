@@ -55,6 +55,63 @@ $l = $this->dash;
   <?php endif; ?>
 <?php endif; ?>
 
+<?php if (null !== $this->mailboxDialog): $md = $this->mailboxDialog; $f = $md['form']; ?>
+<details class="tl_box" style="margin-bottom:1.5em;padding:1em;"<?= (null === $md['source'] || $md['passwordUnreadable']) ? ' open' : '' ?>>
+  <summary style="cursor:pointer;font-weight:bold;"><?= $l['mailbox_title'] ?></summary>
+  <p class="tl_help" style="margin:.6em 0;"><?= $esc($l['mailbox_intro']) ?></p>
+  <?php if ('env' === $md['source']): $e = $md['env']; ?>
+    <p class="tl_info" style="margin:.6em 0;"><?= $esc(sprintf($l['mailbox_env'], $e['host'], $e['port'], $e['user'], $md['address'] ?? $l['mailbox_no_address'])) ?></p>
+  <?php else: ?>
+    <?php if ($md['passwordUnreadable']): ?>
+      <p class="tl_error" style="margin:.6em 0;"><?= $esc($l['mailbox_password_reenter']) ?></p>
+    <?php endif; ?>
+    <?php if (!$md['sodium']): ?>
+      <p class="tl_error" style="margin:.6em 0;"><?= $esc($l['mailbox_err_sodium']) ?></p>
+    <?php endif; ?>
+    <form method="post" action="<?= $esc($this->mailboxUrl) ?>" data-turbo="false" autocomplete="off">
+      <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->rt) ?>">
+      <table style="border-collapse:collapse;margin:.4em 0;">
+        <tr>
+          <td style="padding:.25em .8em .25em 0;"><label for="wf-mb-address"><?= $l['mailbox_address'] ?></label></td>
+          <td><input id="wf-mb-address" type="email" name="address" class="tl_text" style="width:22em;" required value="<?= $esc($f['address']) ?>"></td>
+        </tr>
+        <tr>
+          <td style="padding:.25em .8em .25em 0;"><label for="wf-mb-host"><?= $l['mailbox_host'] ?></label></td>
+          <td><input id="wf-mb-host" type="text" name="host" class="tl_text" style="width:22em;" required placeholder="w0123456.kasserver.com" value="<?= $esc($f['host']) ?>"></td>
+        </tr>
+        <tr>
+          <td style="padding:.25em .8em .25em 0;"><label for="wf-mb-port"><?= $l['mailbox_port'] ?></label></td>
+          <td>
+            <input id="wf-mb-port" type="text" inputmode="numeric" name="port" class="tl_text" style="width:5em;" required value="<?= (int) $f['port'] ?>">
+            <select name="encryption" class="tl_select" style="width:auto;" aria-label="<?= $esc($l['mailbox_encryption']) ?>">
+              <?php foreach (['ssl', 'tls', 'none'] as $enc): ?>
+                <option value="<?= $enc ?>"<?= $enc === $f['encryption'] ? ' selected' : '' ?>><?= $esc($l['mailbox_enc_'.$enc]) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:.25em .8em .25em 0;"><label for="wf-mb-user"><?= $l['mailbox_user'] ?></label></td>
+          <td><input id="wf-mb-user" type="text" name="user" class="tl_text" style="width:22em;" placeholder="<?= $esc($l['mailbox_user_placeholder']) ?>" value="<?= $esc($f['user']) ?>"></td>
+        </tr>
+        <tr>
+          <td style="padding:.25em .8em .25em 0;"><label for="wf-mb-password"><?= $l['mailbox_password'] ?></label></td>
+          <td><input id="wf-mb-password" type="password" name="password" class="tl_text" style="width:22em;" autocomplete="new-password"<?= $md['passwordSet'] && !$md['passwordUnreadable'] ? ' placeholder="'.$esc($l['mailbox_password_kept']).'"' : ' required' ?>></td>
+        </tr>
+      </table>
+      <p style="margin:.6em 0 0;">
+        <button type="submit" name="action" value="check" class="tl_submit" style="float:none;"><?= $l['mailbox_save_check'] ?></button>
+        <button type="submit" name="action" value="save" class="tl_submit" style="float:none;"><?= $l['mailbox_save'] ?></button>
+        <?php if ($md['stored']): ?>
+          <button type="submit" name="action" value="clear" class="tl_submit" style="float:none;" formnovalidate onclick="return confirm('<?= $esc($l['mailbox_clear_confirm']) ?>');"><?= $l['mailbox_clear'] ?></button>
+        <?php endif; ?>
+      </p>
+      <p class="tl_help" style="margin:.6em 0 0;"><?= $esc($l['mailbox_hints']) ?></p>
+    </form>
+  <?php endif; ?>
+</details>
+<?php endif; ?>
+
 <details class="tl_box" style="margin-bottom:1.5em;padding:1em;">
   <summary style="cursor:pointer;font-weight:bold;">Workflow-Konfiguration importieren</summary>
   <form method="post" action="<?= $esc($this->importUrl) ?>" enctype="multipart/form-data" style="margin-top:1em;">

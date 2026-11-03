@@ -10,6 +10,8 @@ services:
             # Address of the bounce mailbox (envelope sender of workflow mails). Optional: by
             # default the user of WORKFLOW_BOUNCE_IMAP_DSN, when it is an e-mail address.
             $bounceAddress: '%env(default::WORKFLOW_BOUNCE_ADDRESS)%'
+            # Key material for the bounce mailbox password stored in the database.
+            $appSecret: '%kernel.secret%'
 
     Psimandl\WorkflowBundle\:
         resource: ../src/
@@ -49,6 +51,10 @@ services:
 
     # Read by the (non-service) back end dashboard module for the end-to-end test line.
     Psimandl\WorkflowBundle\Service\Bounce\BounceProbe:
+        public: true
+
+    # Read by the (non-service) back end dashboard module for the bounce mailbox dialog.
+    Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox:
         public: true
 
     Psimandl\WorkflowBundle\Service\WorkflowValidator:

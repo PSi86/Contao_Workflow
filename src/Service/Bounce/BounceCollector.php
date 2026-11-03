@@ -32,9 +32,10 @@ use Webklex\PHPIMAP\Message;
  * everything else in the INBOX, where a person can see it; the overview shows how many such
  * messages there are. A watermark makes sure each message is looked at exactly once.
  *
- * Configuration is an IMAP DSN in .env.local, e.g.
+ * The mailbox comes from {@see BounceMailbox}: the back-end settings of the workflow overview,
+ * or an IMAP DSN in .env.local, which takes precedence, e.g.
  *   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40example.com:PASS@wXXXX.kasserver.com:993?ssl=true
- * When it is empty the collector is a no-op — the feature is simply off.
+ * Without a mailbox the collector is a no-op — the feature is simply off.
  *
  * How often the mailbox is read is decided by {@see BounceSchedule}: the job is called every
  * minute and reads the mailbox only when the current tier says so (every 2 minutes right after
@@ -67,7 +68,7 @@ class BounceCollector
         private readonly BounceSchedule $schedule,
         private readonly CronHealth $cronHealth,
         private readonly LockFactory $lockFactory,
-        private readonly ?string $bounceImapDsn = null,
+        private readonly ?BounceMailbox $mailbox = null,
         private readonly ?BackgroundActivity $activity = null,
     ) {
     }
@@ -107,7 +108,7 @@ class BounceCollector
         $started = microtime(true);
 
         try {
-            $outcome = $this->collect(trim((string) $this->bounceImapDsn));
+            $outcome = $this->collect((string) $this->mailbox?->imapDsn());
             $this->reconcileHealth($outcome);
 
             return $outcome;
@@ -136,13 +137,15 @@ class BounceCollector
 
         match ($outcome->state) {
             BounceHealth::STATE_UNCONFIGURED => $this->systemLog(
-                'Bounce-Postfach nicht konfiguriert: WORKFLOW_BOUNCE_IMAP_DSN ist leer oder wurde nicht geladen. '
+                'Bounce-Postfach nicht eingerichtet: weder in der Workflow-Übersicht noch per WORKFLOW_BOUNCE_IMAP_DSN '
+                .'(oder das gespeicherte Passwort lässt sich nicht mehr entschlüsseln). '
                 .'In diesem Zustand werden Zustellfehler und Bounces nicht erkannt.',
                 LogLevel::WARNING,
             ),
             BounceHealth::STATE_CONFIG_ERROR => $this->systemLog(
                 'Bounce-Postfach nicht erreichbar: '.$outcome->message.' '
-                .'Zustellfehler und Bounces werden derzeit nicht erkannt – bitte WORKFLOW_BOUNCE_IMAP_DSN prüfen.',
+                .'Zustellfehler und Bounces werden derzeit nicht erkannt – bitte die Zugangsdaten prüfen '
+                .'(Workflow-Übersicht → Bounce-Postfach, bzw. WORKFLOW_BOUNCE_IMAP_DSN).',
                 LogLevel::ERROR,
             ),
             // Only worth a line as a RECOVERY: null means the first-ever run was already fine.
@@ -181,13 +184,13 @@ class BounceCollector
         };
 
         if ('' === $dsn) {
-            $note('comment', 'Kein Bounce-Postfach konfiguriert (WORKFLOW_BOUNCE_IMAP_DSN ist leer).');
+            $note('comment', 'Kein Bounce-Postfach eingerichtet (weder in der Workflow-Übersicht noch per WORKFLOW_BOUNCE_IMAP_DSN).');
 
             return BounceOutcome::unconfigured();
         }
 
         try {
-            $config = $this->configFromDsn($dsn);
+            $config = self::imapConfig($dsn);
         } catch (\Throwable $e) {
             $note('error', 'Ungültige DSN: '.$e->getMessage());
 
@@ -245,6 +248,7 @@ class BounceCollector
             ));
 
             $own = 0;
+            $stopped = false;
 
             foreach ($messages as $message) {
                 $uid = (int) $message->getUid();
@@ -255,6 +259,7 @@ class BounceCollector
                     // Database trouble is usually passing: stop here and look at this message
                     // again on the next run (the watermark stays below it).
                     $this->logMessageError($note, 'Datenbankfehler, Nachricht wird beim nächsten Abruf erneut geprüft – '.$e->getMessage());
+                    $stopped = true;
                     break;
                 } catch (\Throwable $e) {
                     // An unreadable message would fail again on every run: leave it in the INBOX
@@ -297,6 +302,8 @@ class BounceCollector
             }
 
             $client->disconnect();
+
+            $lastUid = self::watermarkAfterRun($lastUid, $uidNext, !$stopped && $counts['total'] >= $pending);
 
             // What the INBOX holds after this run, apart from messages not looked at yet:
             // computed from the STATUS count, so messages a person deleted in the meantime
@@ -356,6 +363,18 @@ class BounceCollector
         }
 
         return max(0, $scan['lastUid']);
+    }
+
+    /**
+     * The watermark after a run. After a complete pass (no batch limit hit, not stopped) every
+     * UID below UIDNEXT – from the STATUS before the run – has been looked at or no longer
+     * exists (moved out, or deleted by a person). Raising the watermark to UIDNEXT − 1 keeps
+     * such gaps from causing a UID query on every later run. A message that arrived during the
+     * run has a UID of at least UIDNEXT and stays above it.
+     */
+    public static function watermarkAfterRun(int $lastUid, int $uidNext, bool $complete): int
+    {
+        return $complete && $uidNext > 0 ? max($lastUid, $uidNext - 1) : $lastUid;
     }
 
     /**
@@ -599,9 +618,11 @@ class BounceCollector
     }
 
     /**
+     * The webklex client configuration for an IMAP DSN.
+     *
      * @return array<string, mixed>
      */
-    private function configFromDsn(string $dsn): array
+    public static function imapConfig(string $dsn): array
     {
         $parts = parse_url($dsn);
 
@@ -631,8 +652,9 @@ class BounceCollector
             'protocol' => 'imap',
             'encryption' => $encryption,
             'validate_cert' => $validateCert,
-            'username' => isset($parts['user']) ? urldecode($parts['user']) : '',
-            'password' => isset($parts['pass']) ? urldecode($parts['pass']) : '',
+            // rawurldecode, not urldecode: in a URI a "+" is a plus, not a space.
+            'username' => isset($parts['user']) ? rawurldecode($parts['user']) : '',
+            'password' => isset($parts['pass']) ? rawurldecode($parts['pass']) : '',
             'authentication' => null,
             // Fail fast instead of hanging the (web) cron on an unreachable mailbox.
             'timeout' => 20,

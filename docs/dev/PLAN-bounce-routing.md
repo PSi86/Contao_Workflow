@@ -285,7 +285,35 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
   `tl_workflow_send.error`).
 - Abnahme auf tsvkorntal.com: beantwortet F1 und F2.
 
-### AP-B4 — Bounce-Postfach im Back-End (hängt an F3, F4, F7)
+### AP-B4 — Bounce-Postfach im Back-End — **umgesetzt 2026-11-03**
+- Umsetzung: `PasswordCipher` (secretbox, Schlüssel = generichash(Kontext | `kernel.secret`),
+  Bind `$appSecret`), `BounceSettings` (Tabelle `tl_workflow_settings`, id 1; `validate()` liefert
+  Sprachschlüssel), `BounceMailbox` jetzt einzige Quelle: `source()` env|backend|null,
+  `imapDsn()` (env, sonst aus den Einstellungen gebaut, `rawurlencode`), `address()`
+  (WORKFLOW_BOUNCE_ADDRESS > Adresse der Quelle), `passwordUnreadable()`, `envSummary()`.
+  `BounceCollector`, `BounceHealth::isConfigured()`, `BounceCollectCommand` lesen nur noch sie.
+  Route `workflow_bounce_mailbox` (POST + Token, `ROLE_ADMIN`; Aktionen check/save/clear;
+  bei env → abgelehnt). Dialog `<details>` in der Übersicht nur für Admins (env → nur Anzeige;
+  Passwort nie ausgegeben, Platzhalter „gespeichert“). „Speichern und Postfach prüfen“ =
+  speichern + `checkNow()` (echter Abruf, Banner sofort aktuell). Banner bei unlesbarem Passwort.
+- `+`-Fehler behoben: `BounceCollector::imapConfig()` (vorher privat `configFromDsn`) mit
+  `rawurldecode`; Test zuerst rot gesehen („bounces wf@…“), dann grün inkl. Rundweg mit
+  Sonderzeichen über `buildDsn()`. **Verhaltensänderung:** ein von Hand als `+` geschriebenes
+  Leerzeichen in DSN-Benutzer/-Passwort wird nicht mehr zum Leerzeichen (kein Werkzeug erzeugt
+  das; `%20` gilt weiter).
+- Beim Bau ergänzt: `watermarkAfterRun()` hebt die Marke nach einem vollständigen Durchgang auf
+  UIDNEXT − 1, damit gelöschte UIDs nicht bei jedem Lauf eine UID-Abfrage auslösen.
+- Tests: `PasswordCipherTest` (4), `BounceSettingsTest` (10), Collector/Health angepasst;
+  Gegenproben gesehen (env-Vorrang umgedreht → 2 rot; Schlüssel ohne APP_SECRET → 1 rot).
+  Suite 363 grün gegen 5.7 und 5.3.
+- DDEV über die Oberfläche (`scripts/e2e-360-b4.sh`, `e2e-360-b4-nonadmin.sh`): leer → Hinweis;
+  Attrappe speichern + prüfen → „nicht erreichbar“, Passwort verschlüsselt (68 Zeichen);
+  Einladung trägt `Return-Path` aus den Back-End-Einstellungen; **echtes Postfach
+  `workflow-test@` gespeichert + geprüft → Anmeldung ok, 2 fremde liegen gelassen**; Befehl
+  liest „aus den Einstellungen der Workflow-Übersicht“, Lauf 1 „UID > 2“, Lauf 2 „UID > 3“;
+  env gesetzt → Dialog nur Anzeige, Speichern abgelehnt; Passwort beschädigt → Banner + Pflichtfeld;
+  Entfernen → Hinweis; Nicht-Admin → kein Dialog, POST 403. Danach aufgeräumt.
+- Ursprüngliche Planung:
 - Dialog „Bounce-Postfach" (Übersicht): Adresse, IMAP-Server, Port, Verschlüsselung, Benutzer
   (Standard = Adresse), Passwort (nur schreiben; Anzeige „gesetzt").
 - Verschlüsselung: `sodium_crypto_secretbox`, Schlüssel per `sodium_crypto_generichash` aus
