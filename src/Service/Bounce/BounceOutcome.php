@@ -15,18 +15,24 @@ namespace Psimandl\WorkflowBundle\Service\Bounce;
 final class BounceOutcome
 {
     /**
-     * @param string $state   one of the {@see BounceHealth}::STATE_* constants
-     * @param string $message human-readable detail for a config error (empty otherwise)
+     * @param string            $state   one of the {@see BounceHealth}::STATE_* constants
+     * @param string            $message human-readable detail for a config error (empty otherwise)
+     * @param array<string,int> $counts  what a successful run did: total, hard, former, soft,
+     *                                   unmatched, skipped (see BounceCollector::collect())
      */
     public function __construct(
         public readonly string $state,
         public readonly string $message = '',
+        public readonly array $counts = [],
     ) {
     }
 
-    public static function ok(): self
+    /**
+     * @param array<string,int> $counts
+     */
+    public static function ok(array $counts = []): self
     {
-        return new self(BounceHealth::STATE_OK);
+        return new self(BounceHealth::STATE_OK, '', $counts);
     }
 
     public static function unconfigured(): self

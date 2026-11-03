@@ -239,11 +239,15 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 >    Kopieren) und dort anpassen. Die Kopie startet unveröffentlicht, ohne Quelldatei und ohne
 >    Teilnehmer – die Formularfelder und Dokument-Texte kommen mit.
 > 2. **Noch im laufenden Durchlauf:** Abschnitt **„Zurücksetzen"** ganz unten in der
->    Bearbeitungsmaske aufklappen → **„Alle N Teilnehmer zurücksetzen"**. Das verwirft
->    **sämtliche erfassten Antworten** und macht die bereits ausgestellten Dokumente ungültig;
->    danach sind die Einstellungen wieder frei. Erhalten bleiben die importierten Daten, die
->    Links der Teilnehmer und die bisherigen PDF-Dateien (sie werden beim erneuten Absenden
->    überschrieben). Anschließend **Import erneut ausführen**, um die Originaldaten zu laden.
+>    Bearbeitungsmaske aufklappen → **„N Teilnehmer zurücksetzen"**. Das setzt **alle**
+>    Teilnehmer auf **„Importiert"** zurück – auch die nur Eingeladenen –, verwirft
+>    **sämtliche erfassten Antworten** samt Versandzeitpunkt und Versandfehlern und macht die
+>    bereits ausgestellten Dokumente ungültig; danach sind die Einstellungen wieder frei.
+>    Erhalten bleiben die importierten Daten, die Links der Teilnehmer, die bisherigen
+>    PDF-Dateien (sie werden beim erneuten Absenden überschrieben) und **gesperrte Adressen**
+>    („Unzustellbar", siehe Abschnitt 5 b) – sie werden erst wieder angeschrieben, wenn die
+>    Adresse am Eintrag geändert wird. Der Button erscheint, sobald irgendetwas versendet oder
+>    beantwortet wurde. Anschließend **Import erneut ausführen**, um die Originaldaten zu laden.
 
 ### 3 b‑1. Formularfelder  *(Abschnitt „Formular & Formularfelder" in „Bearbeiten")*
 
@@ -639,7 +643,17 @@ angezeigten Link öffnen.
 
 ## 5. Auswertung & Nachfass (Admin)
 
-**Workflow → Übersicht** zeigt pro Workflow eine eigene Karte mit:
+**Workflow → Übersicht** zeigt ganz oben eine **Statuszeile** zur Hintergrundarbeit:
+- **„Cronjob: zuletzt aufgerufen am …"** – wann der Server-Cronjob (`/_contao/cron`) bzw.
+  `contao:cron` zuletzt angekommen ist. Bleibt er länger als 10 Minuten aus, wird die Zeile rot:
+  Mail-Warteschlange, Bounce-Abruf und Nachversand laufen dann nur noch bei Seitenaufrufen.
+  Ins System-Log kommt dazu nur ein Eintrag beim ersten erkannten Aufruf und nach einer Pause.
+- **„Bounce-Postfach: zuletzt geprüft …, nächste Prüfung ab …"** (nur mit eingerichtetem
+  Bounce-Postfach) samt Takt: **alle 2 Minuten** in der halben Stunde nach einem Versand,
+  **alle 15 Minuten**, solange Einladungen unbeantwortet sind, sonst **alle 2 Stunden**.
+  **„Jetzt prüfen"** ruft das Postfach sofort ab und meldet, was es gefunden hat.
+
+Darunter pro Workflow eine eigene Karte mit:
 - Zähler **eingegangen / offen / gesamt**. Ist die Quelldatei geladen, aber **noch nicht
   importiert** (0 Antworten), erscheint ein Hinweis. Nicht ausführbare Workflows (fehlende
   oder unpassende Quelldatei) sind mit Badge markiert und ihre Aktionen gesperrt.
@@ -673,9 +687,10 @@ angezeigten Link öffnen.
   auslösende Person, Quelldatei samt Prüfsumme, Zahlen und Meldungen; auch gescheiterte
   Läufe). Siehe Abschnitt 3 c.
 - **„Bearbeiten"** → springt direkt in die Konfiguration dieses Workflows (Modul „Workflows").
-- **„Versandfehler"** (nur bei Bedarf) → schlägt der Versand einer Mail tatsächlich fehl, wird die
-  betroffene Person hier mit Fehlertext gelistet und der Schritt **bleibt unverändert**; ein
-  späterer erfolgreicher Versand räumt die Markierung automatisch wieder ab.
+- **„Versandfehler"** (Spalte *Zustellung*) → schlägt der Versand einer Mail tatsächlich fehl,
+  steht der Fehlertext im Tooltip und der Schritt **bleibt unverändert**; ein späterer
+  erfolgreicher Versand räumt die Markierung automatisch wieder ab. Steht dort
+  **„Unzustellbar"**, ist die Adresse gesperrt – siehe 5 b.
 
 ### 5 a. Einen einzelnen Teilnehmer erneut antworten lassen
 
@@ -699,6 +714,37 @@ Was dabei passiert:
 > Sollen **alle** Teilnehmer zurückgesetzt werden – etwa um eine gesperrte Quell-Einstellung zu
 > ändern –, führt der Weg über den Abschnitt **„Zurücksetzen"** in der Bearbeitungsmaske des
 > Workflows (siehe 3 b), nicht über die Einträge einzeln.
+
+### 5 b. Unzustellbare Adressen und Adresse korrigieren
+
+Eine Adresse wird **gesperrt** („Unzustellbar" in der Spalte *Zustellung*, Grund im Tooltip),
+wenn feststeht, dass sie nicht existiert:
+- ein **harter Bounce** kommt im Bounce-Postfach an (Empfänger-Server: „User unknown" o. ä.),
+- der **Mailserver lehnt den Empfänger beim Versand endgültig ab** (Antwort 5xx mit
+  Adress-Status 5.1.x, z. B. `550 5.1.1 User unknown`), oder
+- die Adresse ist **ungültig geschrieben** (z. B. `name@gmx` ohne Endung) – dann wird gar nicht
+  erst versucht zu senden. Der Import nennt solche Adressen schon vorher mit Zeilennummer, in
+  der Meldung und im Importprotokoll.
+
+Gesperrte Adressen bekommen keine Einladungen und Erinnerungen mehr, auch nicht nach
+„Teilnehmer zurücksetzen". Alle anderen Fehler – Server nicht erreichbar, Anmeldung
+fehlgeschlagen, zu viele Verbindungen, vorübergehende 4xx-Antworten, ein ungültiger Absender
+in der E-Mail-Vorlage – sperren **nicht**: Sie erscheinen als **„Versandfehler"** und werden
+beim nächsten Versand erneut versucht, denn sie treffen alle Empfänger gleichermaßen.
+
+**Adresse korrigieren:** **Workflows → (Workflow) → Einträge → (Eintrag bearbeiten)** → Feld
+**E-Mail** ändern → **Speichern**. Dabei gilt:
+- Sperre und Versandfehler verschwinden – sie gehörten zur alten Adresse.
+- **Noch nicht beantwortet:** Der Eintrag springt auf **„Importiert"** zurück und bekommt einen
+  **neuen Link**; der alte Link funktioniert nicht mehr (er könnte bei einer falsch
+  geschriebenen, aber existierenden Adresse gelandet sein). Mit **„Einladungen senden"** geht
+  die Einladung an die neue Adresse.
+- **Bereits beantwortet:** Antwort, Schritt und Link bleiben. Kam die Bestätigung an der alten
+  Adresse nicht an, steht sie wieder auf **„Ausstehend"** und wird automatisch an die neue
+  Adresse geschickt (innerhalb von 3 Tagen nach der Antwort), sonst über „E-Mails senden" →
+  „Bestätigung senden".
+- Ein Ergebnis, das danach noch für die **alte** Adresse eintrifft (verspäteter Bounce, Mail
+  aus der Warteschlange), ändert den Eintrag nicht mehr.
 
 ---
 

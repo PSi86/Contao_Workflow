@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service\Bounce;
 
+use Contao\CoreBundle\Cron\Cron;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
+use Contao\CoreBundle\Exception\CronExecutionSkippedException;
 use Contao\CoreBundle\Monolog\ContaoContext;
 use Doctrine\DBAL\Connection;
+use Psimandl\WorkflowBundle\Service\BackgroundActivity;
+use Psimandl\WorkflowBundle\Service\CronHealth;
+use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Symfony\Component\Lock\LockFactory;
 use Webklex\PHPIMAP\ClientManager;
 use Webklex\PHPIMAP\Message;
 
@@ -24,10 +30,17 @@ use Webklex\PHPIMAP\Message;
  *   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40example.com:PASS@wXXXX.kasserver.com:993?ssl=true
  * When it is empty the collector is a no-op — the feature is simply off.
  *
+ * How often the mailbox is read is decided by {@see BounceSchedule}: the job is called every
+ * minute and reads the mailbox only when the current tier says so (every 2 minutes right after
+ * a send, every 15 while invitations are unanswered, every 2 hours otherwise). The back end's
+ * "Jetzt prüfen" button reads it immediately ({@see checkNow()}); a lock keeps that and a cron
+ * run from reading the same messages at the same time.
+ *
  * The cron must never throw: an uncaught exception here would abort the remaining Contao
- * cron jobs. Every failure is logged and swallowed.
+ * cron jobs. Every failure is logged and swallowed. The one deliberate exception is
+ * CronExecutionSkippedException, which tells Contao to give the run back (see __invoke()).
  */
-#[AsCronJob('*/15 * * * *')]
+#[AsCronJob('minutely')]
 class BounceCollector
 {
     private const PROCESSED_FOLDER = 'INBOX/Processed';
@@ -36,18 +49,67 @@ class BounceCollector
     // picked up on the next run.
     private const BATCH_LIMIT = 100;
 
+    // Long enough for a full batch over a slow connection; released as soon as a run ends.
+    private const LOCK_TTL = 300;
+
     public function __construct(
         private readonly BounceParser $parser,
         private readonly Connection $connection,
         private readonly LoggerInterface $logger,
         private readonly BounceHealth $health,
+        private readonly DeliveryRecorder $recorder,
+        private readonly BounceSchedule $schedule,
+        private readonly CronHealth $cronHealth,
+        private readonly LockFactory $lockFactory,
         private readonly ?string $bounceImapDsn = null,
+        private readonly ?BackgroundActivity $activity = null,
     ) {
     }
 
-    public function __invoke(): void
+    /**
+     * The minutely cron entry point.
+     *
+     * Started by a page view while a real cron is alive, the run is handed back to Contao
+     * (CronExecutionSkippedException restores the job's last-run time) instead of logging in
+     * to IMAP inside a visitor's request; the next call of the real cron does it.
+     */
+    public function __invoke(string $scope = Cron::SCOPE_CLI): void
     {
-        $this->reconcileHealth($this->collect(trim((string) $this->bounceImapDsn)));
+        if ($this->cronHealth->shouldDefer($scope)) {
+            throw new CronExecutionSkippedException();
+        }
+
+        if (!$this->schedule->isDue($this->health->read()['checkedAt'])) {
+            return;
+        }
+
+        $this->checkNow();
+    }
+
+    /**
+     * Reads the mailbox now, applies the bounces and records the verdict. Used by the cron and
+     * the back end's "Jetzt prüfen" button. Returns null when another run holds the lock.
+     */
+    public function checkNow(): ?BounceOutcome
+    {
+        $lock = $this->lockFactory->createLock('psimandl_workflow_bounce_collect', self::LOCK_TTL);
+
+        if (!$lock->acquire()) {
+            return null;
+        }
+
+        $started = microtime(true);
+
+        try {
+            $outcome = $this->collect(trim((string) $this->bounceImapDsn));
+            $this->reconcileHealth($outcome);
+
+            return $outcome;
+        } finally {
+            $lock->release();
+            // Attributes a slow request to the IMAP check (see RequestTimingListener).
+            $this->activity?->record('Bounce-Abruf', microtime(true) - $started);
+        }
     }
 
     /**
@@ -121,6 +183,7 @@ class BounceCollector
 
         $total = 0;
         $hard = 0;
+        $former = 0;
         $soft = 0;
         $unmatched = 0;
         $skipped = 0;
@@ -188,6 +251,7 @@ class BounceCollector
 
                         match ($this->applyReport($bounce)) {
                             'hard' => ++$hard,
+                            'former' => ++$former,
                             'unmatched' => ++$unmatched,
                             'soft' => ++$soft,
                             default => null,
@@ -216,18 +280,26 @@ class BounceCollector
             // liveness stays checkable without the heartbeat.
             if (!$dryRun && $total > 0) {
                 $this->systemLog(\sprintf(
-                    'Bounce-Postfach geprüft (%s:%d): %d Nachricht(en), %d hart markiert, %d weich, %d ohne Zuordnung, %d ohne DSN.',
+                    'Bounce-Postfach geprüft (%s:%d): %d Nachricht(en), %d hart markiert, %d für eine inzwischen geänderte Adresse, %d weich, %d ohne Zuordnung, %d ohne DSN.',
                     $config['host'],
                     $config['port'],
                     $total,
                     $hard,
+                    $former,
                     $soft,
                     $unmatched,
                     $skipped,
                 ));
             }
 
-            return BounceOutcome::ok();
+            return BounceOutcome::ok([
+                'total' => $total,
+                'hard' => $hard,
+                'former' => $former,
+                'soft' => $soft,
+                'unmatched' => $unmatched,
+                'skipped' => $skipped,
+            ]);
         } catch (\Throwable $e) {
             $note('error', 'IMAP-Fehler: '.$e->getMessage());
 
@@ -268,12 +340,12 @@ class BounceCollector
     }
 
     /**
-     * @return string one of hard|unmatched|soft|none
+     * @return string one of hard|former|unmatched|soft|none
      */
     private function applyReport(BounceReport $report): string
     {
         if ($report->isHardBounce()) {
-            return $this->recordHardBounce($report) ? 'hard' : 'unmatched';
+            return $this->recordHardBounce($report);
         }
 
         if ($report->isSoftBounce()) {
@@ -291,7 +363,11 @@ class BounceCollector
         return 'none';
     }
 
-    private function recordHardBounce(BounceReport $report): bool
+    /**
+     * @return string hard (address blocked) | former (the entry's address has changed since) |
+     *                unmatched (no send row found)
+     */
+    private function recordHardBounce(BounceReport $report): string
     {
         $send = $this->locateSend($report);
 
@@ -306,7 +382,7 @@ class BounceCollector
                 LogLevel::ERROR,
             );
 
-            return false;
+            return 'unmatched';
         }
 
         $now = time();
@@ -318,32 +394,40 @@ class BounceCollector
             [$code, $now, $now, (int) $send['id']],
         );
 
-        // Flag the entry as an invalid address: it is excluded from further invitation and
-        // reminder runs (see EntryModel::findByWorkflowAndStatus) and shown in its own
-        // dashboard box, separate from retryable transport errors (sendError).
-        $this->connection->executeStatement(
-            "UPDATE tl_workflow_entry SET bounceHard = '1', bounceInfo = ?, tstamp = ? WHERE id = ?",
-            [$this->shorten($report->recipient.' – '.$code), $now, (int) $send['entryId']],
-        );
+        // Block the address: excluded from further invitation and reminder runs and shown as
+        // "Unzustellbar" – but only while the entry still has the address the mail went to. A
+        // late bounce for an address the admin has corrected since must not block the new one.
+        $recipient = '' !== $send['recipient'] ? $send['recipient'] : $report->recipient;
 
-        $this->systemLog(\sprintf('Unzustellbar (Bounce): Eintrag %d – %s (%s).', (int) $send['entryId'], $report->recipient, $code));
+        if (!$this->recorder->blockAddress($send['entryId'], $recipient, $report->recipient.' – '.$code)) {
+            $this->systemLog(\sprintf(
+                'Bounce für %s (Eintrag %d) betrifft eine inzwischen geänderte Adresse – keine Sperre (%s).',
+                $report->recipient,
+                $send['entryId'],
+                $code,
+            ));
 
-        return true;
+            return 'former';
+        }
+
+        $this->systemLog(\sprintf('Unzustellbar (Bounce): Eintrag %d – %s (%s).', $send['entryId'], $report->recipient, $code));
+
+        return 'hard';
     }
 
     /**
-     * @return array{id: int, entryId: int}|null
+     * @return array{id: int, entryId: int, recipient: string}|null
      */
     private function locateSend(BounceReport $report): ?array
     {
         if (null !== $report->parcelId) {
             $row = $this->connection->fetchAssociative(
-                'SELECT id, entryId FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
+                'SELECT id, entryId, recipient FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
                 [$report->parcelId],
             );
 
             if (false !== $row) {
-                return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId']];
+                return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
             }
 
             // Parcel id present but unknown (purged, or a mail we did not send): do not guess.
@@ -353,7 +437,7 @@ class BounceCollector
         // Rule 5: no parcel id (the MTA truncated the original past the header). Fall back to
         // the most recent successfully sent mail to this recipient, and record that we guessed.
         $row = $this->connection->fetchAssociative(
-            "SELECT id, entryId FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
+            "SELECT id, entryId, recipient FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
             [$report->recipient],
         );
 
@@ -366,7 +450,7 @@ class BounceCollector
             $report->recipient,
         ));
 
-        return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId']];
+        return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
     }
 
     /**

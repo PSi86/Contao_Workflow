@@ -35,7 +35,7 @@ $GLOBALS['TL_LANG']['tl_workflow']['pdfSignatureLocationVar'] = ['Briefpapier-Va
 $GLOBALS['TL_LANG']['tl_workflow']['pdfFileName'] = ['PDF-Dateiname', 'Muster für den Dateinamen des PDFs, Platzhalter und {{Insert-Tags}} erlaubt, z. B. Verzicht_##data_name##_##data_vorname##. Umlaute und andere Zeichen bleiben erhalten; Leerzeichen und Satzzeichen werden zu „_“. Bei Namensgleichheit wird automatisch ein kurzer Token angehängt. Leer = Token.'];
 $GLOBALS['TL_LANG']['tl_workflow']['formPreview'] = ['Formular-Vorschau', 'Öffnet eine Ansicht des Formulars mit Beispieldaten (Absenden deaktiviert).'];
 $GLOBALS['TL_LANG']['tl_workflow']['pdfPreview']  = ['PDF-Vorschau', 'Öffnet das generierte PDF mit Beispieldaten in einem neuen Tab.'];
-$GLOBALS['TL_LANG']['tl_workflow']['resetEntries'] = ['Teilnehmer zurücksetzen', 'Verwirft alle erfassten Antworten und gibt die gesperrten Quell-Einstellungen wieder frei.'];
+$GLOBALS['TL_LANG']['tl_workflow']['resetEntries'] = ['Teilnehmer zurücksetzen', 'Setzt alle Teilnehmer auf „importiert“ zurück, verwirft Antworten und Versandstatus und gibt die gesperrten Quell-Einstellungen wieder frei. Gesperrte Adressen bleiben gesperrt.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncInvite']    = ['Einladungs-Benachrichtigung', 'Notification Center: Einladung mit individuellem Link.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncReminder']  = ['Erinnerungs-Benachrichtigung', 'Notification Center: Erinnerung bei ausstehender Antwort.'];
 $GLOBALS['TL_LANG']['tl_workflow']['ncResult']    = ['Ergebnis-Benachrichtigung', 'Notification Center: Ergebnis-Mail mit angehängtem PDF.'];

@@ -92,6 +92,13 @@ class ImportCommand extends Command
 
         $this->reportDetails($io, $result, $mode);
 
+        if ([] !== $result['invalidEmails']) {
+            $io->warning(
+                "Invalid e-mail addresses – these participants cannot be mailed until the address is corrected:\n"
+                .implode("\n", $result['invalidEmails']),
+            );
+        }
+
         if ([] !== $result['formulaProblems']) {
             $io->warning(
                 "Formula cells without a stored result – those fields were imported empty:\n"

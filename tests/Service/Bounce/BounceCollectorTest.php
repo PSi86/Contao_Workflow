@@ -6,11 +6,20 @@ namespace Psimandl\WorkflowBundle\Tests\Service\Bounce;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Contao\CoreBundle\Cron\Cron;
+use Contao\CoreBundle\Exception\CronExecutionSkippedException;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceParser;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
+use Psimandl\WorkflowBundle\Service\CronHealth;
+use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
+use Psimandl\WorkflowBundle\Service\Delivery\SendFailureClassifier;
 use Psr\Log\NullLogger;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
  * Covers the bounce-to-database mapping of the collector — the part that has no IMAP
@@ -47,19 +56,73 @@ final class BounceCollectorTest extends TestCase
         $this->connection->executeStatement(<<<'SQL'
             CREATE TABLE tl_workflow_entry (
                 id         INTEGER PRIMARY KEY,
+                email      TEXT NOT NULL DEFAULT '',
                 bounceHard TEXT NOT NULL DEFAULT '',
                 bounceInfo TEXT NOT NULL DEFAULT '',
                 tstamp     INTEGER NOT NULL DEFAULT 0
             )
             SQL);
 
-        $this->collector = new BounceCollector(
+        $this->connection->executeStatement('CREATE TABLE tl_workflow_cron_health (id INTEGER PRIMARY KEY, tstamp INTEGER NOT NULL DEFAULT 0, lastUrlAt INTEGER NOT NULL DEFAULT 0, lastCliAt INTEGER NOT NULL DEFAULT 0)');
+        $this->connection->executeStatement("CREATE TABLE tl_workflow_bounce_health (id INTEGER PRIMARY KEY, tstamp INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT '', message TEXT NULL)");
+
+        $this->collector = $this->collector();
+    }
+
+    /**
+     * Started by a page view while a real cron calls Contao, the run is handed back – no IMAP
+     * login inside a visitor's request.
+     */
+    public function testPageViewRunIsLeftToARealCron(): void
+    {
+        $this->cronHealth()->recordCall(CronHealth::TRIGGER_URL);
+
+        $this->expectException(CronExecutionSkippedException::class);
+
+        ($this->collector)(Cron::SCOPE_WEB);
+    }
+
+    /**
+     * Not due yet (checked a minute ago, nothing sent): the minutely call does nothing – the
+     * recorded verdict, and thus the time of the last check, stays as it was.
+     */
+    public function testNoCheckBeforeTheScheduleSaysSo(): void
+    {
+        $checkedAt = time() - 60;
+        $this->connection->insert('tl_workflow_bounce_health', ['id' => 1, 'tstamp' => $checkedAt, 'state' => 'unconfigured']);
+
+        ($this->collector)(Cron::SCOPE_CLI);
+
+        self::assertSame($checkedAt, (int) $this->connection->fetchOne('SELECT tstamp FROM tl_workflow_bounce_health WHERE id = 1'));
+    }
+
+    public function testADueCheckRecordsItsVerdict(): void
+    {
+        ($this->collector)(Cron::SCOPE_CLI);
+
+        $row = $this->connection->fetchAssociative('SELECT state, tstamp FROM tl_workflow_bounce_health WHERE id = 1');
+        self::assertSame(BounceHealth::STATE_UNCONFIGURED, (string) $row['state'], 'no DSN in this test');
+        self::assertGreaterThan(0, (int) $row['tstamp']);
+    }
+
+    private function collector(): BounceCollector
+    {
+        return new BounceCollector(
             new BounceParser(),
             $this->connection,
             new NullLogger(),
             new BounceHealth($this->connection),
+            new DeliveryRecorder($this->connection, new SendFailureClassifier()),
+            new BounceSchedule($this->connection),
+            $this->cronHealth(),
+            new LockFactory(new InMemoryStore()),
             null,
         );
+    }
+
+    private function cronHealth(): CronHealth
+    {
+        return new CronHealth($this->connection, new RequestStack(), new NullLogger());
     }
 
     /**
@@ -104,6 +167,23 @@ final class BounceCollectorTest extends TestCase
         $entry = $this->connection->fetchAssociative('SELECT * FROM tl_workflow_entry WHERE id = 1');
         self::assertSame('1', (string) $entry['bounceHard'], 'the entry is flagged as an invalid address');
         self::assertStringContainsString(self::HARD_RECIPIENT, (string) $entry['bounceInfo']);
+    }
+
+    /**
+     * The bounce of a mail to the OLD address arrives after the admin corrected it. The send
+     * log records the bounce, but the corrected address must not be blocked.
+     */
+    public function testBounceForAFormerAddressDoesNotBlockTheCorrectedOne(): void
+    {
+        $this->insertSend(self::HARD_PARCEL, self::HARD_RECIPIENT, 1);
+        $this->insertEntry(1, 'corrected@example.org');
+
+        $this->collector->handleRaw($this->fixture('bounce-hard-550.eml'));
+
+        self::assertSame('bounced', (string) $this->sendRow(self::HARD_PARCEL)['state'], 'the send log keeps the truth');
+
+        $entry = $this->connection->fetchAssociative('SELECT * FROM tl_workflow_entry WHERE id = 1');
+        self::assertSame('', (string) $entry['bounceHard'], 'the corrected address stays usable');
     }
 
     public function testSoftBounceLeavesTheStateUnchanged(): void
@@ -155,9 +235,9 @@ final class BounceCollectorTest extends TestCase
         ]);
     }
 
-    private function insertEntry(int $id): void
+    private function insertEntry(int $id, string $email = self::HARD_RECIPIENT): void
     {
-        $this->connection->insert('tl_workflow_entry', ['id' => $id]);
+        $this->connection->insert('tl_workflow_entry', ['id' => $id, 'email' => $email]);
     }
 
     /**

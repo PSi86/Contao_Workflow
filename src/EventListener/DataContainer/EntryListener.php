@@ -11,6 +11,7 @@ use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\EntryReset;
 use Psimandl\WorkflowBundle\Service\TokenGenerator;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 
@@ -19,10 +20,19 @@ use Psimandl\WorkflowBundle\Service\WorkflowStatus;
  */
 class EntryListener
 {
+    /**
+     * Entries whose address changed in the form being saved (id => true), from the email save
+     * callback to the submit callback of the same request.
+     *
+     * @var array<int, true>
+     */
+    private array $changedAddresses = [];
+
     public function __construct(
         private readonly TokenGenerator $tokenGenerator,
         private readonly Connection $connection,
         private readonly WorkflowStatus $workflowStatus,
+        private readonly EntryReset $entryReset,
     ) {
     }
 
@@ -56,22 +66,45 @@ class EntryListener
     }
 
     /**
-     * Clears the hard-bounce suppression when the e-mail address is changed. Without this a
-     * corrected address would stay locked out of every future invitation/reminder run.
+     * Notes that the e-mail address of an entry is being changed. The consequences (see
+     * EntryReset::applyAddressChange()) are applied on submit, once every field of the form
+     * has been written – applied here, a status field saved later in the same form would
+     * overwrite them.
+     *
+     * The stored address is read from the database rather than from $dc->activeRecord: the
+     * save callbacks run before Contao writes the form, so the row still holds the old value.
      */
     #[AsCallback(table: 'tl_workflow_entry', target: 'fields.email.save')]
-    public function resetBounceOnEmailChange(mixed $value, DataContainer $dc): mixed
+    public function rememberAddressChange(mixed $value, DataContainer $dc): mixed
     {
         $id = (int) ($dc->id ?? 0);
 
-        if ($id > 0 && (string) $value !== (string) ($dc->activeRecord->email ?? '')) {
-            $this->connection->executeStatement(
-                "UPDATE tl_workflow_entry SET bounceHard = '', bounceInfo = '' WHERE id = ?",
-                [$id],
-            );
+        if ($id > 0) {
+            $stored = $this->connection->fetchOne('SELECT email FROM tl_workflow_entry WHERE id = ?', [$id]);
+
+            if (false !== $stored && mb_strtolower(trim((string) $stored)) !== mb_strtolower(trim((string) $value))) {
+                $this->changedAddresses[$id] = true;
+            }
         }
 
         return $value;
+    }
+
+    /**
+     * Applies a changed e-mail address: lifts the block, clears the send error, and – for an
+     * entry that has not answered yet – starts it over at "imported" with a new link.
+     */
+    #[AsCallback(table: 'tl_workflow_entry', target: 'config.onsubmit')]
+    public function applyAddressChange(DataContainer $dc): void
+    {
+        $id = (int) ($dc->id ?? 0);
+
+        if ($id < 1 || !isset($this->changedAddresses[$id])) {
+            return;
+        }
+
+        unset($this->changedAddresses[$id]);
+        $this->entryReset->applyAddressChange($id);
     }
 
     /**

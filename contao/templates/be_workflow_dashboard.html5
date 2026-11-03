@@ -15,6 +15,17 @@ $l = $this->dash;
   <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc(sprintf($l['stuck_queue'], (int) $this->stuckQueue)) ?></p>
 <?php endif; ?>
 
+<?php $cs = $this->cronStatus; ?>
+<div class="<?= $cs['cronOk'] ? 'tl_info' : 'tl_error' ?> wf-cron-status" style="margin-bottom:1.5em;">
+  <p style="margin:0;<?= $cs['cronOk'] ? '' : 'font-weight:bold;' ?>"><?= $esc($cs['cron']) ?></p>
+  <?php if ('' !== $cs['bounce']): ?>
+    <p style="margin:.4em 0 0;">
+      <?= $esc($cs['bounce']) ?>
+      <a href="<?= $esc($this->bounceCheckUrl) ?>" class="tl_submit" style="float:none;display:inline-block;margin-left:.6em;text-decoration:none;" data-turbo="false"><?= $l['bounce_check_now'] ?></a>
+    </p>
+  <?php endif; ?>
+</div>
+
 <?php if (!empty($this->bounceBanner)): $b = $this->bounceBanner; ?>
   <?php if ('error' === $b['level']): ?>
     <p class="tl_error" style="margin-bottom:1.5em;font-weight:bold;"><?= $esc($b['message']) ?></p>

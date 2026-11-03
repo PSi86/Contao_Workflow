@@ -37,6 +37,13 @@ services:
     Psimandl\WorkflowBundle\Service\Bounce\BounceHealth:
         public: true
 
+    # Read by the (non-service) back end dashboard module for the cron status line.
+    Psimandl\WorkflowBundle\Service\CronHealth:
+        public: true
+
+    Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule:
+        public: true
+
     Psimandl\WorkflowBundle\Service\WorkflowValidator:
         public: true
 

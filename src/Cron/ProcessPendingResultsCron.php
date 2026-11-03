@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Cron;
 
+use Contao\CoreBundle\Cron\Cron;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
+use Contao\CoreBundle\Exception\CronExecutionSkippedException;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Monolog\ContaoContext;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\BackgroundActivity;
+use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psr\Log\LoggerInterface;
 
@@ -23,6 +27,9 @@ use Psr\Log\LoggerInterface;
  * Only recent responses are auto-retried; older ones stay visible in the list for the admin
  * to resolve via the "Bestätigung neu erzeugen & senden" action, instead of being retried
  * forever.
+ *
+ * Generating a PDF is the most expensive thing the bundle does, so a run started by a page
+ * view is handed back while a real cron is alive (see CronHealth::shouldDefer()).
  */
 #[AsCronJob('*/15 * * * *')]
 class ProcessPendingResultsCron
@@ -38,11 +45,17 @@ class ProcessPendingResultsCron
         private readonly Connection $connection,
         private readonly SubmissionProcessor $submissionProcessor,
         private readonly LoggerInterface $logger,
+        private readonly CronHealth $cronHealth,
+        private readonly ?BackgroundActivity $activity = null,
     ) {
     }
 
-    public function __invoke(): void
+    public function __invoke(string $scope = Cron::SCOPE_CLI): void
     {
+        if ($this->cronHealth->shouldDefer($scope)) {
+            throw new CronExecutionSkippedException();
+        }
+
         $this->framework->initialize();
 
         $rows = $this->connection->fetchAllAssociative(
@@ -58,6 +71,7 @@ class ProcessPendingResultsCron
 
         $done = 0;
         $failed = 0;
+        $started = microtime(true);
 
         foreach ($rows as $row) {
             $entry = EntryModel::findByPk((int) $row['id']);
@@ -73,6 +87,9 @@ class ProcessPendingResultsCron
                 ++$failed;
             }
         }
+
+        // Attributes a slow request to the PDF generation (see RequestTimingListener).
+        $this->activity?->record(\sprintf('Nachversand von %d Bestätigung(en)', $done + $failed), microtime(true) - $started);
 
         $this->logger->log(
             'info',
