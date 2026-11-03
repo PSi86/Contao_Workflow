@@ -90,37 +90,70 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
 | E6 | Bearbeitungsmaske warnt, wenn `From` oder `Reply-To` einer Benachrichtigung die Bounce-Adresse ist. | Nutzer, 2026-11-03 |
 | E7 | Test- und Produktionssystem bekommen je ein eigenes Bounce-Postfach. | Konzept |
 | E8 | Version 3.6.0; Contao 5.7 wird 3.7.0. | Nutzer, 2026-11-03 |
+| E9 | Zielbild tsvkorntal.de: Empfänger sehen `From: verwaltung@tsvkorntal.de`, Antworten gehen dorthin (kein abweichendes `Reply-To` nötig). Bounce-Postfach bleibt `workflow@tsvkorntal.de` und ist zugleich das SMTP-Anmeldekonto; AP-B1 setzt `MAIL FROM` = `workflow@`. Alle Adressen in `tsvkorntal.de` (SPF/DKIM-Ausrichtung für DMARC). Machbarkeit hängt am Test zu F1. | Nutzer, 2026-11-03 |
+| E10 | Passwort des Bounce-Postfachs darf verschlüsselt in der Datenbank liegen (F3). | Nutzer, 2026-11-03 |
+| E11 | Bounce-Postfach einrichten dürfen nur Contao-Administratoren (F4). | Nutzer, 2026-11-03 |
+| E12 | Zuverlässiger Versand hat Vorrang vor frei wählbarem Absender (F5). | Nutzer, 2026-11-03 |
 
 ## 2. Offene Fragen – vor bzw. während der Umsetzung klären
 
-- [ ] **F1 (All-Inkl): Einrichtung 1 oder 2?**
+- [x] **F1 (All-Inkl): Einrichtung 1 oder 2?** → **Beide gehen; Zielbild E9 bestätigt** (Details
+      unten, Gmail-Kopfzeilen von A und D vom Nutzer, 2026-11-03).
       Einrichtung 1 = Versand über das Bounce-Konto (`bounces@` als SMTP-Anmeldung, `From:
       workflow@`); offen, ob kasserver eine `From`-Kopfzeile ≠ Anmeldekonto zulässt.
       Einrichtung 2 = Versand über `workflow@`, Bundle setzt `MAIL FROM: bounces@`; offen, ob
       kasserver `MAIL FROM` ≠ Anmeldekonto zulässt (sonst `553 5.7.1 … Sender address rejected`).
       Klärung: AP-B3 (Ende-zu-Ende-Test) auf tsvkorntal.com. Der Fehler landet dank 3.5.0 als
       „Versandfehler" mit Text am Eintrag bzw. in der Testanzeige.
-- [ ] **F2 (All-Inkl): Welche Testadresse erzeugt einen echten Bounce statt einer sofortigen
-      Ablehnung?** Kandidaten: `bounce-test-<zufall>@bounce-test.invalid` (reservierte TLD) oder
-      ein unbekanntes Postfach der eigenen Domain. Beides auf tsvkorntal.com ausprobieren.
-- [ ] **F3 (Nutzer): Passwort des Bounce-Postfachs in der Datenbank** (libsodium, Schlüssel aus
-      `APP_SECRET`) akzeptabel – oder bleibt es in `.env.local`? Davon hängt AP-B4 ab.
-- [ ] **F4 (Nutzer): Wer darf das Postfach einrichten?** Vorschlag: nur Contao-Administratoren.
-- [ ] **F5 (Nutzer): Erzwungenes `from` am Transport `workflow`** – mit E2 für Bounces nicht mehr
-      nötig. Soll der Absender wieder frei wählbar werden (DKIM/DMARC beachten)?
-- [ ] **F6 (Nutzer, optional): Beispiel-Mail zu „Bounce kam bei Reply-To an"** mit Kopfzeilen,
-      um 0.1 endgültig abzuhaken.
-- [ ] **F7 (Technik): ext-sodium auf All-Inkl vorhanden?** (`<?php var_dump(extension_loaded('sodium'));`
-      in einer Wegwerf-Datei, danach löschen) – Voraussetzung für AP-B4.
+      **Stand 2026-11-03:** Zielbild E9 = Einrichtung 1 mit `From: verwaltung@`. Vor dem Bau von
+      AP-B3 vorgezogen: `scripts/probe-smtp-routing.php` (im DDEV gegen Mailpit geprüft) schickt
+      über das echte Konto `workflow@` vier Mails: A `From: verwaltung@` / `MAIL FROM: workflow@`
+      an eine eigene Adresse; B, C dasselbe an unzustellbare Empfänger (Bounce-Weg); D Gegenprobe
+      `MAIL FROM: verwaltung@` ≠ Anmeldung. Läuft mit dem eigenen Bounce-Postfach des Testsystems
+      (E7) `workflow-test@tsvkorntal.de`, nicht mit dem Produktionskonto.
+      **Gemessen 2026-11-03 14:28** (Probe `20261103-132813-56d3f1`, `w020341b.kasserver.com:587`,
+      Anmeldung `workflow-test@tsvkorntal.de`): kasserver nimmt **A, B, C und D** an (`250 2.0.0 Ok:
+      queued as …`). Also: `From` ≠ Anmeldekonto **und** `MAIL FROM` ≠ Anmeldekonto (D, gleiche
+      Domain) werden beim Einliefern akzeptiert. Die Bounces zu B und C kamen im Postfach
+      `workflow-test@` an (IMAP, `scripts/probe-imap-inbox.php`): `From: MAILER-DAEMON@dd36332.kasserver.com`,
+      `Return-Path: <>`, `multipart/report; report-type=delivery-status`. Damit belegt: der Bounce
+      geht an `MAIL FROM`, nicht an `From`. Gmail (Kopfzeilen vom Nutzer): A und D im Posteingang,
+      je `spf=pass`, `dkim=pass header.i=@tsvkorntal.de s=kas202610150132`, `dmarc=pass (p=NONE)
+      header.from=tsvkorntal.de`; A mit `Return-Path: <workflow-test@tsvkorntal.de>`, D mit
+      `Return-Path: <verwaltung@tsvkorntal.de>`; kein `Reply-To` → Antworten gehen an `From`.
+      Im Postfach `verwaltung@` kam nichts an. D zeigt zugleich, was ohne AP-B1 passiert, wenn das
+      erzwungene `from` auf `verwaltung@` steht: die Bounces gingen an `verwaltung@`.
+      **Folge:** Auf tsvkorntal.de das `from` erst nach dem Update auf 3.6.0 umstellen.
+- [x] **F2:** Empfänger auf demselben Server (z. B. `non.existent@tsvkorntal.de`) werden sofort
+      mit 5xx abgelehnt, kein DSN (Nutzer). Externe Empfänger liefern einen DSN (Probe zu F1):
+      `…@bounce-test.invalid` nach ~1 s (`5.4.4`, „Host or domain name not found"), unbekannter
+      Gmail-Empfänger nach ~10 s (`5.1.1`). **Testadresse für AP-B3: `wf-bouncetest-<zufall>@bounce-test.invalid`**
+      – schnell, kein fremder Server, kein Risiko, eine echte Person zu treffen, keine Last für den
+      Ruf bei Gmail.
+- [x] **F3:** Passwort darf verschlüsselt in der Datenbank liegen (E10).
+- [x] **F4:** nur Contao-Administratoren (E11).
+- [ ] **F5 (Nutzer): Erzwungenes `from` am Transport `workflow`.** Nutzer: Zuverlässigkeit hat
+      Vorrang (E12), Entscheidung nach F1. Vorschlag: `from` bleibt erzwungen, Wert wird
+      `verwaltung@tsvkorntal.de` – dann liegt `From` immer in der eigenen Domain, egal was im NC
+      steht.
+- [x] **F6:** Kein Beispiel vorhanden. 0.1 bleibt „nicht bestätigt"; der Zähler aus AP-B2 macht
+      Nicht-Bounces im Bounce-Postfach künftig sichtbar.
+- [x] **F7:** ext-sodium ist auf tsvkorntal.de vorhanden. Prüfdatei im Web-Root, 2026-11-03:
+      `PHP 8.3.36-nmm1 (fpm-fcgi)`, `ext-sodium geladen: ja`, `sodium_crypto_secretbox vorhanden: ja`.
+      AP-B4 prüft trotzdem zur Laufzeit und zeigt einen Hinweis statt abzustürzen.
 
 ## 3. Architektur
 
 ### 3.1 Bounce-Adresse
 
-Eine Stelle liefert sie: neuer Dienst `BounceMailbox` (Name offen) mit
-`address(): ?string`, `imapConfig(): ?array`, `source(): 'env'|'backend'|null`.
-- Aus `WORKFLOW_BOUNCE_IMAP_DSN`: Benutzername, wenn er eine E-Mail-Adresse ist; sonst optional
-  `WORKFLOW_BOUNCE_ADDRESS`.
+Eine Stelle liefert sie: Dienst `Service\Bounce\BounceMailbox` (seit AP-B1) mit `address(): ?string`
+und `imapDsn(): string`; `source()` und die Back-End-Quelle kommen mit AP-B4.
+- `WORKFLOW_BOUNCE_ADDRESS`, wenn gesetzt (ausdrücklich gewinnt; ungültig → keine Adresse, kein
+  stilles Ausweichen); sonst der Benutzername aus `WORKFLOW_BOUNCE_IMAP_DSN`, wenn er eine
+  E-Mail-Adresse ist (`rawurldecode`, ein `+` bleibt ein `+`).
+- Gefunden beim Bau von B1: `BounceCollector::configFromDsn()` dekodiert den Benutzer mit
+  `urldecode()` – aus `bounces%2Bwf%40…` wird „bounces wf@…“, die Anmeldung scheitert. In AP-B4
+  beim Umstellen auf `BounceMailbox` mit beheben (Test zuerst rot sehen).
 - Aus dem Back-End-Datensatz (AP-B4).
 - `BounceCollector`, `BounceHealth::isConfigured()`, Envelope-Listener, Maskenprüfung und
   Statuszeile lesen nur noch diesen Dienst. Heute lesen `BounceCollector`, `BounceHealth` und
@@ -144,7 +177,28 @@ Eine Stelle liefert sie: neuer Dienst `BounceMailbox` (Name offen) mit
 Reihenfolge B1 → B2 → B3 → (Test auf tsvkorntal.com, F1/F2) → B4 → B5 → B6.
 Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-Log).
 
-### AP-B1 — Envelope-Sender setzen
+### AP-B1 — Envelope-Sender setzen — **umgesetzt 2026-11-03, nicht committet**
+- Umsetzung: `EventListener\Mailer\EnvelopeSenderListener` (Priorität −256, nach Symfonys
+  `EnvelopeListener` −255), `Service\Bounce\BounceMailbox`, Bind `$bounceAddress`
+  (`WORKFLOW_BOUNCE_ADDRESS`), Spalte `tl_workflow_send.envelopeSender`. Synchroner Weg: Listener
+  legt die Versandzeile aus dem `WorkflowMailContext` an (einfaches INSERT, portabel). DB-Fehler
+  beim Schreiben (z. B. Spalte fehlt, weil „Datenbank aktualisieren“ noch nicht lief) → Warnung
+  im System-Log, die Mail geht trotzdem mit der Bounce-Adresse raus.
+- Tests: `EnvelopeSenderListenerTest` (7), `BounceMailboxTest` (10); ohne `setSender()` scheitern
+  3 der 7 (gesehen). Ganze Suite 326 Tests grün gegen 5.7 und 5.3.
+- DDEV gemessen (`measure-envelope-sender.sh`, über NC + Messenger-Worker): mit
+  `WORKFLOW_BOUNCE_ADDRESS=bounces@example.org` → `Return-Path: <bounces@example.org>`, `From`
+  und `Reply-To` unverändert, Zeile `sent, envelopeSender=bounces@example.org`; ohne →
+  `Return-Path: <noreply@example.com>` wie bisher, `envelopeSender` leer.
+- Bekannte Lücke: läuft ein CLI-Worker parallel und holt die Mail in den Millisekunden zwischen
+  NC-Versand und `rememberParcel()`, ist die Zeile noch nicht da und der Kontext in seinem
+  Prozess nicht aktiv → Envelope bleibt beim `From` (gleiche Lücke wie beim Ergebnis-Listener).
+  Auf All-Inkl gibt es keinen CLI-Worker.
+- Verhaltensänderung beim Update (CHANGELOG „Beim Update“): Ist `WORKFLOW_BOUNCE_IMAP_DSN` mit
+  einer Adresse als Benutzer gesetzt, gehen Workflow-Mails ab 3.6.0 automatisch mit dieser
+  Adresse als `MAIL FROM` raus. Ein Anbieter, der `MAIL FROM` ≠ Anmeldekonto ablehnt, würde den
+  Versand dann scheitern lassen (All-Inkl nimmt es an, Probe D).
+- Ursprüngliche Planung:
 - Neuer Listener auf `Symfony\Component\Mailer\Event\MessageEvent`; nur `!$event->isQueued()`.
 - Parcel-ID aus Kopfzeile `Notification-Center-Parcel-ID` (`MailerGateway::MESSAGE_IDENTIFIER_HEADER`);
   nur wenn sie in `tl_workflow_send` steht.
@@ -171,7 +225,8 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
 
 ### AP-B3 — Ende-zu-Ende-Test
 - Knopf in der Statuszeile/im Dialog „Bounce-Postfach": Workflow wählen → Testmail über dessen
-  Einladungs-Benachrichtigung (echtes Gateway, Transport, From, Reply-To) an die Testadresse (F2).
+  Einladungs-Benachrichtigung (echtes Gateway, Transport, From, Reply-To) an die Testadresse (F2;
+  muss extern sein, Empfänger auf demselben Server lehnt kasserver sofort ab).
 - Eigene `tl_workflow_send`-Zeile (`kind = 'test'`, `entryId = 0`); kein Eintrag wird verändert
   (`DeliveryRecorder` bei `entryId = 0` überspringen).
 - Während eines laufenden Tests: `BounceSchedule` liefert eine Stufe „test" (jede Minute), bis zu
@@ -193,7 +248,9 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
 
 ### AP-B5 — Prüfungen in der Bearbeitungsmaske
 - Je Benachrichtigung (Einladung, Erinnerung, Ergebnis): Zeile „Bounces gehen an …" und
-  „Antworten gehen an …" (`Reply-To`, sonst `From`). `WorkflowValidator::senderWarnings()` liest
+  „Antworten gehen an …" (`Reply-To`, sonst `From`). Hat der Transport ein erzwungenes `from`,
+  ist das der tatsächliche `From` (`ContaoMailer::setFrom()`), nicht der Eintrag im NC.
+  `WorkflowValidator::senderWarnings()` liest
   bisher nur `tl_nc_language.email_sender_address` (über `tl_nc_notification` → `tl_nc_message`);
   `email_replyTo` kommt dazu.
 - Warnungen: kein Bounce-Postfach; letzte Prüfung gescheitert; Gateway kein Mail-Gateway;

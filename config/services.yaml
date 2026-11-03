@@ -7,6 +7,9 @@ services:
             $csrfTokenName: '%contao.csrf_token_name%'
             # IMAP DSN of the bounce mailbox; empty/unset turns the bounce collector off.
             $bounceImapDsn: '%env(default::WORKFLOW_BOUNCE_IMAP_DSN)%'
+            # Address of the bounce mailbox (envelope sender of workflow mails). Optional: by
+            # default the user of WORKFLOW_BOUNCE_IMAP_DSN, when it is an e-mail address.
+            $bounceAddress: '%env(default::WORKFLOW_BOUNCE_ADDRESS)%'
 
     Psimandl\WorkflowBundle\:
         resource: ../src/
