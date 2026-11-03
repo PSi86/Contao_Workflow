@@ -6,6 +6,7 @@ use Contao\DC_Table;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\AnswerConfigListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ConfigExportListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ImportLogListener;
+use Psimandl\WorkflowBundle\EventListener\DataContainer\MailRouteListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\SourceFileInfoListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\PreviewButtonListener;
 use Psimandl\WorkflowBundle\EventListener\DataContainer\ResetButtonListener;
@@ -102,7 +103,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult,mailRoute;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -342,6 +343,14 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         'sourceInfo' => [
             'exclude'              => true,
             'input_field_callback' => [SourceFileInfoListener::class, 'render'],
+            'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Read-only mail route (no DB column): per notification the sender recipients see, where
+        // replies go and where bounces go, with warnings (3.6.0). Sits under the notification
+        // fields, which decide it.
+        'mailRoute' => [
+            'exclude'              => true,
+            'input_field_callback' => [MailRouteListener::class, 'render'],
             'eval'                 => ['tl_class' => 'clr'],
         ],
         // Read-only import log (no DB column): the runs of this workflow, newest first.

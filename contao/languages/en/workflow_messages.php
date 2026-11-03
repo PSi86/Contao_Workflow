@@ -195,6 +195,31 @@ $GLOBALS['TL_LANG']['workflow_source'] = [
     'other_file'      => 'Careful: the last import (%2$s) read a <strong>different</strong> file – "%1$s". The stored data comes from that one, not from the file selected above.',
 ];
 
+// MailRouteListener – "Mail route" under the notifications on the edit mask (3.6.0): per
+// notification the sender, replies and bounces; warn_*: problems (%1$s/%2$s see the key).
+$GLOBALS['TL_LANG']['workflow_route'] = [
+    'title'           => 'Mail route',
+    'col_from'        => 'Recipients see as sender',
+    'col_answers'     => 'Replies go to',
+    'col_bounces'     => 'Bounces go to',
+    'kind_invite'     => 'Invitation',
+    'kind_reminder'   => 'Reminder',
+    'kind_result'     => 'Result',
+    'from_transport'  => '(forced by transport “%s”)',
+    'from_admin'      => 'admin address of the website',
+    'answers_replyto' => '(“Reply-To”)',
+    'answers_from'    => '(= sender, no “Reply-To”)',
+    'bounces_mailbox' => '(bounce mailbox)',
+    'bounces_from'    => '(= sender, no bounce mailbox)',
+    'not_mail'        => 'does not send e-mail (gateway “%s”)',
+    'hint'            => 'From the saved settings; after changing a notification, save to update this view. The end-to-end test in the overview shows the actual way of a bounce.',
+    'warn_route_not_mail'          => 'The message “%1$s” goes through the gateway “%2$s”, which does not send e-mail – there is no bounce detection for it.',
+    'warn_route_from_is_bounce'    => 'The sender %s is the bounce mailbox. Replies from participants then land in a mailbox only the bundle reads. Please choose a sender that a person reads.',
+    'warn_route_replyto_is_bounce' => '“Reply-To” %s is the bounce mailbox. Replies from participants then land in a mailbox only the bundle reads. Please choose an address that a person reads.',
+    'warn_route_no_mailbox'        => 'No bounce mailbox is set up: bounces go to the sender and are not detected. Set it up in the workflow overview under “Bounce mailbox” (administrators only).',
+    'warn_route_mailbox_failing'   => 'The bounce mailbox could not be reached at the last check – bounces are currently not detected. Details in the workflow overview.',
+];
+
 // WorkflowIntegrityListener::flagStaleSource() – hint on the edit mask when the stored data no
 // longer matches the source file. Two situations, one rule (WorkflowValidator::isSourceDirty)
 // but two wordings: "never imported" reads very differently from "the file changed".

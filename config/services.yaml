@@ -119,6 +119,10 @@ services:
     Psimandl\WorkflowBundle\EventListener\DataContainer\SourceFileInfoListener:
         public: true
 
+    # Same pattern: the mail route under the notification fields (3.6.0).
+    Psimandl\WorkflowBundle\EventListener\DataContainer\MailRouteListener:
+        public: true
+
 
     # DCA button_callback for the workflow delete operation (PDF-aware confirmation),
     # referenced by class name and resolved via System::importStatic() – must be public.

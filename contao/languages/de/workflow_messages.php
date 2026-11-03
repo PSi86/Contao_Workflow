@@ -196,6 +196,31 @@ $GLOBALS['TL_LANG']['workflow_source'] = [
     'other_file'      => 'Achtung: Der letzte Import (%2$s) las eine <strong>andere</strong> Datei – „%1$s“. Die gespeicherten Daten stammen von dort, nicht aus der oben ausgewählten Datei.',
 ];
 
+// MailRouteListener – „Versandweg“ unter den Benachrichtigungen der Bearbeitungsmaske (3.6.0):
+// je Benachrichtigung Absender, Antworten, Bounces; warn_*: Probleme (%1$s/%2$s siehe Schlüssel).
+$GLOBALS['TL_LANG']['workflow_route'] = [
+    'title'           => 'Versandweg',
+    'col_from'        => 'Empfänger sehen als Absender',
+    'col_answers'     => 'Antworten gehen an',
+    'col_bounces'     => 'Bounces gehen an',
+    'kind_invite'     => 'Einladung',
+    'kind_reminder'   => 'Erinnerung',
+    'kind_result'     => 'Ergebnis',
+    'from_transport'  => '(vom Transport „%s“ erzwungen)',
+    'from_admin'      => 'Admin-Adresse der Website',
+    'answers_replyto' => '(„Antwort an“)',
+    'answers_from'    => '(= Absender, kein „Antwort an“)',
+    'bounces_mailbox' => '(Bounce-Postfach)',
+    'bounces_from'    => '(= Absender, kein Bounce-Postfach)',
+    'not_mail'        => 'verschickt nicht per E-Mail (Gateway „%s“)',
+    'hint'            => 'Aus den gespeicherten Einstellungen; nach dem Ändern einer Benachrichtigung speichern, um die Anzeige zu aktualisieren. Den tatsächlichen Weg eines Bounces zeigt der Ende-zu-Ende-Test in der Übersicht.',
+    'warn_route_not_mail'          => 'Die Nachricht „%1$s“ geht über das Gateway „%2$s“, das keine E-Mails verschickt – für sie gibt es keine Bounce-Erkennung.',
+    'warn_route_from_is_bounce'    => 'Der Absender %s ist das Bounce-Postfach. Antworten von Teilnehmern landen dann in einem Postfach, das nur das Bundle liest. Bitte einen Absender wählen, den ein Mensch liest.',
+    'warn_route_replyto_is_bounce' => '„Antwort an“ %s ist das Bounce-Postfach. Antworten von Teilnehmern landen dann in einem Postfach, das nur das Bundle liest. Bitte eine Adresse wählen, die ein Mensch liest.',
+    'warn_route_no_mailbox'        => 'Es ist kein Bounce-Postfach eingerichtet: Bounces gehen an den Absender und werden nicht erkannt. Einrichten in der Workflow-Übersicht unter „Bounce-Postfach“ (nur Administratoren).',
+    'warn_route_mailbox_failing'   => 'Das Bounce-Postfach war bei der letzten Prüfung nicht erreichbar – Bounces werden derzeit nicht erkannt. Details in der Workflow-Übersicht.',
+];
+
 // WorkflowIntegrityListener::flagStaleSource() – Hinweis in der Bearbeitungsmaske, wenn die
 // gespeicherten Daten nicht mehr zur Quelldatei passen. Zwei Fälle, eine Regel
 // (WorkflowValidator::isSourceDirty), aber zwei Wortlaute: „noch nie importiert“ liest sich

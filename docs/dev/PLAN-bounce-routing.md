@@ -94,6 +94,7 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
 | E10 | Passwort des Bounce-Postfachs darf verschlüsselt in der Datenbank liegen (F3). | Nutzer, 2026-11-03 |
 | E11 | Bounce-Postfach einrichten dürfen nur Contao-Administratoren (F4). | Nutzer, 2026-11-03 |
 | E12 | Zuverlässiger Versand hat Vorrang vor frei wählbarem Absender (F5). | Nutzer, 2026-11-03 |
+| E13 | Erzwungenes `from` am Transport `workflow` bleibt, Wert wird `verwaltung@tsvkorntal.de` – **erst nach** dem Update von tsvkorntal.de auf 3.6.0 (sonst gingen Bounces an `verwaltung@`, siehe Probe D). | Nutzer, 2026-11-03 |
 
 ## 2. Offene Fragen – vor bzw. während der Umsetzung klären
 
@@ -132,10 +133,14 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
       Ruf bei Gmail.
 - [x] **F3:** Passwort darf verschlüsselt in der Datenbank liegen (E10).
 - [x] **F4:** nur Contao-Administratoren (E11).
-- [ ] **F5 (Nutzer): Erzwungenes `from` am Transport `workflow`.** Nutzer: Zuverlässigkeit hat
-      Vorrang (E12), Entscheidung nach F1. Vorschlag: `from` bleibt erzwungen, Wert wird
-      `verwaltung@tsvkorntal.de` – dann liegt `From` immer in der eigenen Domain, egal was im NC
+- [x] **F5:** entschieden als E13 (erzwungenes `from` bleibt, Wert `verwaltung@tsvkorntal.de`, erst
+      nach dem Update auf 3.6.0). Damit liegt `From` immer in der eigenen Domain, egal was im NC
       steht.
+- [x] **Testsystem tsvkorntal.com** (Nutzer, 2026-11-03): ruft heute `noreply@tsvkorntal.com` als
+      Bounce-Postfach ab – also nicht das Postfach der Produktion. Nach dem Update auf 3.6.0 wird
+      dessen DSN-Benutzer automatisch die Bounce-Adresse. Für die Abnahme kann es bleiben oder im
+      Dialog auf `workflow-test@tsvkorntal.de` wechseln (dazu `WORKFLOW_BOUNCE_IMAP_DSN` dort
+      entfernen, sonst hat sie Vorrang).
 - [x] **F6:** Kein Beispiel vorhanden. 0.1 bleibt „nicht bestätigt"; der Zähler aus AP-B2 macht
       Nicht-Bounces im Bounce-Postfach künftig sichtbar.
 - [x] **F7:** ext-sodium ist auf tsvkorntal.de vorhanden. Prüfdatei im Web-Root, 2026-11-03:
@@ -323,7 +328,21 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
 - Hinweise im Dialog: Adresse nur für Bounces, Spamfilter für dieses Postfach aus, je Installation
   ein eigenes Postfach.
 
-### AP-B5 — Prüfungen in der Bearbeitungsmaske
+### AP-B5 — Prüfungen in der Bearbeitungsmaske — **umgesetzt 2026-11-03**
+- Umsetzung: `Service\Bounce\MailRoute::forNotification()` je veröffentlichter NC-Nachricht:
+  Absender (erzwungenes `from` des Gateway-Transports via `AvailableTransports`, nur die Adresse
+  aus „Name <…>“; sonst `email_sender_address`; leer → Admin-Adresse), `email_replyTo`,
+  Antworten (Reply-To, sonst Absender), Bounces (`BounceMailbox::address()`, sonst Absender).
+  Reine `warnings()`: kein Mail-Gateway; Absender = Bounce-Adresse; Reply-To = Bounce-Adresse
+  (E6; ohne Groß/klein, nie bei `##token##`); kein Postfach; letzte Prüfung gescheitert.
+  Pseudo-Feld `mailRoute` (`MailRouteListener`, public) unter `ncResult`: Tabelle „Versandweg“
+  Einladung/Erinnerung/Ergebnis × Absender/Antworten/Bounces, Warnungen, Hinweis „aus den
+  gespeicherten Einstellungen“. Bestehende Absenderdomain-Prüfungen (onload) unverändert.
+- Tests: `MailRouteTest` (6); Gegenproben gesehen (E6-Vergleich aus → 1 rot, erzwungener
+  Absender ignoriert → 1 rot). Suite 369 grün gegen 5.7 und 5.3.
+- DDEV (`scripts/fetch-edit-route.sh`): ohne Postfach → Bounces „= Absender“ + Warnung; mit
+  Postfach = Absender und Reply-To `NoReply@…` → beide E6-Warnungen. Aufgeräumt.
+- Ursprüngliche Planung:
 - Je Benachrichtigung (Einladung, Erinnerung, Ergebnis): Zeile „Bounces gehen an …" und
   „Antworten gehen an …" (`Reply-To`, sonst `From`). Hat der Transport ein erzwungenes `from`,
   ist das der tatsächliche `From` (`ContaoMailer::setFrom()`), nicht der Eintrag im NC.
