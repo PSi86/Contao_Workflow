@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.5.0] – 2026-11-03
+
 Schwerpunkt: **Versandstatus, Cronjob und Zurücksetzen.** Ohne Server-Cronjob arbeitet Contao
 Mail-Warteschlange und Cronjobs nur am Ende von Seitenaufrufen ab – nachdem die Seite
 ausgeliefert ist. Bounces wurden dadurch „mal verarbeitet, mal nicht", und oft zeigte erst der
