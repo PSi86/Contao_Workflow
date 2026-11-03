@@ -6,6 +6,8 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.6.0] – 2026-11-03
+
 Schwerpunkt: **Bounces getrennt von Absender und Antworten.** Ein Bounce geht an den
 Envelope-Sender einer Mail, und den leitete der Mailer bisher aus dem Absender ab. Das
 Bounce-Postfach musste deshalb der Absender sein – und war damit zugleich das Postfach, in das
