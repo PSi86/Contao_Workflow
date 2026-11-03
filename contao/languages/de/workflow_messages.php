@@ -31,7 +31,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'bounce_check_now'  => 'Jetzt prüfen',
     'bounce_check_busy' => 'Das Bounce-Postfach wird gerade bereits geprüft – bitte in einer Minute erneut versuchen.',
     'bounce_check_error' => 'Bounce-Postfach nicht erreichbar: %s Bitte WORKFLOW_BOUNCE_IMAP_DSN prüfen.',
-    'bounce_check_done' => 'Bounce-Postfach geprüft: %1$d Nachricht(en) verarbeitet – %2$d Adresse(n) als unzustellbar gesperrt, %3$d vorübergehende Meldung(en), %4$d ohne passenden Eintrag, %5$d ohne Unzustellbarkeitsmeldung.',
+    'bounce_check_done' => 'Bounce-Postfach geprüft: %1$d neue Nachricht(en) – %2$d Adresse(n) als unzustellbar gesperrt, %3$d vorübergehende Meldung(en), %4$d ohne passenden Eintrag, %5$d ohne Unzustellbarkeitsmeldung.',
+    // Statuszeile und „Jetzt prüfen“: %d = Nachrichten im Posteingang des Bounce-Postfachs, die
+    // keine Bounces von Workflow-Mails sind (der Bounce-Abruf lässt sie liegen).
+    'bounce_foreign'    => 'Im Posteingang des Bounce-Postfachs liegen %d Nachricht(en), die keine Bounces von Workflow-Mails sind (z. B. Antworten, Abwesenheitsnotizen oder Bounces anderer Absender). Sie bleiben dort liegen. Zeigt ein Absender oder eine „Antwort an“ auf dieses Postfach? Bitte im Webmail ansehen und danach löschen.',
     'ago_now'          => 'vor weniger als einer Minute',
     'ago_minutes'      => 'vor %d Min.',
     'ago_hours'        => 'vor %d Std.',

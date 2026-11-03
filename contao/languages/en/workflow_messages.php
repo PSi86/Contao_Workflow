@@ -31,7 +31,10 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'bounce_check_now'  => 'Check now',
     'bounce_check_busy' => 'The bounce mailbox is already being checked – please try again in a minute.',
     'bounce_check_error' => 'Bounce mailbox not reachable: %s Please check WORKFLOW_BOUNCE_IMAP_DSN.',
-    'bounce_check_done' => 'Bounce mailbox checked: %1$d message(s) processed – %2$d address(es) blocked as undeliverable, %3$d temporary notice(s), %4$d without a matching entry, %5$d without a delivery status notification.',
+    'bounce_check_done' => 'Bounce mailbox checked: %1$d new message(s) – %2$d address(es) blocked as undeliverable, %3$d temporary notice(s), %4$d without a matching entry, %5$d without a delivery status notification.',
+    // Status line and “Check now”: %d = messages in the INBOX of the bounce mailbox that are
+    // not bounces of workflow mails (the bounce collector leaves them there).
+    'bounce_foreign'    => 'The INBOX of the bounce mailbox holds %d message(s) that are not bounces of workflow mails (e.g. replies, out-of-office notes or bounces of other senders). They stay there. Does a sender or “Reply-To” address point at this mailbox? Please look at them in webmail and delete them afterwards.',
     'ago_now'          => 'less than a minute ago',
     'ago_minutes'      => '%d min ago',
     'ago_hours'        => '%d h ago',

@@ -76,6 +76,9 @@ class BounceCollectCommand extends Command
                     default => $io->writeln($message),
                 };
             },
+            // A --dsn override reads a different mailbox: read all of it, and leave the
+            // configured mailbox's watermark alone.
+            'WORKFLOW_BOUNCE_IMAP_DSN' === $source,
         );
 
         // Only reconcile the global health when this run used the CONFIGURED mailbox: a --dsn

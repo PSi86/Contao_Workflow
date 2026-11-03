@@ -190,6 +190,10 @@ class WorkflowActionController
                 ($c['unmatched'] ?? 0) + ($c['former'] ?? 0),
                 $c['skipped'] ?? 0,
             ));
+
+            if (($c['inbox'] ?? 0) > 0) {
+                Message::addInfo(sprintf($lang['bounce_foreign'], $c['inbox']));
+            }
         }
 
         return $this->backToDashboard();

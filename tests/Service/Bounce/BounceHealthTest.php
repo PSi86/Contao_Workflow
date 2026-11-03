@@ -24,12 +24,68 @@ final class BounceHealthTest extends TestCase
         $this->connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $this->connection->executeStatement(<<<'SQL'
             CREATE TABLE tl_workflow_bounce_health (
-                id      INTEGER PRIMARY KEY,
-                tstamp  INTEGER NOT NULL DEFAULT 0,
-                state   TEXT NOT NULL DEFAULT '',
-                message TEXT NULL
+                id           INTEGER PRIMARY KEY,
+                tstamp       INTEGER NOT NULL DEFAULT 0,
+                state        TEXT NOT NULL DEFAULT '',
+                message      TEXT NULL,
+                scanMailbox  TEXT NOT NULL DEFAULT '',
+                uidValidity  INTEGER NOT NULL DEFAULT 0,
+                lastUid      INTEGER NOT NULL DEFAULT 0,
+                foreignCount INTEGER NOT NULL DEFAULT 0
             )
             SQL);
+    }
+
+    public function testScanRoundTrip(): void
+    {
+        $health = new BounceHealth($this->connection);
+
+        $health->recordScan('imap://b%40example.org@mail.example.org:993', 1700000000, 41);
+        $health->recordScan('imap://b%40example.org@mail.example.org:993', 1700000000, 42, 3);
+        // Progress during a run does not touch the count of the last finished run.
+        $health->recordScan('imap://b%40example.org@mail.example.org:993', 1700000000, 43);
+
+        self::assertSame(
+            ['mailbox' => 'imap://b%40example.org@mail.example.org:993', 'uidValidity' => 1700000000, 'lastUid' => 43, 'foreignCount' => 3],
+            $health->readScan(),
+        );
+    }
+
+    public function testScanDefaultsWhenNothingRecorded(): void
+    {
+        self::assertSame(
+            ['mailbox' => '', 'uidValidity' => 0, 'lastUid' => 0, 'foreignCount' => 0],
+            (new BounceHealth($this->connection))->readScan(),
+        );
+    }
+
+    /**
+     * The first run of all creates the row through recordScan() before the verdict is recorded.
+     * That is still the first verdict: no "mailbox reachable again" line may be logged for it.
+     */
+    public function testFirstVerdictAfterTheScanCreatedTheRowHasNoPrevious(): void
+    {
+        $health = new BounceHealth($this->connection);
+        $health->recordScan('imap://b%40example.org@mail.example.org:993', 1700000000, 1, 0);
+
+        self::assertNull($health->record(BounceHealth::STATE_OK));
+    }
+
+    /**
+     * Bundle updated, database not yet: the columns are missing. The verdict keeps working, the
+     * watermark degrades to "read everything", and nothing throws.
+     */
+    public function testScanColumnsMissingDegradesGracefully(): void
+    {
+        $this->connection->executeStatement('DROP TABLE tl_workflow_bounce_health');
+        $this->connection->executeStatement("CREATE TABLE tl_workflow_bounce_health (id INTEGER PRIMARY KEY, tstamp INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT '', message TEXT NULL)");
+        $health = new BounceHealth($this->connection);
+
+        $health->recordScan('imap://b%40example.org@mail.example.org:993', 1700000000, 42, 3);
+
+        self::assertSame(0, $health->readScan()['lastUid']);
+        self::assertNull($health->record(BounceHealth::STATE_OK));
+        self::assertSame(BounceHealth::STATE_OK, $health->read()['state']);
     }
 
     public function testIsConfiguredReflectsTheDsn(): void

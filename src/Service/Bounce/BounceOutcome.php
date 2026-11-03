@@ -17,8 +17,11 @@ final class BounceOutcome
     /**
      * @param string            $state   one of the {@see BounceHealth}::STATE_* constants
      * @param string            $message human-readable detail for a config error (empty otherwise)
-     * @param array<string,int> $counts  what a successful run did: total, hard, former, soft,
-     *                                   unmatched, skipped (see BounceCollector::collect())
+     * @param array<string,int> $counts  what a successful run did: total (new messages looked
+     *                                   at), hard, former, soft, unmatched, skipped (no DSN),
+     *                                   moved (to Processed), kept (left in the INBOX), inbox
+     *                                   (messages in the INBOX that are no workflow bounces,
+     *                                   after the run) – see BounceCollector::collect()
      */
     public function __construct(
         public readonly string $state,

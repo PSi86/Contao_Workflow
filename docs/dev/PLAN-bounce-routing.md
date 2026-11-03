@@ -177,7 +177,7 @@ und `imapDsn(): string`; `source()` und die Back-End-Quelle kommen mit AP-B4.
 Reihenfolge B1 → B2 → B3 → (Test auf tsvkorntal.com, F1/F2) → B4 → B5 → B6.
 Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-Log).
 
-### AP-B1 — Envelope-Sender setzen — **umgesetzt 2026-11-03, nicht committet**
+### AP-B1 — Envelope-Sender setzen — **umgesetzt 2026-11-03, Commit e1389f9**
 - Umsetzung: `EventListener\Mailer\EnvelopeSenderListener` (Priorität −256, nach Symfonys
   `EnvelopeListener` −255), `Service\Bounce\BounceMailbox`, Bind `$bounceAddress`
   (`WORKFLOW_BOUNCE_ADDRESS`), Spalte `tl_workflow_send.envelopeSender`. Synchroner Weg: Listener
@@ -209,7 +209,36 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
   `Reply-To` unverändert.
 - Abnahme: Mailpit zeigt `Return-Path: <bounces@…>` bei unverändertem `From` und `Reply-To`.
 
-### AP-B2 — Bounce-Abruf rührt nur eigene Bounces an
+### AP-B2 — Bounce-Abruf rührt nur eigene Bounces an — **umgesetzt 2026-11-03**
+- Umsetzung: `handleRaw($raw, $dryRun, $note)` liefert `['own' => bool, 'outcomes' => …]`; „eigen“
+  = mindestens ein Report hat eine Versandzeile (Parcel-ID bekannt oder Regel 5). Nur eigene
+  Nachrichten → `INBOX/Processed`. Wasserstandsmarke in `tl_workflow_bounce_health`
+  (`scanMailbox` = `imap://user@host:port` ohne Passwort, `uidValidity`, `lastUid`,
+  `foreignCount`), nach jeder Nachricht fortgeschrieben; anderes Postfach oder neue UIDVALIDITY →
+  voller Durchgang. `STATUS` vor dem `SELECT` (Anzahl, UIDVALIDITY, UIDNEXT); nichts über der
+  Marke → kein Abruf (auch kein UID-Abruf bei leerem Posteingang). DB-Fehler → Lauf stoppt, die
+  Nachricht kommt beim nächsten Lauf wieder; unlesbare Nachricht → bleibt liegen, wird
+  übersprungen; Verschieben scheitert → bleibt liegen (schon ausgewertet). `foreignCount` aus der
+  STATUS-Anzahl berechnet (`leftInInbox()`), sinkt also, wenn jemand im Webmail löscht.
+  `--dsn` am Befehl: ganzes Postfach, Marke des konfigurierten Postfachs bleibt unberührt.
+- Anzeige: Statuszeile der Übersicht und „Jetzt prüfen“ zeigen `bounce_foreign` (DE/EN), nur
+  wenn > 0 und der letzte Lauf ok war.
+- Tests: `BounceCollectorTest` 19 (Urteil eigen/fremd, Testlauf schreibt nichts,
+  `resumeAfter()`, `leftInInbox()`), `BounceHealthTest` 10 (Marke, fehlende Spalten, erster
+  Befund nach von `recordScan()` angelegter Zeile). Gegenproben gesehen: `$own = true` → 2 rot;
+  `record()` ohne ''→null → 1 rot. Suite 338 grün gegen 5.7 und 5.3.
+- Echtes IMAP (All-Inkl-Dovecot, `workflow-test@`): `--dry-run --dsn=…` liest STATUS, holt 2 neue
+  Nachrichten (UID > 0), erkennt beide Probe-Bounces als fremd, verändert nichts.
+- Echter Lauf mit Schreiben (Nutzer-OK 2026-11-03, `scripts/e2e-360-b2.php`): künstlicher DSN per
+  IMAP APPEND (keine Mail verschickt) zu einer DDEV-Versandzeile. Lauf 1: 3 neu, der eigene →
+  `Processed`, Eintrag gesperrt, Zeile `bounced`, die 2 Probe-Bounces bleiben; gespeichert
+  `lastUid 3`, `foreignCount 2`. Lauf 2: „0 neu (UID > 3)“, kein Abruf. Danach aufgeräumt
+  (DSN gelöscht, DDEV-Zeilen und `.env.local` zurück).
+- Dabei gefunden und behoben (seit 3.5.0): `createFolder()` von webklex schickt danach
+  `EXPUNGE` ohne geöffneten Ordner → „BAD No mailbox selected“ als Warnung, obwohl der Ordner
+  angelegt war (UIDVALIDITY des Ordners belegt das). Jetzt `createFolder(…, false)`; nach Löschen
+  von `Processed` legte Lauf 3 ihn ohne Warnung neu an.
+- Ursprüngliche Planung:
 - Wasserstandsmarke: `UIDVALIDITY` + höchste geprüfte UID; nur `getByUidGreater($lastUid)`.
   Bei geänderter `UIDVALIDITY` Marke zurücksetzen (ein voller Durchgang).
 - Eigener Bounce (Parcel-ID bekannt oder Empfänger-Fallback „Regel 5") → wie heute auswerten und

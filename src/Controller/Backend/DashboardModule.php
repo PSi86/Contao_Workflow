@@ -213,7 +213,7 @@ class DashboardModule extends BackendModule
      * will be read next. Everything comes from stored timestamps – nothing is guessed, and the
      * page opens no connection of its own.
      *
-     * @return array{cronOk: bool, cron: string, bounce: string}
+     * @return array{cronOk: bool, cron: string, bounce: string, foreign: string}
      */
     private function cronStatus(CronHealth $cronHealth, BounceHealth $bounceHealth, BounceSchedule $schedule): array
     {
@@ -235,9 +235,20 @@ class DashboardModule extends BackendModule
         }
 
         $bounceLine = '';
+        $foreignLine = '';
 
         if ($bounceHealth->isConfigured()) {
-            $checkedAt = $bounceHealth->read()['checkedAt'];
+            $verdict = $bounceHealth->read();
+            $checkedAt = $verdict['checkedAt'];
+
+            // Only from a successful run: after a failed one the stored count is outdated.
+            if (BounceHealth::STATE_OK === $verdict['state']) {
+                $foreign = $bounceHealth->readScan()['foreignCount'];
+
+                if ($foreign > 0) {
+                    $foreignLine = sprintf((string) $lang['bounce_foreign'], $foreign);
+                }
+            }
             $current = $schedule->current($now);
 
             $reason = match ($current['tier']) {
@@ -260,7 +271,7 @@ class DashboardModule extends BackendModule
             }
         }
 
-        return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine];
+        return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine, 'foreign' => $foreignLine];
     }
 
     private function ago(int $seconds): string

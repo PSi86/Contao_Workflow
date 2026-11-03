@@ -24,6 +24,9 @@ $l = $this->dash;
       <a href="<?= $esc($this->bounceCheckUrl) ?>" class="tl_submit" style="float:none;display:inline-block;margin-left:.6em;text-decoration:none;" data-turbo="false"><?= $l['bounce_check_now'] ?></a>
     </p>
   <?php endif; ?>
+  <?php if ('' !== ($cs['foreign'] ?? '')): ?>
+    <p style="margin:.4em 0 0;"><?= $esc($cs['foreign']) ?></p>
+  <?php endif; ?>
 </div>
 
 <?php if (!empty($this->bounceBanner)): $b = $this->bounceBanner; ?>

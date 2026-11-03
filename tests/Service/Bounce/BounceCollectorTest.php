@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Contao\CoreBundle\Cron\Cron;
 use Contao\CoreBundle\Exception\CronExecutionSkippedException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
@@ -22,14 +23,16 @@ use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
- * Covers the bounce-to-database mapping of the collector — the part that has no IMAP
- * dependency and can be driven against a real database. The IMAP transport itself (connect,
- * fetch, move to Processed) needs a live mailbox and is verified operationally instead.
+ * Covers the bounce-to-database mapping of the collector and its decisions – which message is
+ * moved to Processed, where reading resumes, how many messages stay for a person – the parts
+ * that have no IMAP dependency. The IMAP transport itself (connect, fetch, move to Processed)
+ * needs a live mailbox and is verified operationally instead.
  */
 final class BounceCollectorTest extends TestCase
 {
     private const HARD_PARCEL = 'ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00ab0ad4b1c0ffee00';
     private const HARD_RECIPIENT = 'sdfdfsdfsd@wherever-we-are.com';
+    private const MAILBOX = 'imap://bounces%40example.org@mail.example.org:993';
 
     private Connection $connection;
 
@@ -157,7 +160,9 @@ final class BounceCollectorTest extends TestCase
         $this->insertSend(self::HARD_PARCEL, self::HARD_RECIPIENT, 1);
         $this->insertEntry(1);
 
-        $this->collector->handleRaw($this->fixture('bounce-hard-550.eml'));
+        $verdict = $this->collector->handleRaw($this->fixture('bounce-hard-550.eml'));
+
+        self::assertSame(['own' => true, 'outcomes' => ['hard']], $verdict, 'a bounce of a workflow mail is moved to Processed');
 
         $send = $this->sendRow(self::HARD_PARCEL);
         self::assertSame('bounced', (string) $send['state']);
@@ -190,8 +195,9 @@ final class BounceCollectorTest extends TestCase
     {
         $this->insertSend('PARCELSOFT0000000', 'late@example.com', 2);
 
-        $this->collector->handleRaw($this->dsn('late@example.com', 'delayed', '4.4.1', 'PARCELSOFT0000000'));
+        $verdict = $this->collector->handleRaw($this->dsn('late@example.com', 'delayed', '4.4.1', 'PARCELSOFT0000000'));
 
+        self::assertSame(['own' => true, 'outcomes' => ['soft']], $verdict, 'a delay notice of a workflow mail is ours too');
         self::assertSame('sent', (string) $this->sendRow('PARCELSOFT0000000')['state']);
     }
 
@@ -200,28 +206,98 @@ final class BounceCollectorTest extends TestCase
         $this->insertSend('PARCELX0000000000', 'dead@example.com', 3);
 
         // No embedded original → the parser reports a null parcel id.
-        $this->collector->handleRaw($this->dsn('dead@example.com', 'failed', '5.1.1', null));
+        $verdict = $this->collector->handleRaw($this->dsn('dead@example.com', 'failed', '5.1.1', null));
 
+        self::assertTrue($verdict['own']);
         self::assertSame('bounced', (string) $this->sendRow('PARCELX0000000000')['state']);
     }
 
+    /**
+     * A bounce whose parcel id is not in the send log belongs to someone else (another sender
+     * pointing at the mailbox, another installation) or to a purged row: it stays in the INBOX.
+     */
     public function testUnknownParcelIdIsNotGuessed(): void
     {
         $this->insertSend('KNOWNPARCEL000000', 'x@example.com', 4);
 
         // Parcel id is present in the bounce but not in the database: must not be correlated.
-        $this->collector->handleRaw($this->dsn('x@example.com', 'failed', '5.1.1', 'UNKNOWNPARCEL0000'));
+        $verdict = $this->collector->handleRaw($this->dsn('x@example.com', 'failed', '5.1.1', 'UNKNOWNPARCEL0000'));
 
+        self::assertSame(['own' => false, 'outcomes' => ['unmatched']], $verdict);
         self::assertSame('sent', (string) $this->sendRow('KNOWNPARCEL000000')['state']);
     }
 
-    public function testOrdinaryMailChangesNothing(): void
+    public function testBounceOfAForeignMailWithoutParcelIdStaysInTheInbox(): void
+    {
+        // Like the DSNs of the All-Inkl probe: no parcel id, and no workflow mail went to them.
+        $verdict = $this->collector->handleRaw($this->dsn('wf-bouncetest-3777b18fd49185fb@gmail.com', 'failed', '5.1.1', null));
+
+        self::assertSame(['own' => false, 'outcomes' => ['unmatched']], $verdict);
+    }
+
+    /**
+     * Replies and out-of-office notes that reach the bounce mailbox are for a person: they stay
+     * in the INBOX (until 3.5.0 they were moved to Processed, where nobody looked).
+     */
+    public function testOrdinaryMailStaysInTheInboxAndChangesNothing(): void
     {
         $this->insertSend('P00000000000000000', 'x@example.com', 5);
 
-        $this->collector->handleRaw($this->fixture('delivered-reminder.eml'));
+        $verdict = $this->collector->handleRaw($this->fixture('delivered-reminder.eml'));
 
+        self::assertSame(['own' => false, 'outcomes' => ['nodsn']], $verdict);
         self::assertSame('sent', (string) $this->sendRow('P00000000000000000')['state']);
+    }
+
+    public function testDryRunDecidesWithoutWriting(): void
+    {
+        $this->insertSend(self::HARD_PARCEL, self::HARD_RECIPIENT, 1);
+        $this->insertEntry(1);
+
+        $verdict = $this->collector->handleRaw($this->fixture('bounce-hard-550.eml'), true);
+
+        self::assertSame(['own' => true, 'outcomes' => ['hard']], $verdict);
+        self::assertSame('sent', (string) $this->sendRow(self::HARD_PARCEL)['state']);
+        self::assertSame('', (string) $this->connection->fetchOne('SELECT bounceHard FROM tl_workflow_entry WHERE id = 1'));
+    }
+
+    /**
+     * @return iterable<string, array{array{mailbox: string, uidValidity: int, lastUid: int, foreignCount: int}, int}>
+     */
+    public static function watermarks(): iterable
+    {
+        $scan = static fn (string $mailbox, int $validity, int $lastUid): array => ['mailbox' => $mailbox, 'uidValidity' => $validity, 'lastUid' => $lastUid, 'foreignCount' => 0];
+
+        yield 'same mailbox, same UIDVALIDITY: continue' => [$scan(self::MAILBOX, 1700000000, 42), 42];
+        yield 'nothing recorded yet' => [$scan('', 0, 0), 0];
+        yield 'mailbox configuration changed' => [$scan('imap://other%40example.org@mail.example.org:993', 1700000000, 42), 0];
+        yield 'server renumbered the messages' => [$scan(self::MAILBOX, 1600000000, 42), 0];
+    }
+
+    /**
+     * @param array{mailbox: string, uidValidity: int, lastUid: int, foreignCount: int} $scan
+     */
+    #[DataProvider('watermarks')]
+    public function testResumeAfterTheWatermarkOnlyForTheSameMailbox(array $scan, int $expected): void
+    {
+        self::assertSame($expected, BounceCollector::resumeAfter($scan, self::MAILBOX, 1700000000));
+    }
+
+    public function testNoWatermarkWithoutUidValidity(): void
+    {
+        $scan = ['mailbox' => self::MAILBOX, 'uidValidity' => 0, 'lastUid' => 42, 'foreignCount' => 0];
+
+        self::assertSame(0, BounceCollector::resumeAfter($scan, self::MAILBOX, 0));
+    }
+
+    public function testLeftInInbox(): void
+    {
+        // 10 in the INBOX, 3 new, all looked at, 2 bounces moved out: 8 remain for a person.
+        self::assertSame(8, BounceCollector::leftInInbox(10, 2, 3, 3));
+        // Batch limit: 120 new, 100 looked at, 10 moved – the 20 not looked at are not counted.
+        self::assertSame(120, BounceCollector::leftInInbox(150, 10, 120, 100));
+        // A person deleted messages during the run: never negative.
+        self::assertSame(0, BounceCollector::leftInInbox(1, 2, 0, 0));
     }
 
     private function insertSend(string $parcelId, string $recipient, int $entryId): void
