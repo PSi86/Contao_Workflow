@@ -47,6 +47,7 @@ final class BounceCollectorTest extends TestCase
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 parcelId   TEXT NOT NULL DEFAULT '',
                 entryId    INTEGER NOT NULL DEFAULT 0,
+                kind       TEXT NOT NULL DEFAULT '',
                 recipient  TEXT NOT NULL DEFAULT '',
                 state      TEXT NOT NULL DEFAULT '',
                 sentAt     INTEGER NOT NULL DEFAULT 0,
@@ -247,6 +248,33 @@ final class BounceCollectorTest extends TestCase
 
         self::assertSame(['own' => false, 'outcomes' => ['nodsn']], $verdict);
         self::assertSame('sent', (string) $this->sendRow('P00000000000000000')['state']);
+    }
+
+    /**
+     * The bounce the end-to-end test waits for: its row becomes "bounced" (that is the test
+     * result), the message is ours, and no entry is involved – also not one that happens to have
+     * id 0 or the same address.
+     */
+    public function testBounceOfTheEndToEndTestIsItsResult(): void
+    {
+        $this->connection->insert('tl_workflow_send', [
+            'parcelId' => 'TESTPARCEL0000000',
+            'entryId' => 0,
+            'kind' => 'test',
+            'recipient' => 'wf-bouncetest-0123456789ab@bounce-test.invalid',
+            'state' => 'sent',
+            'sentAt' => time(),
+        ]);
+        $this->insertEntry(7, 'wf-bouncetest-0123456789ab@bounce-test.invalid');
+
+        $verdict = $this->collector->handleRaw($this->dsn('wf-bouncetest-0123456789ab@bounce-test.invalid', 'failed', '5.4.4', 'TESTPARCEL0000000'));
+
+        self::assertSame(['own' => true, 'outcomes' => ['test']], $verdict);
+
+        $send = $this->sendRow('TESTPARCEL0000000');
+        self::assertSame('bounced', (string) $send['state']);
+        self::assertGreaterThan(0, (int) $send['bouncedAt']);
+        self::assertSame('', (string) $this->connection->fetchOne('SELECT bounceHard FROM tl_workflow_entry WHERE id = 7'));
     }
 
     public function testDryRunDecidesWithoutWriting(): void

@@ -22,8 +22,29 @@ final class BounceScheduleTest extends TestCase
     protected function setUp(): void
     {
         $this->connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $this->connection->executeStatement('CREATE TABLE tl_workflow_send (id INTEGER PRIMARY KEY AUTOINCREMENT, queuedAt INTEGER NOT NULL DEFAULT 0, sentAt INTEGER NOT NULL DEFAULT 0)');
+        $this->connection->executeStatement("CREATE TABLE tl_workflow_send (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '', queuedAt INTEGER NOT NULL DEFAULT 0, sentAt INTEGER NOT NULL DEFAULT 0)");
         $this->connection->executeStatement("CREATE TABLE tl_workflow_entry (id INTEGER PRIMARY KEY AUTOINCREMENT, status INTEGER NOT NULL DEFAULT 0, respondedAt INTEGER NOT NULL DEFAULT 0, bounceHard TEXT NOT NULL DEFAULT '')");
+    }
+
+    public function testARunningEndToEndTestIsCheckedEveryMinute(): void
+    {
+        $this->connection->insert('tl_workflow_send', ['kind' => 'test', 'state' => 'sent', 'queuedAt' => self::NOW - 600, 'sentAt' => self::NOW - 590]);
+
+        $current = $this->schedule()->current(self::NOW);
+
+        self::assertSame(BounceSchedule::TIER_TEST, $current['tier']);
+        self::assertSame(60, $current['interval']);
+    }
+
+    public function testAnAnsweredOrExpiredTestNoLongerSpeedsUpTheChecks(): void
+    {
+        // The bounce has arrived …
+        $this->connection->insert('tl_workflow_send', ['kind' => 'test', 'state' => 'bounced', 'queuedAt' => self::NOW - 600, 'sentAt' => self::NOW - 590]);
+        // … and an older test gave up after 30 minutes.
+        $this->connection->insert('tl_workflow_send', ['kind' => 'test', 'state' => 'sent', 'queuedAt' => self::NOW - 4000, 'sentAt' => self::NOW - 3990]);
+
+        // The test mail itself still counts as a recent mail.
+        self::assertSame(BounceSchedule::TIER_RECENT, $this->schedule()->current(self::NOW)['tier']);
     }
 
     public function testNothingSentAndNothingOutstandingIsIdle(): void

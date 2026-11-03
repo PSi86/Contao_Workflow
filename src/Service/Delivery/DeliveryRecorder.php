@@ -40,6 +40,11 @@ class DeliveryRecorder
      */
     public function delivered(int $entryId, string $kind, string $recipient): void
     {
+        // A mail without an entry (end-to-end test) has nothing to record here.
+        if ($entryId <= 0) {
+            return;
+        }
+
         $now = time();
         $set = "sendError = '', sendErrorAt = 0, tstamp = ?";
         $params = [$now];
@@ -70,6 +75,10 @@ class DeliveryRecorder
      */
     public function failed(int $entryId, string $kind, string $recipient, \Throwable|string $error): bool
     {
+        if ($entryId <= 0) {
+            return false;
+        }
+
         $exception = $error instanceof \Throwable ? $error : null;
         $rejection = $this->classifier->permanentAddressRejection($exception);
 
@@ -96,6 +105,10 @@ class DeliveryRecorder
      */
     public function blockAddress(int $entryId, string $recipient, string $info): bool
     {
+        if ($entryId <= 0) {
+            return false;
+        }
+
         return $this->connection->executeStatement(
             "UPDATE tl_workflow_entry SET bounceHard = '1', bounceInfo = ?, tstamp = ? WHERE id = ? AND ".self::SAME_ADDRESS,
             [self::shorten($info), time(), $entryId, $recipient, $recipient],

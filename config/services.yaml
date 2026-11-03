@@ -47,6 +47,10 @@ services:
     Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule:
         public: true
 
+    # Read by the (non-service) back end dashboard module for the end-to-end test line.
+    Psimandl\WorkflowBundle\Service\Bounce\BounceProbe:
+        public: true
+
     Psimandl\WorkflowBundle\Service\WorkflowValidator:
         public: true
 

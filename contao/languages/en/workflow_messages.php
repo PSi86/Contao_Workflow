@@ -34,6 +34,25 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'bounce_check_done' => 'Bounce mailbox checked: %1$d new message(s) – %2$d address(es) blocked as undeliverable, %3$d temporary notice(s), %4$d without a matching entry, %5$d without a delivery status notification.',
     // Status line and “Check now”: %d = messages in the INBOX of the bounce mailbox that are
     // not bounces of workflow mails (the bounce collector leaves them there).
+    // End-to-end test of bounce detection (Service\Bounce\BounceProbe). Status lines:
+    // %1$s = start, %2$s = workflow; queued: %3$s = test address; waiting: %3$s = sent at,
+    // %4$s = bounce address, %5$s = waiting until; ok: %3$s = duration, %4$s = bounce address;
+    // failed: %3$s = error; timeout: %3$s = bounce address.
+    'bounce_tier_test'        => 'every minute while the end-to-end test waits for its bounce',
+    'bounce_test_label'       => 'Test bounce detection with the invitation of',
+    'bounce_test_start'       => 'Start end-to-end test',
+    'bounce_test_hint'        => 'Sends the invitation of the chosen workflow along its real mail path to an address that does not exist (…@bounce-test.invalid) and waits up to 30 minutes for the bounce to arrive in the bounce mailbox. No entry is changed. CC/BCC recipients of the invitation receive the test mail as well.',
+    'bounce_test_started'     => 'Test mail to %s handed over. The bounce mailbox is now checked every minute; the result appears in the status line.',
+    'bounce_test_unconfigured'=> 'Without a bounce mailbox the test cannot find a bounce. Please set up WORKFLOW_BOUNCE_IMAP_DSN first (DEPLOYMENT.md, section 3c).',
+    'bounce_test_no_invite'   => 'The workflow “%s” has no invitation notification – there is nothing to test with.',
+    'bounce_test_no_workflow' => 'Workflow not found.',
+    'bounce_test_not_handed_over' => 'The test mail to %s could not be handed over to the mailer. Details in the status line and the system log.',
+    'bounce_test_no_envelope' => 'none – the bounce goes to the sender',
+    'bounce_test_queued'      => 'End-to-end test of %1$s (workflow “%2$s”): test mail to %3$s queued, not sent yet – that happens on the next cron call.',
+    'bounce_test_waiting'     => 'End-to-end test of %1$s (workflow “%2$s”): test mail sent at %3$s, bounce address %4$s. Waiting for the bounce; the mailbox is checked every minute until %5$s.',
+    'bounce_test_ok'          => '✔ End-to-end test of %1$s (workflow “%2$s”): the bounce arrived in the bounce mailbox after %3$s and was matched. Bounce address: %4$s.',
+    'bounce_test_failed'      => '⚠ End-to-end test of %1$s (workflow “%2$s”): sending failed – %3$s',
+    'bounce_test_timeout'     => '⚠ End-to-end test of %1$s (workflow “%2$s”): no bounce arrived in the bounce mailbox within 30 minutes. Bounce address: %3$s. Possible causes: the bounce address is not the mailbox being read, or a spam filter sorts bounces out (DEPLOYMENT.md, section 3c).',
     'bounce_foreign'    => 'The INBOX of the bounce mailbox holds %d message(s) that are not bounces of workflow mails (e.g. replies, out-of-office notes or bounces of other senders). They stay there. Does a sender or “Reply-To” address point at this mailbox? Please look at them in webmail and delete them afterwards.',
     'ago_now'          => 'less than a minute ago',
     'ago_minutes'      => '%d min ago',

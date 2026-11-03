@@ -21,6 +21,9 @@ class WorkflowMailContext
     public const KIND_REMINDER = 'reminder';
     public const KIND_RESULT = 'result';
 
+    /** End-to-end test of the mail path ({@see \Psimandl\WorkflowBundle\Service\Bounce\BounceProbe}); no entry. */
+    public const KIND_TEST = 'test';
+
     private ?int $workflowId = null;
     private ?int $entryId = null;
     private ?string $kind = null;

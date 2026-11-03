@@ -11,6 +11,7 @@ use Contao\System;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceProbe;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
 use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
@@ -163,6 +164,14 @@ class DashboardModule extends BackendModule
         );
         $this->Template->bounceCheckUrl = $router->generate('workflow_bounce_check').'?rt='.$rt;
 
+        // End-to-end test of bounce detection: the last result, and the form to start one
+        // (only with a bounce mailbox, and only for workflows that have an invitation).
+        $this->Template->bounceTest = $this->probeLine($container->get(BounceProbe::class));
+        $this->Template->bounceTestUrl = $router->generate('workflow_bounce_test');
+        $this->Template->bounceTestWorkflows = $container->get(BounceHealth::class)->isConfigured()
+            ? $this->invitingWorkflows()
+            : [];
+
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
         $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
@@ -252,6 +261,7 @@ class DashboardModule extends BackendModule
             $current = $schedule->current($now);
 
             $reason = match ($current['tier']) {
+                BounceSchedule::TIER_TEST => (string) $lang['bounce_tier_test'],
                 BounceSchedule::TIER_RECENT => sprintf((string) $lang['bounce_tier_recent'], $this->ago($now - $current['lastMailAt'])),
                 BounceSchedule::TIER_OUTSTANDING => sprintf((string) $lang['bounce_tier_outstanding'], $current['outstanding']),
                 default => (string) $lang['bounce_tier_idle'],
@@ -272,6 +282,55 @@ class DashboardModule extends BackendModule
         }
 
         return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine, 'foreign' => $foreignLine];
+    }
+
+    /**
+     * What the overview says about the last end-to-end test of bounce detection (empty when
+     * there was none in the last week). Everything comes from the test's send row.
+     *
+     * @return array{text: string, warn: bool}
+     */
+    private function probeLine(BounceProbe $probe): array
+    {
+        $test = $probe->latest();
+
+        if (null === $test) {
+            return ['text' => '', 'warn' => false];
+        }
+
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
+        $started = date('d.m.Y H:i', $test['startedAt']);
+        $envelope = '' !== $test['envelopeSender'] ? $test['envelopeSender'] : (string) $lang['bounce_test_no_envelope'];
+
+        $text = match ($test['state']) {
+            BounceProbe::STATE_QUEUED => sprintf((string) $lang['bounce_test_queued'], $started, $test['workflow'], $test['recipient']),
+            BounceProbe::STATE_WAITING => sprintf((string) $lang['bounce_test_waiting'], $started, $test['workflow'], date('H:i', $test['sentAt']), $envelope, date('H:i', $test['until'])),
+            BounceProbe::STATE_BOUNCED => sprintf((string) $lang['bounce_test_ok'], $started, $test['workflow'], $this->duration($test['seconds']), $envelope),
+            BounceProbe::STATE_FAILED => sprintf((string) $lang['bounce_test_failed'], $started, $test['workflow'], '' !== $test['error'] ? $test['error'] : '—'),
+            default => sprintf((string) $lang['bounce_test_timeout'], $started, $test['workflow'], $envelope),
+        };
+
+        return ['text' => $text, 'warn' => \in_array($test['state'], [BounceProbe::STATE_FAILED, BounceProbe::STATE_TIMEOUT], true)];
+    }
+
+    /**
+     * Workflows the end-to-end test can use: those with an invitation notification.
+     *
+     * @return array<int, string> id => title
+     */
+    private function invitingWorkflows(): array
+    {
+        /** @var Connection $connection */
+        $connection = System::getContainer()->get('database_connection');
+
+        $rows = $connection->fetchAllKeyValue('SELECT id, title FROM tl_workflow WHERE ncInvite > 0 ORDER BY title');
+
+        return array_map('strval', $rows);
+    }
+
+    private function duration(int $seconds): string
+    {
+        return $seconds < 120 ? $seconds.' s' : (int) round($seconds / 60).' min';
     }
 
     private function ago(int $seconds): string

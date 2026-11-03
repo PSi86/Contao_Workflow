@@ -252,8 +252,28 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
 - Testmöglichkeit für echtes IMAP im DDEV erwägen (z. B. GreenMail- oder Dovecot-Container als
   zusätzlicher DDEV-Dienst) – Mailpit ist kein IMAP-Server.
 
-### AP-B3 — Ende-zu-Ende-Test
-- Knopf in der Statuszeile/im Dialog „Bounce-Postfach": Workflow wählen → Testmail über dessen
+### AP-B3 — Ende-zu-Ende-Test — **umgesetzt 2026-11-03**
+- Umsetzung: `Service\Bounce\BounceProbe` (`start()`, `latest()`, reine `describe()`),
+  `NotificationDispatcher::sendTest()` (Einladungs-Benachrichtigung, Tokens eines leeren
+  Antwortsatzes, nicht gespeichertes `EntryModel`), `WorkflowMailContext::KIND_TEST`. Route
+  `workflow_bounce_test` (POST + REQUEST_TOKEN, Modulzugriff wie „Jetzt prüfen“). Formular in der
+  Statuszeile (nur mit Bounce-Postfach; Auswahl der Workflows mit Einladung). Testadresse
+  `wf-bouncetest-<12 hex>@bounce-test.invalid`. `BounceSchedule::TIER_TEST` (60 s) solange eine
+  Testzeile `queued`/`sent` und ≤ 30 min alt ist – eigene Abfrage, kann die anderen Stufen nicht
+  mitreißen. Collector: Bounce einer Testzeile → Zeile `bounced`, System-Log, Ergebnis `test`,
+  kein Eintrag. `DeliveryRecorder` überspringt `entryId <= 0`. Statuszeile: eingereiht / warte
+  bis HH:MM / ✔ nach N s / ⚠ Versand fehlgeschlagen – Fehlertext / ⚠ kein Bounce nach 30 min;
+  Anzeige 7 Tage.
+- Tests: `BounceProbeTest` (6), Collector + Schedule erweitert; Gegenproben gesehen (Test-Zweig
+  im Collector aus → 1 rot, Test-Stufe aus → 1 rot). Suite 347 grün gegen 5.7 und 5.3.
+- DDEV (`scripts/e2e-360-b3.sh`, `e2e-360-b3-states.sh`): Formular per POST mit Token →
+  Bestätigung; Zeile `test`/`entryId 0`; Worker versendet; Mailpit `Return-Path:
+  <bounces@example.org>` an die `.invalid`-Adresse; alle vier Statuszeilen und die Takt-Zeile
+  gerendert; aufgeräumt.
+- **Abnahme offen:** echter Bounce auf tsvkorntal.com nach dem Update (Bounce-Postfach
+  `workflow-test@tsvkorntal.de`).
+- Ursprüngliche Planung:
+- Knopf in der Statuszeile/im Dialog „Bounce-Postfach“: Workflow wählen → Testmail über dessen
   Einladungs-Benachrichtigung (echtes Gateway, Transport, From, Reply-To) an die Testadresse (F2;
   muss extern sein, Empfänger auf demselben Server lehnt kasserver sofort ab).
 - Eigene `tl_workflow_send`-Zeile (`kind = 'test'`, `entryId = 0`); kein Eintrag wird verändert

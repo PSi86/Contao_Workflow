@@ -13,6 +13,7 @@ use Doctrine\DBAL\Exception as DbalException;
 use Psimandl\WorkflowBundle\Service\BackgroundActivity;
 use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
+use Psimandl\WorkflowBundle\Service\WorkflowMailContext;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\Lock\LockFactory;
@@ -459,9 +460,9 @@ class BounceCollector
     }
 
     /**
-     * @param array{id: int, entryId: int, recipient: string}|null $send the located send row
+     * @param array{id: int, entryId: int, recipient: string, kind: string}|null $send the located send row
      *
-     * @return string one of hard|former|unmatched|soft|none
+     * @return string one of hard|former|test|unmatched|soft|none
      */
     private function applyReport(BounceReport $report, ?array $send): string
     {
@@ -485,10 +486,10 @@ class BounceCollector
     }
 
     /**
-     * @param array{id: int, entryId: int, recipient: string}|null $send the located send row
+     * @param array{id: int, entryId: int, recipient: string, kind: string}|null $send the located send row
      *
      * @return string hard (address blocked) | former (the entry's address has changed since) |
-     *                unmatched (no send row found)
+     *                test (the end-to-end test's bounce) | unmatched (no send row found)
      */
     private function recordHardBounce(BounceReport $report, ?array $send): string
     {
@@ -515,6 +516,14 @@ class BounceCollector
             [$code, $now, $now, (int) $send['id']],
         );
 
+        // The bounce the end-to-end test is waiting for: the row above is its result; there is
+        // no entry to block.
+        if (WorkflowMailContext::KIND_TEST === $send['kind']) {
+            $this->systemLog(\sprintf('Ende-zu-Ende-Test: Bounce für %s im Bounce-Postfach angekommen und zugeordnet (%s).', $report->recipient, $code));
+
+            return 'test';
+        }
+
         // Block the address: excluded from further invitation and reminder runs and shown as
         // "Unzustellbar" – but only while the entry still has the address the mail went to. A
         // late bounce for an address the admin has corrected since must not block the new one.
@@ -537,18 +546,18 @@ class BounceCollector
     }
 
     /**
-     * @return array{id: int, entryId: int, recipient: string}|null
+     * @return array{id: int, entryId: int, recipient: string, kind: string}|null
      */
     private function locateSend(BounceReport $report): ?array
     {
         if (null !== $report->parcelId) {
             $row = $this->connection->fetchAssociative(
-                'SELECT id, entryId, recipient FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
+                'SELECT id, entryId, recipient, kind FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
                 [$report->parcelId],
             );
 
             if (false !== $row) {
-                return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
+                return self::sendRow($row);
             }
 
             // Parcel id present but unknown (purged, or a mail we did not send): do not guess.
@@ -558,7 +567,7 @@ class BounceCollector
         // Rule 5: no parcel id (the MTA truncated the original past the header). Fall back to
         // the most recent successfully sent mail to this recipient, and record that we guessed.
         $row = $this->connection->fetchAssociative(
-            "SELECT id, entryId, recipient FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
+            "SELECT id, entryId, recipient, kind FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
             [$report->recipient],
         );
 
@@ -571,7 +580,22 @@ class BounceCollector
             $report->recipient,
         ));
 
-        return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
+        return self::sendRow($row);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array{id: int, entryId: int, recipient: string, kind: string}
+     */
+    private static function sendRow(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'entryId' => (int) $row['entryId'],
+            'recipient' => (string) $row['recipient'],
+            'kind' => (string) $row['kind'],
+        ];
     }
 
     /**

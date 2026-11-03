@@ -16,6 +16,7 @@ use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceProbe;
 use Psimandl\WorkflowBundle\Service\EntryReset;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
@@ -81,6 +82,7 @@ class WorkflowActionController
         private readonly ImportSummary $importSummary,
         private readonly EntryReset $entryReset,
         private readonly BounceCollector $bounceCollector,
+        private readonly BounceProbe $bounceProbe,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -157,6 +159,40 @@ class WorkflowActionController
         ));
 
         return $this->backToEdit($id);
+    }
+
+    /**
+     * Starts the end-to-end test of bounce detection ("Ende-zu-Ende-Test" in the overview): the
+     * invitation of the chosen workflow goes to an address that cannot exist, and the overview
+     * then shows whether its bounce reached the bounce mailbox.
+     */
+    #[Route('/bounce-test', name: 'workflow_bounce_test', methods: ['POST'])]
+    public function startBounceTest(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
+
+        $workflow = WorkflowModel::findByPk((int) $request->request->get('workflow'));
+
+        if (null === $workflow) {
+            Message::addError($lang['bounce_test_no_workflow']);
+
+            return $this->backToDashboard();
+        }
+
+        $result = $this->bounceProbe->start($workflow);
+
+        match ($result['status']) {
+            BounceProbe::START_STARTED => Message::addConfirmation(sprintf($lang['bounce_test_started'], $result['address'])),
+            BounceProbe::START_UNCONFIGURED => Message::addError($lang['bounce_test_unconfigured']),
+            BounceProbe::START_NO_INVITE => Message::addError(sprintf($lang['bounce_test_no_invite'], StringUtil::specialchars((string) $workflow->title))),
+            default => Message::addError(sprintf($lang['bounce_test_not_handed_over'], $result['address'])),
+        };
+
+        return $this->backToDashboard();
     }
 
     /**

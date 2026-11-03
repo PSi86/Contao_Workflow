@@ -34,6 +34,25 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     'bounce_check_done' => 'Bounce-Postfach geprüft: %1$d neue Nachricht(en) – %2$d Adresse(n) als unzustellbar gesperrt, %3$d vorübergehende Meldung(en), %4$d ohne passenden Eintrag, %5$d ohne Unzustellbarkeitsmeldung.',
     // Statuszeile und „Jetzt prüfen“: %d = Nachrichten im Posteingang des Bounce-Postfachs, die
     // keine Bounces von Workflow-Mails sind (der Bounce-Abruf lässt sie liegen).
+    // Ende-zu-Ende-Test der Bounce-Erkennung (Service\Bounce\BounceProbe). Statuszeilen:
+    // %1$s = Start, %2$s = Workflow; queued: %3$s = Testadresse; waiting: %3$s = versendet um,
+    // %4$s = Bounce-Adresse, %5$s = Wartezeit bis; ok: %3$s = Dauer, %4$s = Bounce-Adresse;
+    // failed: %3$s = Fehler; timeout: %3$s = Bounce-Adresse.
+    'bounce_tier_test'        => 'jede Minute, solange der Ende-zu-Ende-Test auf seinen Bounce wartet',
+    'bounce_test_label'       => 'Bounce-Erkennung testen über die Einladung von',
+    'bounce_test_start'       => 'Ende-zu-Ende-Test starten',
+    'bounce_test_hint'        => 'Schickt die Einladung des gewählten Workflows über dessen echten Versandweg an eine Adresse, die es nicht gibt (…@bounce-test.invalid), und wartet bis zu 30 Minuten darauf, dass der Bounce im Bounce-Postfach ankommt. Kein Eintrag wird verändert. Empfänger in CC/BCC der Einladung erhalten die Testmail ebenfalls.',
+    'bounce_test_started'     => 'Testmail an %s übergeben. Das Bounce-Postfach wird jetzt jede Minute geprüft; das Ergebnis erscheint in der Statuszeile.',
+    'bounce_test_unconfigured'=> 'Ohne Bounce-Postfach kann der Test keinen Bounce finden. Bitte zuerst WORKFLOW_BOUNCE_IMAP_DSN einrichten (DEPLOYMENT.md, Abschnitt 3c).',
+    'bounce_test_no_invite'   => 'Der Workflow „%s“ hat keine Einladungs-Benachrichtigung – darüber lässt sich nichts testen.',
+    'bounce_test_no_workflow' => 'Workflow nicht gefunden.',
+    'bounce_test_not_handed_over' => 'Die Testmail an %s konnte nicht an den Mailer übergeben werden. Details in der Statuszeile und im System-Log.',
+    'bounce_test_no_envelope' => 'keine – der Bounce geht an den Absender',
+    'bounce_test_queued'      => 'Ende-zu-Ende-Test vom %1$s (Workflow „%2$s“): Testmail an %3$s eingereiht, noch nicht versendet – das geschieht beim nächsten Cron-Aufruf.',
+    'bounce_test_waiting'     => 'Ende-zu-Ende-Test vom %1$s (Workflow „%2$s“): Testmail um %3$s versendet, Bounce-Adresse %4$s. Warte auf den Bounce; das Postfach wird bis %5$s jede Minute geprüft.',
+    'bounce_test_ok'          => '✔ Ende-zu-Ende-Test vom %1$s (Workflow „%2$s“): Der Bounce kam nach %3$s im Bounce-Postfach an und wurde zugeordnet. Bounce-Adresse: %4$s.',
+    'bounce_test_failed'      => '⚠ Ende-zu-Ende-Test vom %1$s (Workflow „%2$s“): Versand fehlgeschlagen – %3$s',
+    'bounce_test_timeout'     => '⚠ Ende-zu-Ende-Test vom %1$s (Workflow „%2$s“): Nach 30 Minuten ist kein Bounce im Bounce-Postfach angekommen. Bounce-Adresse: %3$s. Mögliche Ursachen: Die Bounce-Adresse ist nicht das abgerufene Postfach, oder ein Spamfilter sortiert Bounces aus (DEPLOYMENT.md, Abschnitt 3c).',
     'bounce_foreign'    => 'Im Posteingang des Bounce-Postfachs liegen %d Nachricht(en), die keine Bounces von Workflow-Mails sind (z. B. Antworten, Abwesenheitsnotizen oder Bounces anderer Absender). Sie bleiben dort liegen. Zeigt ein Absender oder eine „Antwort an“ auf dieses Postfach? Bitte im Webmail ansehen und danach löschen.',
     'ago_now'          => 'vor weniger als einer Minute',
     'ago_minutes'      => 'vor %d Min.',
