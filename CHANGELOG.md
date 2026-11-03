@@ -6,6 +6,72 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+Schwerpunkt: **Versandstatus, Cronjob und Zurücksetzen.** Ohne Server-Cronjob arbeitet Contao
+Mail-Warteschlange und Cronjobs nur am Ende von Seitenaufrufen ab – nachdem die Seite
+ausgeliefert ist. Bounces wurden dadurch „mal verarbeitet, mal nicht", und oft zeigte erst der
+nächste Klick den neuen Stand. Ob der Cronjob läuft, war im Back-End nicht zu sehen. Das
+Zurücksetzen eines Workflows ließ Eingeladene und den Versandstatus stehen.
+
+> **Beim Update:** Datenbank aktualisieren (Contao-Manager bzw. `contao:migrate`) – es legt die
+> Tabelle `tl_workflow_cron_health` an. Danach den Cache leeren. Läuft ein Server-Cronjob auf
+> `/_contao/cron`, in `config/config.yaml` `contao.cron.web_listener: false` setzen
+> (DEPLOYMENT.md, Abschnitt 2a).
+
+### Hinzugefügt
+- **Statuszeile in der Workflow-Übersicht:** wann der Cronjob zuletzt aufgerufen wurde (über
+  `/_contao/cron` oder `contao:cron` – Seitenaufrufe zählen nicht) und wann das Bounce-Postfach
+  zuletzt geprüft wurde und als Nächstes geprüft wird, samt Grund. Bleibt der Cronjob länger als
+  10 Minuten aus, wird die Zeile rot. Ins System-Log kommt ein Eintrag beim ersten erkannten
+  Aufruf und nach einer Pause, nicht bei jedem Lauf.
+- **„Jetzt prüfen":** ruft das Bounce-Postfach sofort ab und meldet das Ergebnis – auch ohne
+  Konsole. Läuft gerade schon eine Prüfung, wird keine zweite gestartet.
+- **Bounce-Abruf im passenden Takt:** alle 2 Minuten in der halben Stunde nach einem Versand,
+  alle 15 Minuten, solange Einladungen unbeantwortet sind, sonst alle 2 Stunden (bisher fest
+  alle 15 Minuten).
+- **Der Import nennt ungültig geschriebene E-Mail-Adressen** mit Zeilennummer, z. B.
+  „Zeile 12: „name@hotmail““ – in der Meldung nach dem Import und im Importprotokoll. Bisher
+  fiel so eine Adresse erst beim Versand auf, und dort ohne Hinweis.
+- **Langsame Anfragen im System-Log:** Dauert der Aufbau einer Seite oder die Arbeit, die
+  Contao nach einem Seitenaufruf erledigt (Cronjobs, Mail-Warteschlange), länger als
+  10 Sekunden, steht ein Eintrag mit Dauer, Adresse und Anlass im System-Log, z. B.
+  „Hintergrundarbeit nach POST /contao/login dauerte 20,1 s … – darin: Bounce-Abruf 20,0 s“.
+  Normale Anfragen hinterlassen keine Spur.
+- **Adresse korrigieren:** Wird die E-Mail-Adresse eines Eintrags im Back-End geändert,
+  verschwinden Sperre und Versandfehler der alten Adresse. Ein noch nicht beantworteter Eintrag
+  springt auf „Importiert" zurück und bekommt einen neuen Link – der alte funktioniert nicht
+  mehr, er könnte bei einer falsch geschriebenen, aber existierenden Adresse gelandet sein. Bei
+  einem beantworteten Eintrag bleiben Antwort und Link; eine Bestätigung, die die alte Adresse
+  nicht erreicht hat, steht wieder auf „Ausstehend" und geht an die neue.
+
+### Geändert
+- **„Teilnehmer zurücksetzen" setzt den ganzen Durchlauf zurück:** alle Einträge auf
+  „Importiert", auch die nur Eingeladenen, und mit Antwort, Bestätigung, Versandzeitpunkt und
+  Versandfehlern. Gesperrte Adressen bleiben gesperrt, bis die Adresse geändert wird; Daten,
+  Links und PDFs bleiben wie bisher. Der Button erscheint, sobald etwas versendet oder
+  beantwortet wurde, nicht erst nach der ersten Antwort.
+- **Endgültige Ablehnung beim Versand sperrt die Adresse** wie ein harter Bounce: Der Mailserver
+  lehnt den Empfänger mit 5xx und Adress-Status 5.1.x ab (z. B. `550 5.1.1 User unknown`), oder
+  die Adresse ist ungültig geschrieben. Bisher wurde sie bei jedem Lauf erneut angeschrieben.
+  Infrastrukturfehler (Server nicht erreichbar, Anmeldung, zu viele Verbindungen, 4xx,
+  ungültiger Absender) sperren nicht und werden weiter beim nächsten Lauf wiederholt.
+- **Bounce-Abruf und Nachversand der Bestätigungen** laufen nicht mehr bei Seitenaufrufen,
+  solange ein Cronjob aktiv ist – kein Besucher wartet mehr auf eine IMAP-Anmeldung oder eine
+  PDF-Erzeugung. Fällt der Cronjob aus, springen die Seitenaufrufe wieder ein.
+
+### Behoben
+- **Mail scheitert beim Einreihen → Warnung „eingereiht, ohne Ergebnis", kein Fehler am
+  Eintrag.** Löste sich z. B. die Absenderadresse der Vorlage nicht auf, wurde die Mail
+  trotzdem als „eingereiht" verbucht. Die Übersicht fragte dann nach dem Cronjob, obwohl der
+  lief, und der Eintrag zeigte keinen Fehler. Jetzt steht der Fehler sofort am Eintrag.
+  Bestehende Zeilen dieser Art werden nach einer Stunde aufgelöst: mit ungültig geschriebener
+  Adresse sofort, wobei die Adresse gesperrt wird; alle anderen, sobald die Mail-Queue leer ist.
+- **Ungültig geschriebene Adresse wurde stillschweigend übersprungen.** Das Notification Center
+  verwirft sie ohne Meldung; der Eintrag blieb bei jedem Lauf „Importiert" ohne Hinweis. Jetzt
+  wird sie vor dem Versand erkannt und mit Grund gesperrt.
+- **Ergebnisse für eine alte Adresse** (verspäteter Bounce, eine noch eingereihte Mail) ändern
+  einen Eintrag nicht mehr, dessen Adresse inzwischen korrigiert wurde – vorher konnte ein
+  später Bounce die neue Adresse sperren.
+
 ## [3.4.1] – 2026-08-16
 
 Fehlerkorrektur zu 3.4.0: gelöschte Workflows ließen Aufzeichnungen zurück.

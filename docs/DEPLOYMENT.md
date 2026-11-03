@@ -47,11 +47,44 @@ Auf Shared Hosting läuft **kein** Dauer-Worker. Stattdessen Contaos Web-Cron pe
 - Intervall: **jede Minute**
 
 Contaos Cron arbeitet dabei die Mail-Queue (`tl_message_queue`) ab. 300 Mails sind
-so nach wenigen Minuten draußen.
+so nach wenigen Minuten draußen – vorausgesetzt, PHP läuft als **PHP-FPM** (bei all-inkl der
+Fall; prüfbar mit einer Datei `<?php echo PHP_SAPI;`, die `fpm-fcgi` ausgeben muss). Dann
+arbeitet Contao die Queue nach Auslieferung der Seite bis zu 30 Sekunden je Aufruf ab; ohne FPM
+nur 1 Sekunde, und der Aufrufer wartet so lange. Ein Intervall von **3 Minuten** geht auch; dann prüft der
+Bounce-Abruf in seiner schnellsten Stufe eben alle 3 statt alle 2 Minuten (Abschnitt 3c).
 ([all-inkl Cronjob-Anleitung](https://all-inkl.com/en/support/tutorials/kas/tools/cronjobs/setup_479.html))
 
 > Verlass dich **nicht** auf den „Poor-Man's-Cron" (läuft nur bei zufälligen
-> Seitenaufrufen) — für planbare Bursts ist der KAS-Cronjob zuverlässiger.
+> Seitenaufrufen) — für planbare Bursts ist der KAS-Cronjob zuverlässiger. Ohne Cronjob führt
+> Contao Mail-Queue und Cronjobs nur am **Ende eines beliebigen Seitenaufrufs** aus, also
+> **nachdem** die Seite ausgeliefert wurde: Die gerade angezeigte Seite zeigt immer den Stand
+> davor, erst der nächste Aufruf das Ergebnis.
+
+**Läuft der Cronjob? – Statuszeile in der Workflow-Übersicht.** Ganz oben steht
+„Cronjob: zuletzt aufgerufen am … (über /_contao/cron)". Gezählt werden nur echte Aufrufe von
+`/_contao/cron` bzw. `contao:cron`, keine Seitenaufrufe. Kommt länger als **10 Minuten** keiner,
+wird die Zeile rot. Ins **System-Log** (System → System-Log) schreibt das Bundle nur bei einem
+Wechsel: „Cronjob erkannt: erster Aufruf über …" und „Cronjob wieder aktiv … nach einer Pause
+von N Minuten". Jede Minute einen Eintrag gibt es bewusst nicht.
+
+**Danach: Cronjobs nicht mehr bei Seitenaufrufen ausführen.** Contao führt seine Cronjobs
+zusätzlich am Ende jedes Seitenaufrufs aus und schaltet das nur bei einem **CLI**-Cron
+(`contao:cron`) selbst ab, beim URL-Cron nicht. Läuft der KAS-Cronjob (Statuszeile grün), in
+`<projekt>/config/config.yaml` ergänzen und danach den Cache leeren (Contao-Manager →
+Systemwartung → Prod.-Cache neu erzeugen):
+
+```yaml
+contao:
+    cron:
+        web_listener: false
+```
+
+Das gilt für **alle** Contao-Cronjobs. Die beiden aufwendigen Jobs des Bundles (Bounce-Abruf,
+Nachversand der Bestätigungen mit PDF-Erzeugung) lassen Seitenaufrufe ohnehin aus, solange ein
+Cronjob aktiv ist; fällt er aus, springen die Seitenaufrufe wieder ein. Die Mail-Queue selbst
+wird weiterhin am Ende jedes Aufrufs geleert (Contaos Web-Worker, unabhängig von dieser
+Einstellung) – Mails gehen also direkt nach „E-Mails senden" raus; eine leere Queue kostet
+eine einzige Abfrage.
 
 ### 2b. VPS / eigener Server (Alternative)
 Dauerhafter Worker via systemd/supervisor (wird vom Prozessmanager neu gestartet):
@@ -135,8 +168,12 @@ Ein „**250 OK**" beim Absenden heißt nur „angenommen", **nicht** „zugeste
 Empfänger-Server die Mail später ab (z. B. `550 User unknown`), schickt er eine
 **Unzustellbarkeitsmeldung (Bounce/DSN)** als eigene E-Mail an die Absenderadresse zurück.
 Diese Meldung erzeugt in Contao **kein** Ereignis – sie liegt nur im Postfach. Das Bundle
-holt sie per **IMAP** ab (Cronjob alle 15 Minuten), erkennt harte Bounces und markiert die
-betroffene Person im Dashboard als **„Unzustellbar (Bounce)"**.
+holt sie per **IMAP** ab, erkennt harte Bounces und sperrt die betroffene Adresse
+(„Unzustellbar" in der Übersicht). Wie oft, richtet sich danach, was im Postfach sein kann:
+**alle 2 Minuten** in der halben Stunde nach einem Versand, **alle 15 Minuten**, solange
+Einladungen unbeantwortet sind, sonst **alle 2 Stunden** (holt auch einen verspäteten Bounce
+noch ab). Die Statuszeile der Übersicht zeigt letzte und nächste Prüfung samt Grund;
+**„Jetzt prüfen"** ruft das Postfach sofort ab – auch ohne Konsole.
 
 1. **Postfach = Absenderadresse.** Die Bounces landen bei der Absenderadresse aus dem
    Notification Center (z. B. `noreply@deine-domain.de`). Lege für sie in KAS ein echtes
@@ -170,8 +207,8 @@ betroffene Person im Dashboard als **„Unzustellbar (Bounce)"**.
 > Prüfen, ob die Variable ankommt: `vendor/bin/contao-console debug:dotenv` (listet alle
 > Werte). Danach den **prod-Cache neu bauen**.
 
-**Konfiguration prüfen / Abruf sofort testen** (statt bis zu 15 Minuten auf den Cron zu
-warten):
+**Konfiguration prüfen / Abruf sofort testen:** ohne Konsole über **„Jetzt prüfen"** in der
+Übersicht; mit Konsole Schritt für Schritt:
 ```
 vendor/bin/contao-console workflow:bounce:collect --dry-run
 ```
@@ -190,10 +227,10 @@ IMAP-Verbindung unabhängig von `.env.local` testen.
 >   erkannt. Im System-Log steht dazu eine **Warnung**, kein Fehler.
 > - **Fehler (rot)** – ein Postfach ist konfiguriert, war beim letzten Lauf aber **nicht
 >   erreichbar** (falscher Host/Port, Zugangsdaten, Passwort-Format …). Der Grund steht im
->   Banner und als **Fehler** im System-Log. `workflow:bounce:collect` (ohne `--dsn`) nach der
->   Korrektur ausführen, um das Banner sofort zu aktualisieren – sonst räumt es der nächste
->   Cron-Lauf ab. Die Log-Meldungen erscheinen nur bei einem **Zustandswechsel**, nicht bei
->   jedem Lauf.
+>   Banner und als **Fehler** im System-Log. Nach der Korrektur **„Jetzt prüfen"** klicken (oder
+>   `workflow:bounce:collect` ohne `--dsn` ausführen), um das Banner sofort zu aktualisieren –
+>   sonst räumt es die nächste planmäßige Prüfung ab. Die Log-Meldungen erscheinen nur bei einem
+>   **Zustandswechsel**, nicht bei jedem Lauf.
 
 ---
 
@@ -250,6 +287,21 @@ Bezeichnungen lassen sich nicht mehr pro Workflow ändern.
 - Der Wechsel **Importiert → Eingeladen** erfolgt **erst nach dem tatsächlichen Versand**,
   nicht beim Einreihen (siehe Abschnitt 1). Ein Fehlversand lässt den Schritt **unverändert**
   und erscheint in der Übersicht als **„Versandfehler"**.
+- **Gesperrte Adressen („Unzustellbar").** Eine Adresse wird gesperrt, wenn ein harter Bounce
+  eintrifft, der Mailserver den Empfänger beim Versand endgültig ablehnt (SMTP 5xx mit
+  Adress-Status 5.1.x beim `RCPT TO`) oder die Adresse ungültig geschrieben ist. Gesperrte
+  Adressen bekommen keine Einladungen/Erinnerungen mehr – auch nicht nach „Teilnehmer
+  zurücksetzen" –, bis die Adresse am Eintrag geändert wird. Infrastrukturfehler (Server nicht
+  erreichbar, Anmeldung, „zu viele Verbindungen", 4xx, ungültiger Absender) sperren **nicht**;
+  sie bleiben „Versandfehler" und werden beim nächsten Lauf erneut versucht.
+- **Scheitert eine Mail schon beim Einreihen** (z. B. die Absenderadresse der Vorlage löst sich
+  nicht auf), steht der Fehler sofort am Eintrag. Bis 3.4.1 wurde so eine Mail als „eingereiht"
+  verbucht und löste die Warnung „… seit über 15 Minuten eingereiht" aus, obwohl der Cron lief.
+  Solche Altlasten löst ein Cronjob (alle 15 Minuten) auf, sobald sie älter als eine Stunde
+  sind: Ist die Empfängeradresse ungültig geschrieben (z. B. `name@hotmail` ohne Endung), wird
+  die Zeile sofort als fehlgeschlagen markiert und die Adresse gesperrt. Alle anderen werden als
+  fehlgeschlagen markiert, sobald die Mail-Queue leer ist – dann kann keine Mail mehr unterwegs
+  sein –, und der Eintrag zeigt den Fehler. Das System-Log vermerkt beides.
 - Dauerhaft fehlgeschlagene Mails wandern nach Retries in den Transport
   **`contao_failure`**. Diese Personen stehen weiterhin auf **„Importiert"** und haben nichts
   erhalten. Regelmäßig prüfen:
@@ -287,7 +339,10 @@ Bezeichnungen lassen sich nicht mehr pro Workflow ändern.
 ## 9. Troubleshooting
 | Symptom | Ursache / Lösung |
 |---|---|
-| „Eingereiht", aber keine Mail / Schritt bleibt „Importiert" | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). Der Schritt wechselt erst nach echtem Versand. |
+| „Eingereiht", aber keine Mail / Schritt bleibt „Importiert" | Kein Worker/Cron aktiv → KAS-Cronjob auf `/_contao/cron` (Abschnitt 2). Der Schritt wechselt erst nach echtem Versand. Die Statuszeile der Übersicht zeigt, wann der Cronjob zuletzt aufgerufen wurde. |
+| Back-End-Seite lädt gelegentlich sehr lange (z. B. 30 s) | System-Log zum Zeitpunkt ansehen. „Langsamer Seitenaufbau …" = die Seite selbst war langsam. „Hintergrundarbeit nach … – darin: …" = ein vorheriger Aufruf hat den PHP-Prozess belegt (meist Cronjob bei Seitenaufrufen → `web_listener: false`, Abschnitt 2a). Kein Eintrag (Schwelle 10 s) = die Zeit verging außerhalb von PHP, also beim Hosting. |
+| Bounces werden mal verarbeitet, mal nicht; erst der nächste Klick zeigt den neuen Stand | Kein Cronjob: Contao arbeitet dann nur am Ende von Seitenaufrufen, **nach** deren Auslieferung (Abschnitt 2a). KAS-Cronjob einrichten; zum Testen „Jetzt prüfen". |
+| Warnung „… seit über 15 Minuten eingereiht", obwohl der Cronjob läuft | Mail ist beim Einreihen gescheitert (Altlast bis 3.4.1), meist wegen einer ungültig geschriebenen Adresse; im System-Log steht dann „An email must have a "To", "Cc", or "Bcc" header". Löst sich nach einer Stunde von selbst (Abschnitt 6). |
 | Versand wird gar nicht erst angeboten / abgelehnt | Workflow nicht **veröffentlicht**, keine gültige Formularseite oder keine gültige Benachrichtigung zugeordnet. |
 | Mails landen im Spam | SPF/DKIM/DMARC fehlen oder Absender-Domain ≠ signierte Domain (Abschnitt 3a/4). |
 | Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben; autoscale deckeln (Abschnitt 2c). |
