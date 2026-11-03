@@ -16,14 +16,27 @@ use Psimandl\WorkflowBundle\Model\QuestionModel;
 class QuestionParentResolver
 {
     /**
-     * On edit "id" is the question; on create "pid" is either the parent workflow
-     * (PASTE_INTO) or a sibling question (PASTE_AFTER, mode 1). Returns 0 when the parent
-     * cannot be determined.
+     * Actions whose "id" is the parent workflow: Contao's own list of the table and its
+     * "edit multiple" modes.
+     */
+    private const PARENT_ID_ACTIONS = ['', 'select', 'editAll', 'overrideAll', 'deleteAll', 'copyAll', 'cutAll'];
+
+    /**
+     * On edit "id" is the question; in the list (and its "edit multiple" modes) it is the
+     * parent workflow; on create "pid" is either the parent workflow (PASTE_INTO) or a
+     * sibling question (PASTE_AFTER, mode 1). Returns 0 when the parent cannot be determined.
      */
     public function resolve(?DataContainer $dc): int
     {
         if (isset($dc->activeRecord->pid) && (int) $dc->activeRecord->pid > 0) {
             return (int) $dc->activeRecord->pid;
+        }
+
+        // ChildListGuardListener closes these views; resolving them right keeps the lock
+        // correct should one be reached anyway (reading "id" as a question id picked an
+        // unrelated record's workflow, or none).
+        if ($dc?->id && \in_array((string) Input::get('act'), self::PARENT_ID_ACTIONS, true)) {
+            return (int) $dc->id;
         }
 
         if ($dc?->id && 'create' !== Input::get('act')) {

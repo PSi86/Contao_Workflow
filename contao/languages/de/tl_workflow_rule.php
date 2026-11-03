@@ -31,7 +31,8 @@ $GLOBALS['TL_LANG']['tl_workflow_rule']['untitled']        = 'Regel';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['alwaysLabel']     = 'Standardtext';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['condAnd']         = 'und';
 $GLOBALS['TL_LANG']['tl_workflow_rule']['defaultRuleError'] = 'Es darf nur eine Regel ohne Bedingung (Standardtext) geben. Bitte fügen Sie eine Bedingung hinzu oder bearbeiten Sie die bestehende Standardtext-Regel.';
-$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing']   = 'Hinweis: Es gibt keine Standardtext-Regel (ohne Bedingung). Treffen bei einem Eintrag keine Bedingungen zu, bleibt der Brieftext leer. Legen Sie eine Regel ohne Bedingung als Standardtext an.';
+$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultNotLast']   = 'Der Standardtext steht nicht an letzter Stelle. Er passt immer, deshalb werden die Dokument-Texte darunter nie verwendet. Ziehen Sie ihn ans Ende und speichern Sie.';
+$GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing']   ='Hinweis: Es gibt keine Standardtext-Regel (ohne Bedingung). Treffen bei einem Eintrag keine Bedingungen zu, bleibt der Brieftext leer. Legen Sie eine Regel ohne Bedingung als Standardtext an.';
 
 $GLOBALS['TL_LANG']['tl_workflow_rule']['new']    = ['Neuer Dokument-Text', 'Dokument-Text (Regel) hinzufügen.'];
 $GLOBALS['TL_LANG']['tl_workflow_rule']['edit']   = ['Bearbeiten', 'Regel bearbeiten.'];

@@ -65,10 +65,9 @@ class AnswerConfigListener
     /**
      * Renders the embedded answer-field list (dcaWizard list_callback) with a
      * drag handle per row: the order is changed directly in this list (HTML5
-     * drag&drop, see public/workflow-question-sort.js). The new order is held in
-     * a hidden form field and only written when the workflow is saved
-     * (AnswerConfigListener::persistQuestionOrder) – nothing is persisted before
-     * the user clicks "save".
+     * drag&drop, see public/workflow-list-sort.js). The new order is held in
+     * the hidden questionOrder field and only written when the workflow is saved
+     * (saveQuestionOrder) – nothing is persisted before the user clicks "save".
      *
      * @param array<int, array<string, mixed>> $records
      */
@@ -83,7 +82,7 @@ class AnswerConfigListener
         }
 
         $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
-        $GLOBALS['TL_JAVASCRIPT']['wf_qsort'] = 'bundles/contaoworkflow/workflow-question-sort.js|static';
+        $GLOBALS['TL_JAVASCRIPT']['wf_lsort'] = 'bundles/contaoworkflow/workflow-list-sort.js|static';
         $GLOBALS['TL_JAVASCRIPT']['wf_qdeps'] = 'bundles/contaoworkflow/workflow-question-deps.js|static';
 
         $lang = $GLOBALS['TL_LANG']['tl_workflow_question'] ?? [];
@@ -117,7 +116,7 @@ class AnswerConfigListener
             $operations = $widget->generateRowOperation('edit', $row).$widget->generateRowOperation('delete', $row);
             $marker = $dependencies[(int) $row['id']] ?? ['cell' => '', 'attributes' => ''];
 
-            $body .= '<tr class="hover-row" data-question-id="'.(int) $row['id'].'"'.$marker['attributes'].'>'
+            $body .= '<tr class="hover-row" data-sort-id="'.(int) $row['id'].'" data-question-id="'.(int) $row['id'].'"'.$marker['attributes'].'>'
                 .'<td class="tl_file_list tw-drag-handle" draggable="true" title="'
                 .StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['questionsDrag'] ?? 'Ziehen, um die Reihenfolge zu ändern')).'">&#x2630;</td>'
                 .'<td class="tl_file_list tw-dep-cell">'.$marker['cell'].'</td>'
@@ -129,7 +128,9 @@ class AnswerConfigListener
                 .'</tr>';
         }
 
-        return '<div data-question-sort data-wf-order-error="'
+        // data-wf-sort drives the drag&drop (workflow-list-sort.js), data-question-sort the
+        // dependency markers (workflow-question-deps.js).
+        return '<div data-wf-sort="questionOrder" data-question-sort data-wf-order-error="'
             .StringUtil::specialchars((string) ($lang['depOrderError'] ?? 'Dieses Feld steht vor seinem Auslösefeld.')).'">'
             .'<table class="tl_listing showColumns"><thead><tr>'
             .'<th class="tl_folder_tlist"></th>'
@@ -358,7 +359,36 @@ class AnswerConfigListener
             return $value;
         }
 
-        return implode(',', $this->questionIdsInOrder((int) $dc->id));
+        return implode(',', $this->childIdsInOrder(QuestionModel::class, (int) $dc->id));
+    }
+
+    /**
+     * load_callback for tl_workflow.ruleOrder: the workflow's current document-text order,
+     * like loadQuestionOrder.
+     */
+    public function loadRuleOrder(mixed $value, DataContainer $dc): mixed
+    {
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+
+        if (!$dc->id) {
+            return $value;
+        }
+
+        return implode(',', $this->childIdsInOrder(RuleModel::class, (int) $dc->id));
+    }
+
+    /**
+     * save_callback for tl_workflow.ruleOrder: renumbers the document texts to the posted
+     * order and returns the normalised order to store, like saveQuestionOrder. Any order is
+     * accepted; a rule without conditions above others only earns a warning in the list.
+     */
+    public function saveRuleOrder(mixed $value, DataContainer $dc): mixed
+    {
+        if (!$dc->id) {
+            return $value;
+        }
+
+        return implode(',', $this->renumberChildren(RuleModel::class, (int) $dc->id, (string) $value));
     }
 
     /**
@@ -378,7 +408,7 @@ class AnswerConfigListener
         }
 
         $workflowId = (int) $dc->id;
-        $current = $this->questionIdsInOrder($workflowId);
+        $current = $this->childIdsInOrder(QuestionModel::class, $workflowId);
         $target = $this->targetOrder($current, (string) $value);
 
         // A visibility condition may only reference a PRECEDING field, so the list order is
@@ -394,7 +424,7 @@ class AnswerConfigListener
             return implode(',', $current);
         }
 
-        return implode(',', $this->renumberQuestions($workflowId, (string) $value));
+        return implode(',', $this->renumberChildren(QuestionModel::class, $workflowId, (string) $value));
     }
 
     /**
@@ -445,50 +475,54 @@ class AnswerConfigListener
     }
 
     /**
-     * onrestore_version_callback for tl_workflow: re-applies a restored
-     * questionOrder to the child answer fields' sorting (a version restore writes
-     * the workflow row back but does not touch the child table).
+     * onrestore_version_callback for tl_workflow: re-applies a restored questionOrder and
+     * ruleOrder to the child rows' sorting (a version restore writes the workflow row back
+     * but does not touch the child tables). A version from before an order field existed
+     * carries no value for it and leaves that order as it is.
      *
      * @param array<string, mixed> $data restored record data
      */
-    public function restoreQuestionOrder(string $table, int $pid, int $version, array $data): void
+    public function restoreChildOrder(string $table, int $pid, int $version, array $data): void
     {
         if ('tl_workflow' !== $table) {
             return;
         }
 
-        $this->renumberQuestions($pid, (string) ($data['questionOrder'] ?? ''));
+        $this->renumberChildren(QuestionModel::class, $pid, (string) ($data['questionOrder'] ?? ''));
+        $this->renumberChildren(RuleModel::class, $pid, (string) ($data['ruleOrder'] ?? ''));
     }
 
     /**
-     * Child answer-field ids of a workflow in their current sorting order.
+     * Child record ids (answer fields or document texts) of a workflow in their current
+     * sorting order.
+     *
+     * @param class-string<QuestionModel|RuleModel> $model
      *
      * @return array<int, int>
      */
-    private function questionIdsInOrder(int $workflowId): array
+    private function childIdsInOrder(string $model, int $workflowId): array
     {
         $ids = [];
-        $questions = QuestionModel::findBy('pid', $workflowId, ['order' => 'sorting']);
 
-        if (null !== $questions) {
-            foreach ($questions as $question) {
-                $ids[] = (int) $question->id;
-            }
+        foreach ($model::findBy('pid', $workflowId, ['order' => 'sorting']) ?? [] as $record) {
+            $ids[] = (int) $record->id;
         }
 
         return $ids;
     }
 
     /**
-     * Renumbers a workflow's answer-field sorting to the given comma-separated id
-     * order; ids not belonging to the workflow are dropped, missing ones appended
-     * (in their current order). Writes nothing when the order is already as desired.
+     * Renumbers a workflow's child records (answer fields or document texts) to the given
+     * comma-separated id order; ids not belonging to the workflow are dropped, missing ones
+     * appended (in their current order). Writes nothing when the order is already as desired.
+     *
+     * @param class-string<QuestionModel|RuleModel> $model
      *
      * @return array<int, int> the resulting order (valid ids only)
      */
-    private function renumberQuestions(int $workflowId, string $order): array
+    private function renumberChildren(string $model, int $workflowId, string $order): array
     {
-        $current = $this->questionIdsInOrder($workflowId);
+        $current = $this->childIdsInOrder($model, $workflowId);
         $target = $this->targetOrder($current, $order);
 
         if ($target === $current) {
@@ -498,12 +532,12 @@ class AnswerConfigListener
         $sorting = 0;
 
         foreach ($target as $id) {
-            $question = QuestionModel::findByPk($id);
+            $record = $model::findByPk($id);
 
-            if (null !== $question) {
-                $question->sorting = $sorting += 64;
-                $question->tstamp = time();
-                $question->save();
+            if (null !== $record) {
+                $record->sorting = $sorting += 64;
+                $record->tstamp = time();
+                $record->save();
             }
         }
 
@@ -533,9 +567,12 @@ class AnswerConfigListener
     }
 
     /**
-     * Renders the embedded PDF-rule list (dcaWizard list_callback): label +
-     * readable conditions ("(Standardtext)" for a rule without conditions),
-     * plus the edit/delete operations generated by the wizard itself.
+     * Renders the embedded PDF-rule list (dcaWizard list_callback): a drag
+     * handle, label + readable conditions ("(Standardtext)" for a rule without
+     * conditions), plus the edit/delete operations generated by the wizard
+     * itself. The rules are checked in this order and the first match wins, so
+     * the order is edited here like the answer-field order (workflow-list-sort.js,
+     * hidden ruleOrder field, written on save).
      *
      * @param array<int, array<string, mixed>> $records
      */
@@ -549,13 +586,19 @@ class AnswerConfigListener
             return '<p>'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] ?? '')).'</p>';
         }
 
+        $GLOBALS['TL_CSS']['wf_backend'] = 'bundles/contaoworkflow/workflow-backend.css';
+        $GLOBALS['TL_JAVASCRIPT']['wf_lsort'] = 'bundles/contaoworkflow/workflow-list-sort.js|static';
+
         $hLabel = $GLOBALS['TL_LANG']['tl_workflow_rule']['title'][0] ?? 'Bezeichnung';
         $hCond = $GLOBALS['TL_LANG']['tl_workflow_rule']['conditions'][0] ?? 'Bedingung';
+        $dragTitle = StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow']['rulesDrag'] ?? 'Ziehen, um die Reihenfolge zu ändern'));
 
         $body = '';
         $defaultCount = 0;
+        $defaultMisplaced = false;
+        $last = \count($records) - 1;
 
-        foreach ($records as $row) {
+        foreach ($records as $index => $row) {
             $title = trim((string) ($row['title'] ?? ''));
 
             if ('' === $title) {
@@ -566,6 +609,7 @@ class AnswerConfigListener
 
             if ($isDefault) {
                 ++$defaultCount;
+                $defaultMisplaced = $defaultMisplaced || $index !== $last;
                 $conditionText = '<em>('.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['alwaysLabel'] ?? 'Standardtext')).')</em>';
             } else {
                 $conditionText = $this->formatConditions($row['conditions'] ?? null) ?: '–';
@@ -573,7 +617,8 @@ class AnswerConfigListener
 
             $operations = $widget->generateRowOperation('edit', $row).$widget->generateRowOperation('delete', $row);
 
-            $body .= '<tr class="hover-row">'
+            $body .= '<tr class="hover-row" data-sort-id="'.(int) $row['id'].'"'.($isDefault ? ' data-wf-default' : '').'>'
+                .'<td class="tl_file_list tw-drag-handle" draggable="true" title="'.$dragTitle.'">&#x2630;</td>'
                 .'<td class="tl_file_list">'.StringUtil::specialchars($title).'</td>'
                 .'<td class="tl_file_list">'.$conditionText.'</td>'
                 .'<td class="tl_file_list tl_right_nowrap">'.$operations.'</td>'
@@ -589,11 +634,19 @@ class AnswerConfigListener
             $warning = '<p class="tl_info">'.StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['defaultMissing'] ?? '')).'</p>';
         }
 
-        return $warning.'<table class="tl_listing showColumns"><thead><tr>'
+        // The rule without conditions always matches, so every rule below it is never
+        // reached. Rendered always, shown or hidden here and kept in step with the order
+        // while dragging (workflow-list-sort.js).
+        $orderWarning = '<p class="tl_error" data-wf-default-warning'.($defaultMisplaced ? '' : ' hidden').'>'
+            .StringUtil::specialchars((string) ($GLOBALS['TL_LANG']['tl_workflow_rule']['defaultNotLast'] ?? '')).'</p>';
+
+        return $warning.'<div data-wf-sort="ruleOrder" data-wf-default-last>'.$orderWarning
+            .'<table class="tl_listing showColumns"><thead><tr>'
+            .'<th class="tl_folder_tlist"></th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hLabel).'</th>'
             .'<th class="tl_folder_tlist">'.StringUtil::specialchars((string) $hCond).'</th>'
             .'<th class="tl_folder_tlist"></th>'
-            .'</tr></thead><tbody>'.$body.'</tbody></table>';
+            .'</tr></thead><tbody>'.$body.'</tbody></table></div>';
     }
 
     /**

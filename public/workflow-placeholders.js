@@ -273,7 +273,9 @@
 
     function scan() {
         document.querySelectorAll('[data-wf-autosuggest]').forEach(function (el) {
-            if (el.dataset.wfPhReady) { return; }
+            // A JS property, not a data attribute: Turbo restores pages from a cloned snapshot
+            // that keeps attributes but drops listeners, so the field must be set up again.
+            if (el.wfPhReady) { return; }
 
             var tokens;
             try {
@@ -293,7 +295,7 @@
 
             if ((!tokens || !tokens.length) && !insertTags.length) { return; }
 
-            el.dataset.wfPhReady = '1';
+            el.wfPhReady = true;
             new Autosuggest(el, tokens || [], insertTags);
         });
     }

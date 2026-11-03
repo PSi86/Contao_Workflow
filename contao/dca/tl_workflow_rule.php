@@ -10,6 +10,10 @@ $GLOBALS['TL_DCA']['tl_workflow_rule'] = [
         'dataContainer'    => DC_Table::class,
         'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
+        // The order decides which text a document gets and is versioned with the workflow
+        // (tl_workflow.ruleOrder, set by drag&drop in the workflow mask). Contao's own
+        // drag&drop and cut/paste would bypass that version, so they are switched off.
+        'notSortable'      => true,
         'sql' => [
             'keys' => [
                 'id'  => 'primary',

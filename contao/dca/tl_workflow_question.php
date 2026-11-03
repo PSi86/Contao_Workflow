@@ -15,6 +15,11 @@ $GLOBALS['TL_DCA']['tl_workflow_question'] = [
         'dataContainer'    => DC_Table::class,
         'ptable'           => 'tl_workflow',
         'enableVersioning' => true,
+        // The order is part of the workflow and versioned there (tl_workflow.questionOrder,
+        // set by drag&drop in the workflow mask). Contao's own drag&drop and cut/paste would
+        // write the sorting at once, past that version – so they are switched off, and
+        // DC_Table refuses a crafted act=cut as well.
+        'notSortable'      => true,
         'sql' => [
             'keys' => [
                 'id'  => 'primary',

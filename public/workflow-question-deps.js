@@ -124,13 +124,13 @@
         }
     }, true);
 
-    // Re-run after a drop (workflow-question-sort.js).
+    // Re-run after a drop (workflow-list-sort.js).
     document.addEventListener('wf-question-order-changed', checkOrder);
 
     function boot() {
         var box = document.querySelector('[data-question-sort]');
         // The dcaWizard replaces its widget's innerHTML, so observe the surrounding control
-        // (which survives) rather than the list itself – same anchor workflow-question-sort.js
+        // (which survives) rather than the list itself – same anchor workflow-list-sort.js
         // uses for re-applying a pending order.
         var container = box ? (box.closest('[id^="ctrl_"]') || box.parentNode) : null;
 

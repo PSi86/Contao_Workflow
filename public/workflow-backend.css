@@ -1,15 +1,16 @@
 /* Back end styling for the Workflow bundle. */
 
-/* Drag&drop reordering of the embedded answer-field list. */
-[data-question-sort] .tw-drag-handle {
+/* Drag&drop reordering of the embedded answer-field and document-text lists
+   (workflow-list-sort.js). */
+[data-wf-sort] .tw-drag-handle {
     cursor: grab;
     width: 24px;
     text-align: center;
     color: #999;
     user-select: none;
 }
-[data-question-sort] .tw-drag-handle:active { cursor: grabbing; }
-[data-question-sort] tr.tw-dragging { opacity: .4; }
+[data-wf-sort] .tw-drag-handle:active { cursor: grabbing; }
+[data-wf-sort] tr.tw-dragging { opacity: .4; }
 
 /* Dependency markers of conditional form fields (workflow-question-deps.js). A trigger
    carries a numbered badge, a dependent field an arrow with its trigger's number(s);
@@ -27,9 +28,9 @@
 [data-question-sort] tr.tw-dep-error td { background: #fdecea; }
 [data-question-sort] tr.tw-dep-error .tw-dep { color: #c00; }
 
-/* Technical, versioned field holding the answer-field order (driven by the
-   drag&drop above) – never shown to the user. */
-.wf-question-order { display: none; }
+/* Technical, versioned fields holding the answer-field and document-text order
+   (driven by the drag&drop above) – never shown to the user. */
+.wf-order-field { display: none; }
 
 /* Comparison value of a visibility condition (workflow-condition-value.js): the switch
    between the option list and free text, and the greyed-out state for the operators that

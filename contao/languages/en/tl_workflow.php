@@ -44,7 +44,9 @@ $GLOBALS['TL_LANG']['tl_workflow']['questions'] = ['Form fields', 'Fields the re
 $GLOBALS['TL_LANG']['tl_workflow']['questionOrder'] = ['Form-field order', 'Technical (hidden) field: holds the drag & drop order for versioning.'];
 $GLOBALS['TL_LANG']['tl_workflow']['questionsEmpty'] = 'No form fields yet. Add one with "New".';
 $GLOBALS['TL_LANG']['tl_workflow']['questionsDrag']  = 'Drag to change the order';
-$GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['Document texts', 'Each rule = conditions + a document text. The first matching rule provides the text; a rule WITHOUT conditions is marked "(default text)" and always applies (place it last, only one allowed).'];
+$GLOBALS['TL_LANG']['tl_workflow']['rules']    = ['Document texts', 'Each rule = conditions + a document text. The first matching rule provides the text; change the order by dragging the handle, it is stored with "Save". A rule WITHOUT conditions is marked "(default text)" and always applies – so it belongs at the end; only one is allowed.'];
+$GLOBALS['TL_LANG']['tl_workflow']['ruleOrder'] = ['Document-text order', 'Technical (hidden) field: holds the drag & drop order for versioning.'];
+$GLOBALS['TL_LANG']['tl_workflow']['rulesDrag']  = 'Drag to change the order';
 $GLOBALS['TL_LANG']['tl_workflow']['rulesEmpty'] = 'No document texts yet. Add one with "New" – a rule without conditions is the "(default text)".';
 $GLOBALS['TL_LANG']['tl_workflow']['entries'] = ['Entries', 'Manage the entries of this workflow.'];
 $GLOBALS['TL_LANG']['tl_workflow']['exportConfig'] = ['Download configuration', 'Download the workflow configuration as a JSON file.'];

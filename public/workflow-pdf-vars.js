@@ -267,11 +267,15 @@
         });
     };
 
-    ready(function () {
+    function init() {
         document.querySelectorAll('.wf-pdfvars').forEach(function (box) {
             if (box.wfPdfVarsReady) { return; }
             box.wfPdfVarsReady = true;
             new PdfVars(box);
         });
-    });
+    }
+
+    ready(init);
+    // The back end navigates with Turbo (Contao 5.4+): the mask can arrive without a page load.
+    document.addEventListener('turbo:render', init);
 })();
