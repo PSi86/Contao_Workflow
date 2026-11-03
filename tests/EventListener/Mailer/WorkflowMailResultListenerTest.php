@@ -8,8 +8,12 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\TestCase;
 use Psimandl\WorkflowBundle\EventListener\Mailer\WorkflowMailResultListener;
+use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
+use Psimandl\WorkflowBundle\Service\Delivery\SendFailureClassifier;
 use Psimandl\WorkflowBundle\Service\WorkflowMailContext;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\Exception\UnexpectedResponseException;
 use Terminal42\NotificationCenterBundle\Event\AsynchronousReceiptEvent;
 use Terminal42\NotificationCenterBundle\Receipt\AsynchronousReceipt;
 
@@ -47,6 +51,9 @@ final class WorkflowMailResultListenerTest extends TestCase
             CREATE TABLE tl_workflow_entry (
                 id          INTEGER PRIMARY KEY,
                 status      INTEGER NOT NULL DEFAULT 0,
+                email       TEXT    NOT NULL DEFAULT '',
+                bounceHard  TEXT    NOT NULL DEFAULT '',
+                bounceInfo  TEXT    NOT NULL DEFAULT '',
                 sendError   TEXT    NOT NULL DEFAULT '',
                 sendErrorAt INTEGER NOT NULL DEFAULT 0,
                 sentAt      INTEGER NOT NULL DEFAULT 0,
@@ -125,11 +132,84 @@ final class WorkflowMailResultListenerTest extends TestCase
         self::assertFalse($this->send(), 'no row is invented for an uncorrelated receipt');
     }
 
+    /**
+     * The mail server rejected the recipient for good (RCPT TO → 550 5.1.1): the address is
+     * blocked like after a hard bounce, instead of being re-invited on every run.
+     */
+    public function testPermanentRecipientRejectionBlocksTheAddress(): void
+    {
+        $this->givenQueuedInvitation();
+
+        $this->fireFailedWith(self::PARCEL_ID, new UnexpectedResponseException(
+            'Expected response code "250/251/252" but got code "550", with message "550 5.1.1 <person@example.org>: Recipient address rejected: User unknown in virtual mailbox table".',
+            550,
+        ));
+
+        self::assertSame('failed', (string) $this->send()['state']);
+
+        $entry = $this->entry();
+        self::assertSame('1', (string) $entry['bounceHard'], 'a permanently rejected address is blocked');
+        self::assertStringContainsString('5.1.1', (string) $entry['bounceInfo'], 'the server reply is the reason shown');
+        self::assertSame('', (string) $entry['sendError'], 'it is not a retryable send error');
+        self::assertSame(WorkflowStatus::STATUS_IMPORTED, (int) $entry['status']);
+    }
+
+    /**
+     * A failure that hits every recipient alike (here: the server refuses more connections)
+     * must stay retryable and must not block the address.
+     */
+    public function testTransientFailureStaysARetryableSendError(): void
+    {
+        $this->givenQueuedInvitation();
+
+        $this->fireFailedWith(self::PARCEL_ID, new TransportException(
+            'Expected response code "220" but got code "421", with message "421 4.7.0 Too many concurrent SMTP connections".',
+            421,
+        ));
+
+        $entry = $this->entry();
+        self::assertSame('', (string) $entry['bounceHard'], 'an infrastructure error never blocks');
+        self::assertStringContainsString('421', (string) $entry['sendError']);
+    }
+
+    /**
+     * The address was changed while an invitation to the old one was still queued. When that
+     * old mail goes out, the entry must not be marked "invited": the new address got nothing.
+     */
+    public function testDeliveryToAFormerAddressDoesNotAdvanceTheEntry(): void
+    {
+        $this->givenQueuedInvitation();
+        $this->connection->update('tl_workflow_entry', ['email' => 'corrected@example.org'], ['id' => 1]);
+
+        $this->fireDelivered(self::PARCEL_ID);
+
+        self::assertSame('sent', (string) $this->send()['state'], 'the send log still records what happened');
+        $entry = $this->entry();
+        self::assertSame(WorkflowStatus::STATUS_IMPORTED, (int) $entry['status'], 'the new address has not been invited yet');
+        self::assertSame(0, (int) $entry['sentAt']);
+    }
+
+    public function testFailureForAFormerAddressDoesNotFlagTheEntry(): void
+    {
+        $this->givenQueuedInvitation();
+        $this->connection->update('tl_workflow_entry', ['email' => 'corrected@example.org'], ['id' => 1]);
+
+        $this->fireFailedWith(self::PARCEL_ID, new UnexpectedResponseException(
+            'Expected response code "250/251/252" but got code "550", with message "550 5.1.1 user unknown".',
+            550,
+        ));
+
+        $entry = $this->entry();
+        self::assertSame('', (string) $entry['bounceHard'], 'the block would hit the corrected address');
+        self::assertSame('', (string) $entry['sendError']);
+    }
+
     private function givenQueuedInvitation(): void
     {
         $this->connection->insert('tl_workflow_entry', [
             'id' => 1,
             'status' => WorkflowStatus::STATUS_IMPORTED,
+            'email' => 'person@example.org',
         ]);
 
         $this->connection->insert('tl_workflow_send', [
@@ -152,16 +232,25 @@ final class WorkflowMailResultListenerTest extends TestCase
 
     private function fireFailed(string $identifier, string $message): void
     {
+        $this->fireFailedWith($identifier, new \RuntimeException($message));
+    }
+
+    private function fireFailedWith(string $identifier, \Throwable $error): void
+    {
         $this->listener()->onAsynchronousReceipt(
             new AsynchronousReceiptEvent(
-                AsynchronousReceipt::createForUnsuccessfulDelivery($identifier, new \RuntimeException($message)),
+                AsynchronousReceipt::createForUnsuccessfulDelivery($identifier, $error),
             ),
         );
     }
 
     private function listener(): WorkflowMailResultListener
     {
-        return new WorkflowMailResultListener($this->connection, $this->context);
+        return new WorkflowMailResultListener(
+            $this->connection,
+            $this->context,
+            new DeliveryRecorder($this->connection, new SendFailureClassifier()),
+        );
     }
 
     /**
