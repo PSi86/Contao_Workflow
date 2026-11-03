@@ -11,8 +11,11 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
+use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
 use Psimandl\WorkflowBundle\Service\EntryReset;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
@@ -77,6 +80,7 @@ class WorkflowActionController
         private readonly SubmissionProcessor $submissionProcessor,
         private readonly ImportSummary $importSummary,
         private readonly EntryReset $entryReset,
+        private readonly BounceCollector $bounceCollector,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -153,6 +157,42 @@ class WorkflowActionController
         ));
 
         return $this->backToEdit($id);
+    }
+
+    /**
+     * Reads the bounce mailbox right away ("Jetzt prüfen" in the overview) instead of waiting
+     * for the next scheduled check, and reports what it found.
+     */
+    #[Route('/bounce-check', name: 'workflow_bounce_check', methods: ['GET'])]
+    public function checkBounces(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
+
+        $outcome = $this->bounceCollector->checkNow();
+
+        if (null === $outcome) {
+            Message::addInfo($lang['bounce_check_busy']);
+        } elseif (BounceHealth::STATE_UNCONFIGURED === $outcome->state) {
+            Message::addInfo($lang['bounce_unconfigured']);
+        } elseif (BounceHealth::STATE_CONFIG_ERROR === $outcome->state) {
+            Message::addError(sprintf($lang['bounce_check_error'], StringUtil::specialchars($outcome->message)));
+        } else {
+            $c = $outcome->counts;
+            Message::addConfirmation(sprintf(
+                $lang['bounce_check_done'],
+                $c['total'] ?? 0,
+                $c['hard'] ?? 0,
+                $c['soft'] ?? 0,
+                ($c['unmatched'] ?? 0) + ($c['former'] ?? 0),
+                $c['skipped'] ?? 0,
+            ));
+        }
+
+        return $this->backToDashboard();
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
