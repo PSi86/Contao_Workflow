@@ -11,9 +11,12 @@ use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FrontendTemplate;
 use Contao\Message;
 use Contao\StringUtil;
-use Doctrine\DBAL\Connection;
+use Contao\System;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\EntryReset;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
 use Psimandl\WorkflowBundle\Service\DocumentBodyComposer;
@@ -29,7 +32,6 @@ use Psimandl\WorkflowBundle\Service\WorkflowConfigImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowFormView;
 use Psimandl\WorkflowBundle\Service\WorkflowMailer;
 use Psimandl\WorkflowBundle\Service\WorkflowPreviewData;
-use Psimandl\WorkflowBundle\Service\WorkflowStatus;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -77,7 +79,8 @@ class WorkflowActionController
         private readonly Security $security,
         private readonly SubmissionProcessor $submissionProcessor,
         private readonly ImportSummary $importSummary,
-        private readonly Connection $connection,
+        private readonly EntryReset $entryReset,
+        private readonly BounceCollector $bounceCollector,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -127,14 +130,14 @@ class WorkflowActionController
     }
 
     /**
-     * Voids every recorded answer of a workflow, which is what releases the edit lock on the
-     * source settings (see WorkflowLock). GET like the other edit-mask actions – a nested
-     * <form> is not possible inside the DCA form – but guarded by the request token, the
-     * module check and a confirm dialog in the button.
+     * Takes the whole run of a workflow back to "imported" (see EntryReset::resetWorkflow()),
+     * which also releases the edit lock on the source settings (see WorkflowLock). GET like
+     * the other edit-mask actions – a nested <form> is not possible inside the DCA form – but
+     * guarded by the request token, the module check and a confirm dialog in the button.
      *
-     * Deliberately keeps the answer data, the tokens and the stored PDFs: the participants
-     * fill in the same prefilled form again through their existing link, and the document is
-     * overwritten on re-submission. Only the bookkeeping that marks them as answered goes.
+     * Deliberately keeps the answer data, the tokens, the stored PDFs and blocked addresses:
+     * the participants fill in the same prefilled form again through their existing link, the
+     * document is overwritten on re-submission, and a dead address is not written to again.
      */
     #[Route('/reset-entries/{id}', name: 'workflow_reset_entries', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function resetEntries(int $id, Request $request): Response
@@ -144,21 +147,52 @@ class WorkflowActionController
         $this->assertAccess();
         $workflow = $this->getWorkflow($id);
 
-        $affected = (int) $this->connection->executeStatement(
-            'UPDATE tl_workflow_entry '
-            ."SET status = ?, respondedAt = 0, resultDoneAt = 0, resultError = '', tstamp = ? "
-            .'WHERE pid = ? AND respondedAt > 0',
-            [WorkflowStatus::STATUS_IMPORTED, time(), $id],
-        );
+        $affected = $this->entryReset->resetWorkflow($id);
 
         Message::addConfirmation(sprintf(
-            '%d Teilnehmer von „%s" zurückgesetzt. Die Quell-Einstellungen sind wieder änderbar; '
+            '%d Teilnehmer von „%s" auf „importiert" zurückgesetzt. Die Quell-Einstellungen sind wieder änderbar; '
             .'bitte anschließend den Import erneut ausführen, um die Originaldaten zu laden.',
             $affected,
             StringUtil::specialchars((string) $workflow->title),
         ));
 
         return $this->backToEdit($id);
+    }
+
+    /**
+     * Reads the bounce mailbox right away ("Jetzt prüfen" in the overview) instead of waiting
+     * for the next scheduled check, and reports what it found.
+     */
+    #[Route('/bounce-check', name: 'workflow_bounce_check', methods: ['GET'])]
+    public function checkBounces(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
+
+        $outcome = $this->bounceCollector->checkNow();
+
+        if (null === $outcome) {
+            Message::addInfo($lang['bounce_check_busy']);
+        } elseif (BounceHealth::STATE_UNCONFIGURED === $outcome->state) {
+            Message::addInfo($lang['bounce_unconfigured']);
+        } elseif (BounceHealth::STATE_CONFIG_ERROR === $outcome->state) {
+            Message::addError(sprintf($lang['bounce_check_error'], StringUtil::specialchars($outcome->message)));
+        } else {
+            $c = $outcome->counts;
+            Message::addConfirmation(sprintf(
+                $lang['bounce_check_done'],
+                $c['total'] ?? 0,
+                $c['hard'] ?? 0,
+                $c['soft'] ?? 0,
+                ($c['unmatched'] ?? 0) + ($c['former'] ?? 0),
+                $c['skipped'] ?? 0,
+            ));
+        }
+
+        return $this->backToDashboard();
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -206,6 +240,17 @@ class WorkflowActionController
 
             if ([] !== $notes) {
                 Message::addInfo(implode(' ', $notes));
+            }
+
+            // A mistyped address can never be mailed. Named with its row so it can be fixed
+            // both in the entry and in the source file – fixed only in the file, the next
+            // import would see a new person (the address is the identity).
+            if ([] !== $result['invalidEmails']) {
+                Message::addError(sprintf(
+                    'Ungültige E-Mail-Adressen – diese Personen können nicht angeschrieben werden: %s '
+                    .'Bitte die Adresse am Eintrag und in der Quelldatei korrigieren.',
+                    StringUtil::specialchars(implode(' | ', $result['invalidEmails'])),
+                ));
             }
 
             // Formulas are never recalculated: a cell whose result the file does not carry

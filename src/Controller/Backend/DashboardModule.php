@@ -11,6 +11,8 @@ use Contao\System;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
+use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
@@ -153,6 +155,14 @@ class DashboardModule extends BackendModule
         // an error when the configured one is unreachable (from the cron's last verdict).
         $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class));
 
+        // Whether a real cron calls Contao, and when the bounce mailbox was/will be read.
+        $this->Template->cronStatus = $this->cronStatus(
+            $container->get(CronHealth::class),
+            $container->get(BounceHealth::class),
+            $container->get(BounceSchedule::class),
+        );
+        $this->Template->bounceCheckUrl = $router->generate('workflow_bounce_check').'?rt='.$rt;
+
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
         $this->Template->dash = $GLOBALS['TL_LANG']['workflow_dashboard'];
@@ -195,6 +205,74 @@ class DashboardModule extends BackendModule
         }
 
         return null;
+    }
+
+    /**
+     * The status line about the background work: when a real cron last called Contao (server
+     * cron job on /_contao/cron, or contao:cron), and when the bounce mailbox was last read and
+     * will be read next. Everything comes from stored timestamps – nothing is guessed, and the
+     * page opens no connection of its own.
+     *
+     * @return array{cronOk: bool, cron: string, bounce: string}
+     */
+    private function cronStatus(CronHealth $cronHealth, BounceHealth $bounceHealth, BounceSchedule $schedule): array
+    {
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
+        $now = time();
+        $cron = $cronHealth->read();
+        $alive = $cronHealth->isAlive($now);
+
+        if (0 === $cron['lastAt']) {
+            $cronLine = (string) ($lang['cron_never'] ?? '');
+        } else {
+            $via = CronHealth::TRIGGER_CLI === $cron['trigger'] ? 'contao:cron' : '/_contao/cron';
+            $cronLine = sprintf(
+                (string) ($alive ? $lang['cron_last'] : $lang['cron_stale']),
+                date('d.m.Y H:i', $cron['lastAt']),
+                $this->ago($now - $cron['lastAt']),
+                $via,
+            );
+        }
+
+        $bounceLine = '';
+
+        if ($bounceHealth->isConfigured()) {
+            $checkedAt = $bounceHealth->read()['checkedAt'];
+            $current = $schedule->current($now);
+
+            $reason = match ($current['tier']) {
+                BounceSchedule::TIER_RECENT => sprintf((string) $lang['bounce_tier_recent'], $this->ago($now - $current['lastMailAt'])),
+                BounceSchedule::TIER_OUTSTANDING => sprintf((string) $lang['bounce_tier_outstanding'], $current['outstanding']),
+                default => (string) $lang['bounce_tier_idle'],
+            };
+
+            $next = $checkedAt > 0 ? $checkedAt + $current['interval'] : $now;
+
+            $bounceLine = sprintf(
+                (string) $lang['bounce_status'],
+                $checkedAt > 0 ? date('d.m.Y H:i', $checkedAt).' ('.$this->ago($now - $checkedAt).')' : (string) $lang['bounce_never'],
+                $next <= $now ? (string) $lang['bounce_next_due'] : date('H:i', $next),
+                $reason,
+            );
+
+            if (!$alive) {
+                $bounceLine .= ' '.$lang['bounce_without_cron'];
+            }
+        }
+
+        return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine];
+    }
+
+    private function ago(int $seconds): string
+    {
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
+
+        return match (true) {
+            $seconds < 60 => (string) $lang['ago_now'],
+            $seconds < 3600 => sprintf((string) $lang['ago_minutes'], intdiv($seconds, 60)),
+            $seconds < 172800 => sprintf((string) $lang['ago_hours'], intdiv($seconds, 3600)),
+            default => sprintf((string) $lang['ago_days'], intdiv($seconds, 86400)),
+        };
     }
 
     /**

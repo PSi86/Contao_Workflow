@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Psimandl\WorkflowBundle\Service;
 
+use Contao\Validator;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\MasterModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
+use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
 use Terminal42\NotificationCenterBundle\BulkyItem\BulkyItemStorage;
 use Terminal42\NotificationCenterBundle\BulkyItem\FileItemFactory;
 use Terminal42\NotificationCenterBundle\NotificationCenter;
@@ -46,6 +48,7 @@ class NotificationDispatcher
         private readonly DocumentBodyComposer $bodyComposer,
         private readonly WorkflowMailContext $mailContext,
         private readonly Connection $connection,
+        private readonly DeliveryRecorder $recorder,
     ) {
     }
 
@@ -104,6 +107,23 @@ class NotificationDispatcher
             return false;
         }
 
+        $recipient = trim((string) $entry->email);
+
+        // The Notification Center silently drops a recipient that fails Contao's address check;
+        // the mail then has no recipient at all and fails before it is queued. Checked here
+        // with the same validator, so the cause is named and the address blocked until it is
+        // corrected – instead of retrying it on every run. Checked here and not derived from
+        // the failure, because an invalid SENDER address throws the very same exception.
+        if ('' !== $recipient && !Validator::isEmail($recipient)) {
+            $this->recorder->blockAddress(
+                (int) $entry->id,
+                $recipient,
+                \sprintf('Ungültige Adresse „%s“ – bitte die Schreibweise prüfen.', $recipient),
+            );
+
+            return false;
+        }
+
         // Record which entry/kind is being sent. Used by WorkflowMailResultListener as a
         // fallback for synchronous transports, where the receipt event fires within this
         // call (before the parcel id is persisted below).
@@ -136,26 +156,41 @@ class NotificationDispatcher
             && $receipts->wereAllDelivered();
     }
 
+    /**
+     * Logs each dispatched parcel in tl_workflow_send and records a failure that happened while
+     * handing it over.
+     *
+     * A receipt that was not delivered means the mail never reached the queue (the template's
+     * sender did not resolve, the parcel could not be built, …). Its row is written as
+     * "failed" right away – logging it as "queued" would leave a row that never gets a result
+     * and reads as "the cron is not running" – and the entry gets the error, so it shows in
+     * the overview and is retried by the next run.
+     */
     private function rememberParcel(?ReceiptCollection $receipts, WorkflowModel $workflow, EntryModel $entry, string $kind): void
     {
         if (!$receipts instanceof ReceiptCollection) {
             return;
         }
 
-        $identifier = null;
+        $recipient = (string) $entry->email;
 
         foreach ($receipts as $receipt) {
             $stamp = $receipt->getParcel()->getStamp(AsynchronousDeliveryStamp::class);
+            $identifier = $stamp instanceof AsynchronousDeliveryStamp ? $stamp->identifier : null;
+            $error = $receipt->wasDelivered() ? null : ($receipt->getException() ?? new \RuntimeException('Unbekannter Fehler'));
 
-            if ($stamp instanceof AsynchronousDeliveryStamp) {
-                $identifier = $stamp->identifier;
+            if (null !== $identifier) {
+                $this->insertSendRow($identifier, $workflow, $entry, $kind, $recipient, $error);
+            }
+
+            if (null !== $error) {
+                $this->recorder->failed((int) $entry->id, $kind, $recipient, $error);
             }
         }
+    }
 
-        if (null === $identifier) {
-            return;
-        }
-
+    private function insertSendRow(string $identifier, WorkflowModel $workflow, EntryModel $entry, string $kind, string $recipient, ?\Throwable $error): void
+    {
         $now = time();
 
         // Idempotent. On the asynchronous path this inserts the "queued" row that the
@@ -164,15 +199,25 @@ class NotificationDispatcher
         // the ON DUPLICATE KEY UPDATE deliberately leaves state/sentAt/error/queuedAt
         // untouched and only refreshes the descriptive columns.
         $this->connection->executeStatement(
-            'INSERT INTO tl_workflow_send (tstamp, parcelId, entryId, workflowId, kind, recipient, state, queuedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            'INSERT INTO tl_workflow_send (tstamp, parcelId, entryId, workflowId, kind, recipient, state, queuedAt, error)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                 tstamp = VALUES(tstamp),
                 entryId = VALUES(entryId),
                 workflowId = VALUES(workflowId),
                 kind = VALUES(kind),
                 recipient = VALUES(recipient)',
-            [$now, $identifier, (int) $entry->id, (int) $workflow->id, $kind, (string) $entry->email, 'queued', $now],
+            [
+                $now,
+                $identifier,
+                (int) $entry->id,
+                (int) $workflow->id,
+                $kind,
+                $recipient,
+                null === $error ? 'queued' : 'failed',
+                $now,
+                null === $error ? null : DeliveryRecorder::shorten($error->getMessage()),
+            ],
         );
     }
 

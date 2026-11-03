@@ -3,7 +3,7 @@
     "type": "contao-bundle",
     "description": "Contao 5.3 bundle for a token-based query workflow: CSV/XLSX import, individual prefilled forms with signature, PDF generation and admin overview.",
     "license": "proprietary",
-    "version": "3.4.1",
+    "version": "3.5.0",
     "authors": [
         {
             "name": "Peter Simandl",
@@ -25,6 +25,7 @@
         "symfony/filesystem": "^6.4 || ^7.0",
         "symfony/http-foundation": "^6.4 || ^7.0",
         "symfony/http-kernel": "^6.4 || ^7.0",
+        "symfony/lock": "^6.4 || ^7.0",
         "symfony/routing": "^6.4 || ^7.0",
         "symfony/string": "^6.4 || ^7.0",
         "terminal42/dcawizard": "^3.0",
