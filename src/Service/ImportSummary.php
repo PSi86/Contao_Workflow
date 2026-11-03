@@ -127,6 +127,10 @@ class ImportSummary
             $problems[] = 'Zahlenformat nicht übernommen – '.$problem;
         }
 
+        foreach ((array) ($result['invalidEmails'] ?? []) as $problem) {
+            $problems[] = 'Ungültige E-Mail-Adresse, '.$problem.' – diese Person kann nicht angeschrieben werden.';
+        }
+
         foreach ((array) ($result['collisions'] ?? []) as $slug => $names) {
             $names = array_map('strval', (array) $names);
             $problems[] = sprintf(

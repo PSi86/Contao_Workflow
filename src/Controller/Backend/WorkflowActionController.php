@@ -208,6 +208,17 @@ class WorkflowActionController
                 Message::addInfo(implode(' ', $notes));
             }
 
+            // A mistyped address can never be mailed. Named with its row so it can be fixed
+            // both in the entry and in the source file – fixed only in the file, the next
+            // import would see a new person (the address is the identity).
+            if ([] !== $result['invalidEmails']) {
+                Message::addError(sprintf(
+                    'Ungültige E-Mail-Adressen – diese Personen können nicht angeschrieben werden: %s '
+                    .'Bitte die Adresse am Eintrag und in der Quelldatei korrigieren.',
+                    StringUtil::specialchars(implode(' | ', $result['invalidEmails'])),
+                ));
+            }
+
             // Formulas are never recalculated: a cell whose result the file does not carry
             // was imported empty. Saying so is the only way the user can tell an empty
             // field apart from a broken one.

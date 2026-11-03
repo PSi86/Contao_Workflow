@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
+use Contao\Validator;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Excel\CellReader;
@@ -71,7 +72,7 @@ class SpreadsheetImporter
      *
      * @param string $mode self::MODE_ADD or self::MODE_ABSOLUTE
      *
-     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, invalidEmails: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
@@ -104,7 +105,7 @@ class SpreadsheetImporter
      *
      * @param string $mode self::MODE_ADD or self::MODE_ABSOLUTE
      *
-     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
+     * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, invalidEmails: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
      *
      * @throws \RuntimeException when the source file is missing or has no columns
      */
@@ -165,6 +166,7 @@ class SpreadsheetImporter
         $hidden = 0;
         $hiddenKnown = 0;
         $duplicates = 0;
+        $invalidEmails = [];
         $seen = [];
 
         // Column letter of the e-mail, needed to look at a hidden row without reading the
@@ -232,6 +234,14 @@ class SpreadsheetImporter
                 continue;
             }
             $seen[$key] = true;
+
+            // An address the mailer cannot use (e.g. "name@hotmail" without a top-level
+            // domain). The row is still imported – its data belongs to the run – but the run
+            // says so: the Notification Center would drop the recipient, and the dispatcher
+            // blocks the address on the first send. Same check as both of those.
+            if (!Validator::isEmail(trim($email))) {
+                $invalidEmails[] = \sprintf('Zeile %d: „%s“', $r, $email);
+            }
 
             if (isset($existing[$key])) {
                 $entry = $existing[$key];
@@ -315,6 +325,7 @@ class SpreadsheetImporter
             'hidden'          => $hidden,
             'hiddenKnown'     => $hiddenKnown,
             'duplicates'      => $duplicates,
+            'invalidEmails'   => $invalidEmails,
             'missing'         => \count($untouched),
             'removed'         => $removed,
             'removedAnswered' => $removedAnswered,

@@ -122,6 +122,20 @@ final class ImportSummaryTest extends TestCase
     }
 
     /**
+     * A mistyped address (production, 2026-11: "kahnttlehrgang@hotmail") is a fault of the
+     * source file: it is named with its row, so it can be found and corrected there.
+     */
+    public function testInvalidAddressesAreNamedWithTheirRow(): void
+    {
+        $problems = $this->summary->problems(self::outcome([
+            'invalidEmails' => ['Zeile 12: „kahnttlehrgang@hotmail“'],
+        ]));
+
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('Ungültige E-Mail-Adresse, Zeile 12: „kahnttlehrgang@hotmail“', $problems[0]);
+    }
+
+    /**
      * A stored summary is a snapshot: one written before a counter existed must still render.
      */
     public function testAnOldSummaryWithoutTodaysCountersStillRenders(): void
