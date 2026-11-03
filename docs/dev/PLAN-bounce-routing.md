@@ -353,7 +353,18 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
   `From` oder `Reply-To` = Bounce-Adresse (E6).
 - Bestehende Absenderdomain-Prüfungen (AP7 aus 2.x) bleiben.
 
-### AP-B6 — Doku, Changelog, Release
+### AP-B6 — Doku, Changelog, Release — **Doku und CHANGELOG erledigt 2026-11-03; Release offen**
+- DEPLOYMENT.md: 3a Absender = von Menschen gelesene Adresse; 3c neu (zwei Postfächer, Dialog,
+  Versandweg, Ende-zu-Ende-Test, `.env.local` als Alternative mit `WORKFLOW_BOUNCE_ADDRESS`,
+  Messwerte All-Inkl, erzwungener Absender erst nach dem Update, Merkstelle, Diagnose); Checkliste
+  und Troubleshooting ergänzt. ANLEITUNG.md: Absender im NC, Block „Versandweg“, Statuszeile
+  (liegengebliebene Nachrichten, Ende-zu-Ende-Test), Dialog „Bounce-Postfach“.
+- CHANGELOG: Block unter `[Unreleased]` mit „Beim Update“; wird beim Release zu `[3.6.0]`.
+- **Offen (nur auf Go des Nutzers):** Version schneiden (CHANGELOG-Überschrift, Paketversion),
+  ZIP bauen (`scripts/build-bundle.ps1`), zuerst auf tsvkorntal.com einspielen und dort den
+  Ende-zu-Ende-Test mit echtem Bounce machen, dann Merge nach `main`, Tag, GitHub-Release, dann
+  tsvkorntal.de (danach E13 umsetzen).
+- Ursprüngliche Planung:
 - DEPLOYMENT.md §3c neu: zwei Postfächer, Einrichtung 1/2, Schritt-für-Schritt All-Inkl,
   Ende-zu-Ende-Test. ANLEITUNG.md: Dialog „Bounce-Postfach", Maskenzeilen.
 - CHANGELOG `[3.6.0]`; Verhaltensänderung aus B2 und neue Spalten unter „Beim Update".
