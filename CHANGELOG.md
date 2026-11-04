@@ -6,6 +6,46 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.6.2] – 2026-11-04
+
+Schwerpunkt: **Quelldateien bleiben geschützt.** Auf einer Installation lag die Quelldatei eines
+Workflows in einem öffentlichen Ordner und war ohne Login herunterladbar – mit den
+personenbezogenen Daten aller Teilnehmer. Das Bundle warnte nur beim Öffnen der
+Bearbeitungsmaske, und die Warnung verwies auf ein Kontextmenü „Schützen“, das es in Contao 5.3
+nicht gibt. Wer eine Quelldatei hochlud, musste selbst einen Ordner wählen – und ein in Contao neu
+angelegter Ordner ist zunächst öffentlich (der Haken „Öffentlich“ ist vorbelegt).
+
+> **Beim Update:** nur den Cache leeren; keine Datenbankänderung. Danach die Übersicht ansehen:
+> Liegt eine Quelldatei öffentlich, steht dort eine rote Meldung mit dem Knopf „In geschützten
+> Ordner verschieben“.
+
+### Neu
+- **„Datei hochladen“ in der Bearbeitungsmaske** (unter der Dateiauswahl): Die Datei landet im
+  geschützten Ordner `files/workflow-quellen/` und wird als Quelldatei eingetragen. Kein Ordner
+  ist zu wählen. Sichtbar für alle, die die Quelldatei ändern dürfen.
+- **„Quelldatei aktualisieren“ in der Übersicht:** neuen Export hochladen, geschützt ablegen und
+  mit „Danach importieren“ gleich importieren. Bei vorliegenden Antworten müssen die Spalten
+  gleich bleiben, das Tabellenblatt des Workflows muss in der Datei stehen; sonst ändert sich nichts.
+- **Nichts wird überschrieben, nichts gelöscht:** Eine Datei gleichen Namens im Ordner bleibt,
+  die neue bekommt einen Zusatz (`Mitglieder-2.xlsx`). Die bisherige Quelldatei bleibt erhalten;
+  liegt sie öffentlich, sagt die Meldung das ausdrücklich.
+- **Meldung bei öffentlicher Quelldatei** in der Übersicht und in der Bearbeitungsmaske, mit dem
+  Ordner, der sie freigibt, der öffentlichen Adresse und dem Knopf **„In geschützten Ordner
+  verschieben“**. Er verschiebt nur diese Datei; der Eintrag in der Dateiverwaltung (UUID) bleibt,
+  alle Workflows lesen sie weiter.
+- **Dateiverwaltung:** Quelldateien und Ordner, die eine enthalten, lassen sich weder verschieben
+  (auch nicht per Ziehen) noch löschen noch veröffentlichen; `files/workflow-quellen` lässt sich
+  nie verschieben oder veröffentlichen. Die Symbole sind ausgegraut, der Hinweis nennt die
+  Workflows; bei Mehrfachauswahl meldet die Dateiverwaltung, welche Einträge liegen geblieben sind.
+- Hochladen und Verschieben stehen im **Systemlog** (Kanal „Dateien“).
+
+### Geändert
+- **Import gesperrt, solange die Quelldatei öffentlich liegt** – in Übersicht, Maske und
+  Konsole; die Sperre steht im Import-Protokoll. Der Versand bleibt möglich.
+- **Eine neue Auswahl aus einem öffentlichen Ordner** wird beim Speichern abgelehnt. Ein Workflow,
+  dessen Datei schon öffentlich liegt, bleibt speicherbar (er bekommt Meldung und Knopf).
+- Die Warnung nennt jetzt Ordner und Adresse statt des Kontextmenüs, das es nicht gibt.
+
 ## [3.6.1] – 2026-11-04
 
 > **Beim Update:** nur den Cache leeren; keine Datenbankänderung.

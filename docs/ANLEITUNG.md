@@ -130,10 +130,47 @@ nicht mehr im Workflow.
 > als portable Datei herunter (ohne Logo/Quelldatei/Formularseite).
 
 ### 3 a. Quelldatei hochladen
-**Dateiverwaltung → Ordner `files`** → CSV/XLSX hochladen
-(z. B. `files/analyse/basistabelle-2026.xlsx`).
+Die Quelldatei enthält die personenbezogenen Daten aller Teilnehmer. Sie gehört deshalb in einen
+**geschützten** Ordner – und das Bundle legt sie selbst dort ab:
 
-> ⚠ **Eine Ersatzdatei muss exakt so heißen wie die bisherige.** Contao ersetzt beim Hochladen
+- **Neuer Workflow:** in der Bearbeitungsmaske unter *Quelldaten* das Feld **„Datei hochladen"**.
+  Datei wählen – die Maske speichert dabei, wie beim Auswählen über die Dateiauswahl. Die Datei
+  landet in **`files/workflow-quellen/`** und wird als Quelldatei eingetragen.
+- **Neuer Export für einen laufenden Workflow:** in der Übersicht **„Quelldatei aktualisieren"**,
+  Datei wählen, **„Danach importieren"** angehakt lassen, **„Hochladen"**. Liegen schon Antworten
+  vor, muss die neue Datei dieselben Spalten haben (siehe 3 b, Kasten „Gesperrte Einstellungen“); sonst
+  ändert sich nichts.
+
+Was dabei immer gilt:
+- **Nichts wird überschrieben.** Liegt in `files/workflow-quellen/` schon eine Datei gleichen
+  Namens, bekommt die neue einen Zusatz (`Mitglieder-2.xlsx`), und die Meldung sagt das.
+- **Nichts wird gelöscht.** Die bisherige Quelldatei bleibt erhalten. Aufräumen geht in der
+  Dateiverwaltung; Dateien, die ein Workflow noch liest, lassen sich dort nicht löschen.
+- Der Ordner `files/workflow-quellen/` lässt sich nicht veröffentlichen. Wer ihn in der
+  Dateiverwaltung für andere Benutzer sichtbar machen will (damit sie eine vorhandene Datei für
+  einen weiteren Workflow auswählen können), gibt ihn ihnen als **Dateifreigabe**; zum Hochladen
+  ist keine nötig.
+
+> **Über die Dateiverwaltung geht es weiterhin** – Datei hochladen, dann in der Maske über die
+> Dateiauswahl wählen. Eine Datei aus einem **öffentlichen** Ordner nimmt die Maske dabei nicht
+> an. Achtung: Ein **neu angelegter Ordner** ist in Contao zunächst öffentlich – im
+> Bearbeiten-Dialog ist der Haken **„Öffentlich"** schon gesetzt (Contao 5.3 und 5.7). Für
+> Quelldateien also besser gleich „Datei hochladen" nehmen.
+>
+> **Liegt eine Quelldatei doch öffentlich** (aus der Zeit vor 3.6.2 oder weil der Ordner von
+> außerhalb Contao freigegeben wurde), zeigen Übersicht und Bearbeitungsmaske eine rote
+> Datenschutz-Meldung mit der öffentlichen Adresse und dem Knopf **„In geschützten Ordner
+> verschieben"**. Er verschiebt nur diese Datei nach `files/workflow-quellen/`; der Workflow liest
+> sie danach wie bisher. Bis dahin ist der **Import gesperrt**, der Versand nicht. Verschieben
+> darf, wer die Quelldatei des Workflows in der Workflow-Verwaltung ändern darf.
+>
+> In der Dateiverwaltung lassen sich Quelldateien – und Ordner, die eine enthalten – weder
+> verschieben noch löschen noch veröffentlichen; die Symbole sind ausgegraut, der Hinweis beim
+> Darüberfahren nennt die Workflows.
+
+> ⚠ **Wer über die Dateiverwaltung ersetzt: Die Ersatzdatei muss exakt so heißen wie die
+> bisherige.** (Mit „Quelldatei aktualisieren" stellt sich die Frage nicht – der Workflow zeigt
+> danach auf die neue Datei.) Contao ersetzt beim Hochladen
 > weder Leerzeichen noch Großbuchstaben: `Basistabelle 2026.xlsx` überschreibt
 > `basistabelle-2026.xlsx` **nicht**, sondern landet als **zweite Datei daneben**. Der Workflow
 > liest dann weiter die alte – und weil jeder Import erfolgreich meldet, fällt das lange nicht
@@ -158,7 +195,8 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 1. **Titel**, **Veröffentlicht** ankreuzen. *Veröffentlicht* ist Voraussetzung für den Versand:
    Solange der Haken fehlt, weist die Übersicht den Versand von Einladungen und Erinnerungen ab
    – die Links würden den Empfängern sonst als „ungültig" angezeigt.
-2. **Quelldatei** auswählen → **Speichern** (jetzt liest das System die Datei ein).
+2. **Quelldatei:** über **„Datei hochladen"** (landet geschützt in `files/workflow-quellen/`)
+   oder über die Dateiauswahl – beides speichert sofort, und das System liest die Datei ein.
 3. **Tabellenblatt** wählen (z. B. `Übungsleiter`) und **Kopfzeile** (i. d. R. `1`).
    Beide lösen ein automatisches Neuladen aus.
 4. **E-Mail-Spalte** wählen (z. B. `eMail`).
@@ -239,8 +277,9 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 >
 > **Die Quelldatei bleibt austauschbar**, aber nur gegen eine mit **exakt denselben Spalten**.
 > Genau so werden Teilnehmer mitten im Durchlauf nachgemeldet oder Daten korrigiert: den
-> aktuellen Export hochladen und **Import ausführen**. Weichen die Spalten ab, wird das
-> Speichern mit Nennung der Unterschiede abgelehnt.
+> aktuellen Export in der Übersicht über **„Quelldatei aktualisieren"** hochladen (mit „Danach
+> importieren"). Weichen die Spalten ab, wird die Datei mit Nennung der Unterschiede abgelehnt –
+> beim Hochladen wie beim Auswählen in der Maske.
 >
 > **Zwei Wege, eine gesperrte Einstellung doch zu ändern:**
 > 1. Für den **nächsten Durchlauf** eine **Kopie** des Workflows anlegen (Workflow-Liste →
@@ -685,6 +724,10 @@ Darunter pro Workflow eine eigene Karte mit:
 - Zähler **eingegangen / offen / gesamt**. Ist die Quelldatei geladen, aber **noch nicht
   importiert** (0 Antworten), erscheint ein Hinweis. Nicht ausführbare Workflows (fehlende
   oder unpassende Quelldatei) sind mit Badge markiert und ihre Aktionen gesperrt.
+- Liegt die Quelldatei in einem **öffentlichen Ordner**, steht oben in der Karte eine rote
+  Datenschutz-Meldung mit dem Knopf **„In geschützten Ordner verschieben"** (Abschnitt 3 a).
+- **„Quelldatei aktualisieren"** (für Benutzer, die die Quelldatei ändern dürfen) lädt einen
+  neuen Export hoch, legt ihn geschützt ab und importiert ihn auf Wunsch gleich (Abschnitt 3 a).
 - die Liste **„Offene Vorgänge"** – mit Name/Vorname (falls vorhanden), **je Spalte
   sortierbar**, **Checkbox je Zeile**, „Alle"/„Alle aufheben" und je Schritt einem Auswahl-Button.
   Sie zeigt **alle Teilnehmer, die den letzten Schritt nicht fehlerfrei erreicht haben** – also

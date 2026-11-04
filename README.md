@@ -200,11 +200,17 @@ DCA-Definitionen an. Bundle-Assets unter `public/` werden beim Install nach
   vollständig und kopiert ihn in die Zwischenablage.
 - Generierte PDFs liegen unter `%kernel.project_dir%/var/workflow_pdfs/` (nicht
   öffentlich) und werden nur über die authentifizierten Backend-Routen gestreamt.
-- **Quelldateien & Datenschutz:** Die hochgeladene Quelltabelle enthält personenbezogene
-  Daten. Contao-Dateiordner sind standardmäßig **geschützt** (nicht ohne Login abrufbar) –
-  Quelldateien daher in einem geschützten Ordner belassen und den Ordner **nicht freigeben**.
-  Liegt die Quelldatei doch in einem öffentlichen Ordner, warnt das Backend beim Bearbeiten
-  des Workflows mit einem deutlichen Datenschutz-Hinweis.
+- **Quelldateien & Datenschutz (3.6.2):** Die Quelltabelle enthält personenbezogene Daten.
+  Hochgeladen wird sie in der Bearbeitungsmaske („Datei hochladen") oder in der Übersicht
+  („Quelldatei aktualisieren"); das Bundle legt sie im geschützten Ordner
+  `files/workflow-quellen/` ab, überschreibt dort nie eine vorhandene Datei und löscht keine.
+  Eine neue Auswahl aus einem **öffentlichen** Ordner nimmt die Maske nicht an. In der
+  Dateiverwaltung lassen sich Quelldateien und Ordner, die eine enthalten, weder verschieben noch
+  löschen noch veröffentlichen. Liegt eine Quelldatei doch öffentlich (etwa aus der Zeit vor
+  3.6.2), melden Übersicht und Maske das mit der öffentlichen Adresse und dem Knopf „In
+  geschützten Ordner verschieben"; bis dahin ist der Import gesperrt, der Versand nicht.
+  Hinweis: Neu angelegte Ordner sind in Contao zunächst öffentlich (Haken „Öffentlich" ist
+  vorbelegt).
 - PDF-Anhang in der Ergebnis-Mail: setzt voraus, dass das Notification Center den
   über `##attachment##` übergebenen Dateipfad als Anhang verarbeitet. Falls die
   installierte NC-Version das nicht abdeckt, `do-while/contao-pdf-nc-attachment-bundle`

@@ -111,6 +111,33 @@ Gelesen im Code von Contao 5.3.46 (`contao-app/vendor/contao/core-bundle`), Abwe
   gesperrtem Workflow (es liegen Antworten vor) identische Spalten.
 - Die Demo legt ihre Datei unter `files/workflow-demo/` ab, ohne `.public`, also geschützt.
 
+### 0.8 Gefunden bei der Umsetzung (2026-11-04)
+
+Im Code nachgelesen (5.3, wo angegeben auch 5.7) bzw. im DDEV gemessen:
+
+- **Neue Ordner sind öffentlich vorbelegt:** `DC_Folder::create()` legt `<ordner>/__new__` an und
+  öffnet den Bearbeiten-Dialog (`DC_Folder.php:664-681`); dort ist der Haken „Öffentlich“ für
+  `__new__` vorab gesetzt (`tl_files.php:917`, in 5.7 gleich). Wer einen Ordner anlegt und nur
+  den Namen einträgt, veröffentlicht ihn. Ein naheliegender Weg, wie eine Quelldatei öffentlich
+  wird – und ein Grund mehr für „Datei hochladen“.
+- **Meldung des Hakens „Öffentlich“ geht beim Speichern verloren:** `DC_Folder::edit()` baut die
+  Felder (also auch das umhüllte `protectFolder`), ruft danach `Message::generate()` für die Seite
+  auf (`DC_Folder.php:1594`) und lädt erst dann neu (Zeile 1611ff.). Die erzeugte Seite wird
+  verworfen und mit ihr die Meldung. Gelöst in `FileManagerGuardListener::keepRefusalsAcrossReload()`
+  (bei einer Weiterleitung die Meldung erneut setzen).
+- **Felder ohne `exclude` sind für Nicht-Admins ausgeschlossen:** `DataContainer::isFieldExcluded()`
+  wertet ein Feld mit `inputType` ohne `exclude`-Angabe als ausgeschlossen (`DataContainer.php:1588`).
+  Das Upload-Feld setzt deshalb `exclude => false`; wer es sieht, regelt das Recht an `sourceFile`.
+  Gefunden durch `scripts/e2e-362-nonadmin.php` (N2 sah kein Upload-Feld).
+- **Rechteprüfung:** Im Back-End entscheidet `PriorityStrategy` (`ContaoStrategy`); der Contao-Voter,
+  der alles erlaubt, läuft mit Priorität -1024 zuletzt (`config/services.yaml` des Core). Ein
+  „verweigert“ des Bundles (Priorität 0) gewinnt also.
+- **Feldrechte nur an Gruppen:** `tl_user` hat in 5.3 keine Spalte `alexf`; Feldrechte stehen an
+  `tl_user_group`.
+- **Abweichung vom Plan:** Die Route „In geschützten Ordner verschieben“ ist **GET mit Request-Token**
+  (wie Import und Zurücksetzen), nicht POST: Der Knopf steht in Meldungen über dem DCA-Formular,
+  wo kein eigenes Formular geht; dazu Rechteprüfung und Rückfrage im Knopf.
+
 ---
 
 ## 1. Getroffene Entscheidungen (nicht neu verhandeln)
@@ -152,7 +179,7 @@ die Meldung, dass er weiter die bisherige Datei liest.
 braucht ein Nicht-Admin eine Dateifreigabe für `files/workflow-quellen` (in die Doku).
 
 **Quelldatei liegt öffentlich** (aus der Zeit vor 3.6.2 oder von außerhalb Contao): rote Meldung in
-der Übersicht (Zeile des Workflows), in der Maske (oben und am Feld) und bei verweigertem Import,
+der Übersicht (Karte des Workflows), in der Maske (oben) und bei verweigertem Import,
 jeweils mit „In geschützten Ordner verschieben“. Verschiebt nach `files/workflow-quellen/` (bei
 Namensgleichheit Zusatz wie E12), UUID bleibt, alle Workflows mit dieser Datei laufen weiter.
 
@@ -175,6 +202,20 @@ Namensgleichheit Zusatz wie E12), UUID bleibt, alle Workflows mit dieser Datei l
 
 ## 5. Arbeitspakete
 
+**Stand 2026-11-04: AP-Q1 bis AP-Q4 umgesetzt** (Version 3.6.2 geschnitten), lokal auf dem Zweig.
+Geprüft:
+- PHPUnit: 417 Tests grün unter 5.3 und 5.7 (`scripts/run-phpunit.sh 53|57`), neu:
+  `SourceFilePrivacyTest`, `SourceFileStoreTest`, `FileManagerGuardTest`, `SourceFileVoterTest`,
+  `SourceColumnCheckTest`. 8 Mutationen (`scripts/mutate-362.sh`) alle erkannt.
+- DDEV 5.3 über HTTP: `scripts/e2e-362.php` (A1–A14, C1–C5, D1–D2, E1–E7) und
+  `scripts/e2e-362-nonadmin.php` (N1–N3) grün; 4 Mutationen der Sperren
+  (`scripts/mutate-362-e2e.sh`: Import, Auswahl, Dateiverwaltung, Voter) jeweils von genau ihren
+  Prüfungen erkannt.
+- Container 5.3 baut, keine Schemaänderung (`scripts/check-362-container.sh`).
+
+Nicht geprüft: ein echter Browser (Dialog „Quelldatei aktualisieren“ öffnen/schließen, Absenden
+der Maske beim Wählen einer Datei per `Backend.autoSubmit`), Contao 5.7 im Betrieb (3.7.0).
+
 ### AP-Q1 — Erkennen, melden, Import sperren, verschieben
 
 - `SourceFilePrivacy`; Warnung der Maske mit korrigiertem Text (nennt den öffentlichen Ordner und die
@@ -184,7 +225,8 @@ Namensgleichheit Zusatz wie E12), UUID bleibt, alle Workflows mit dieser Datei l
 - Import verweigern bei öffentlicher Quelldatei: Route `workflow_import`, `ImportCommand`; Meldung
   mit Knopf.
 - Übersicht: rote Zeile je betroffenem Workflow mit Knopf.
-- Route „In geschützten Ordner verschieben“ (POST, CSRF, Bearbeitungsrecht am Workflow, E3).
+- Route „In geschützten Ordner verschieben“ (GET mit Request-Token, siehe 0.8; Bearbeitungsrecht
+  an der Quelldatei, E3).
 - Tests: Unit für `SourceFilePrivacy` und Store; Mutationen; DDEV: öffentliche Adresse vorher
   erreichbar, nachher 404.
 
