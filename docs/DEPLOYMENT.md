@@ -218,8 +218,9 @@ Abruf verschiebt nur Bounces von Workflow-Mails nach `INBOX/Processed`; alles an
    Empfänger als Absender sehen, wohin Antworten und wohin Bounces gehen. Zeigt Absender oder
    „Antwort an" auf das Bounce-Postfach, erscheint eine Warnung – dann bitte eine Adresse
    wählen, die ein Mensch liest.
-5. **Ende-zu-Ende-Test.** In der Statuszeile der Übersicht einen Workflow wählen und
-   **„Ende-zu-Ende-Test starten"**. Die Einladung dieses Workflows geht über ihren echten
+5. **Ende-zu-Ende-Test.** In der Statuszeile der Übersicht den Block „Ende-zu-Ende-Test der
+   Bounce-Erkennung" aufklappen, einen Workflow wählen und **„Ende-zu-Ende-Test starten"**. Die
+   Einladung dieses Workflows geht über ihren echten
    Versandweg an eine Adresse, die es nicht gibt (`…@bounce-test.invalid`); kein Eintrag wird
    verändert. Die Statuszeile zeigt danach „Bounce nach … s im Bounce-Postfach angekommen und
    zugeordnet", „Versand fehlgeschlagen – …" oder nach 30 Minuten „kein Bounce". Empfänger in

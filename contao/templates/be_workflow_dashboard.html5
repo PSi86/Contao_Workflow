@@ -32,18 +32,22 @@ $l = $this->dash;
     <p style="margin:.4em 0 0;<?= $bt['warn'] ? 'font-weight:bold;' : '' ?>"><?= $esc($bt['text']) ?></p>
   <?php endif; ?>
   <?php if (!empty($this->bounceTestWorkflows)): ?>
-    <form method="post" action="<?= $esc($this->bounceTestUrl) ?>" style="margin:.6em 0 0;" data-turbo="false">
-      <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->rt) ?>">
-      <label><?= $l['bounce_test_label'] ?>
-        <select name="workflow" class="tl_select" style="width:auto;max-width:20em;">
-          <?php foreach ($this->bounceTestWorkflows as $wfId => $wfTitle): ?>
-            <option value="<?= (int) $wfId ?>"><?= $esc($wfTitle) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </label>
-      <button type="submit" class="tl_submit" style="float:none;margin-left:.4em;"><?= $l['bounce_test_start'] ?></button>
-      <span class="tl_help" style="display:block;margin-top:.3em;"><?= $esc($l['bounce_test_hint']) ?></span>
-    </form>
+    <?php // Collapsed: the test is an occasional check, not part of the daily status. Its result stays visible above. ?>
+    <details class="wf-bounce-test" style="margin:.6em 0 0;">
+      <summary style="cursor:pointer;"><?= $l['bounce_test_title'] ?></summary>
+      <form method="post" action="<?= $esc($this->bounceTestUrl) ?>" style="margin:.6em 0 0;" data-turbo="false">
+        <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($this->rt) ?>">
+        <label><?= $l['bounce_test_label'] ?>
+          <select name="workflow" class="tl_select" style="width:auto;max-width:20em;">
+            <?php foreach ($this->bounceTestWorkflows as $wfId => $wfTitle): ?>
+              <option value="<?= (int) $wfId ?>"><?= $esc($wfTitle) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <button type="submit" class="tl_submit" style="float:none;margin-left:.4em;"><?= $l['bounce_test_start'] ?></button>
+        <span class="tl_help" style="display:block;margin-top:.3em;"><?= $esc($l['bounce_test_hint']) ?></span>
+      </form>
+    </details>
   <?php endif; ?>
 </div>
 

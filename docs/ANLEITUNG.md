@@ -663,7 +663,8 @@ angezeigten Link öffnen.
   Bounces von Workflow-Mails sind (Antworten, Abwesenheitsnotizen, Bounces anderer Absender).
   Das Bundle lässt sie liegen. Meist zeigt dann ein Absender oder eine „Antwort an" auf das
   Bounce-Postfach (Block „Versandweg" in der Bearbeitungsmaske). Im Webmail ansehen und löschen.
-- **Ende-zu-Ende-Test:** Workflow wählen, **„Ende-zu-Ende-Test starten"**. Die Einladung des
+- **Ende-zu-Ende-Test:** Den Block „Ende-zu-Ende-Test der Bounce-Erkennung" aufklappen, Workflow
+  wählen, **„Ende-zu-Ende-Test starten"**. Die Einladung des
   Workflows geht über ihren echten Versandweg an eine Adresse, die es nicht gibt
   (`…@bounce-test.invalid`); kein Eintrag wird verändert. Solange der Test wartet, wird das
   Postfach jede Minute geprüft (höchstens 30 Minuten). Das Ergebnis steht danach in der

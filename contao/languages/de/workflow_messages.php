@@ -73,6 +73,7 @@ $GLOBALS['TL_LANG']['workflow_dashboard'] = [
     // %4$s = Bounce-Adresse, %5$s = Wartezeit bis; ok: %3$s = Dauer, %4$s = Bounce-Adresse;
     // failed: %3$s = Fehler; timeout: %3$s = Bounce-Adresse.
     'bounce_tier_test'        => 'jede Minute, solange der Ende-zu-Ende-Test auf seinen Bounce wartet',
+    'bounce_test_title'       => 'Ende-zu-Ende-Test der Bounce-Erkennung',
     'bounce_test_label'       => 'Bounce-Erkennung testen über die Einladung von',
     'bounce_test_start'       => 'Ende-zu-Ende-Test starten',
     'bounce_test_hint'        => 'Schickt die Einladung des gewählten Workflows über dessen echten Versandweg an eine Adresse, die es nicht gibt (…@bounce-test.invalid), und wartet bis zu 30 Minuten darauf, dass der Bounce im Bounce-Postfach ankommt. Kein Eintrag wird verändert. Empfänger in CC/BCC der Einladung erhalten die Testmail ebenfalls.',
