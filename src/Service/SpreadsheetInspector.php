@@ -184,8 +184,19 @@ class SpreadsheetInspector
             return [];
         }
 
-        $sheetName = (string) $workflow->sourceSheet;
-        $headerRow = max(1, (int) $workflow->headerRow);
+        return $this->headersOfFile($path, (string) $workflow->sourceSheet, (int) $workflow->headerRow);
+    }
+
+    /**
+     * The column headers of any file, read with a workflow's sheet and header row – for a file
+     * that is not (yet) the workflow's source, such as an upload being checked before it
+     * replaces the current one. Same rules and cache as {@see getHeaders()}.
+     *
+     * @return array<int, string>
+     */
+    public function headersOfFile(string $path, string $sheetName, int $headerRow): array
+    {
+        $headerRow = max(1, $headerRow);
         $key = $this->fileKey($path).'|'.$sheetName.'|'.$headerRow;
 
         if (!isset($this->headers[$key])) {

@@ -12,6 +12,8 @@ services:
             $bounceAddress: '%env(default::WORKFLOW_BOUNCE_ADDRESS)%'
             # Key material for the bounce mailbox password stored in the database.
             $appSecret: '%kernel.secret%'
+            # Contao's upload folder ("files"); the protected folder for source files lives below it.
+            $uploadPath: '%contao.upload_path%'
 
     Psimandl\WorkflowBundle\:
         resource: ../src/
@@ -24,6 +26,7 @@ services:
             - ../src/Service/Bounce/BounceOutcome.php
             - ../src/Excel/NumberFormat.php
             - ../src/Excel/ColumnCheckResult.php
+            - ../src/Service/SourceFileException.php
             # Instantiated by Contao as a BE_MOD callback, not via the container.
             - ../src/Controller/Backend/DashboardModule.php
 
@@ -58,6 +61,17 @@ services:
         public: true
 
     Psimandl\WorkflowBundle\Service\WorkflowValidator:
+        public: true
+
+    # Read by the (non-service) back end dashboard module: the public-source-file warning, the
+    # permission for upload/move and the protected folder (3.6.2).
+    Psimandl\WorkflowBundle\Service\SourceFileReport:
+        public: true
+
+    Psimandl\WorkflowBundle\Service\SourceFilePrivacy:
+        public: true
+
+    Psimandl\WorkflowBundle\Service\SourceFilePermission:
         public: true
 
     # Used from the no-ctor AnswerConfigListener (MCW callback) via the container.
@@ -121,6 +135,12 @@ services:
 
     # Same pattern: the mail route under the notification fields (3.6.0).
     Psimandl\WorkflowBundle\EventListener\DataContainer\MailRouteListener:
+        public: true
+
+    # tl_files callbacks wrapped by class name ([class, method], resolved via
+    # System::importStatic()) – must be public, and the same instance that captured the
+    # original callbacks when the DCA was loaded (3.6.2).
+    Psimandl\WorkflowBundle\EventListener\FileManagerGuardListener:
         public: true
 
 

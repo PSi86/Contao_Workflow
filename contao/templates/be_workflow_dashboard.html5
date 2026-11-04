@@ -145,6 +145,12 @@ $l = $this->dash;
         <?php if (!$wf['runnable']): ?><span class="wf-badge"><?= $l['not_runnable'] ?></span><?php endif; ?>
       </h3>
 
+      <?php if (!empty($wf['privacyWarning'])): ?>
+        <?php // Die Quelldatei ist ohne Login herunterladbar (3.6.2). Sicheres HTML: gebaut von
+              // SourceFileReport::warning(), jeder Wert maskiert; enthält den Verschiebe-Knopf. ?>
+        <p class="tl_error" style="margin-bottom:1em;font-weight:bold;"><?= $wf['privacyWarning'] ?></p>
+      <?php endif; ?>
+
       <?php if (!$wf['runnable']): ?>
         <p class="tl_error" style="margin-bottom:1em;">
           <?= $l['not_runnable_msg'] ?> <?= $esc(implode(' ', $wf['problems'])) ?>
@@ -195,6 +201,12 @@ $l = $this->dash;
       <div class="wf-actions">
         <a class="tl_submit" href="<?= $esc($wf['urls']['manage']) ?>"><?= $l['btn_edit'] ?></a>
 
+        <?php // Neue Quelldatei hochladen, geschützt ablegen und gleich importieren (3.6.2) – nur
+              // für Nutzer, die die Quelldatei auch in der Maske ändern dürfen. ?>
+        <?php if ($this->canChangeSource): ?>
+          <button type="button" class="tl_submit wf-open-source"><?= $esc($this->privacy['btn_update']) ?></button>
+        <?php endif; ?>
+
         <?php // Startet den Import direkt (additiv, es wird nichts gelöscht). Der frühere
               // Dialog mit der Modus-Wahl ist stillgelegt – siehe wf-dialog--import weiter
               // unten. Zum Reaktivieren: hier wieder einen
@@ -229,6 +241,25 @@ $l = $this->dash;
           <?= $wf['importLog'] ?>
         </div>
       </div>
+
+      <?php // „Quelldatei aktualisieren“ (3.6.2): Die Datei landet geschützt im zentralen Ordner,
+            // nie überschrieben, die bisherige bleibt; mit „Danach importieren“ folgt der Import. ?>
+      <?php if ($this->canChangeSource): $p = $this->privacy; ?>
+        <div class="wf-dialog wf-dialog--source" hidden>
+          <div class="wf-dialog-box">
+            <button type="button" class="wf-dialog-close" title="<?= $esc($l['close']) ?>">×</button>
+            <h3><?= $esc($p['btn_update']) ?> – <?= $esc($wf['title']) ?></h3>
+            <p class="wf-choice-lead"><?= null !== $wf['sourcePath'] ? $esc(sprintf($p['update_current'], $wf['sourcePath'])) : $esc($p['update_none']) ?></p>
+            <form method="post" action="<?= $esc($wf['urls']['sourceUpdate']) ?>" enctype="multipart/form-data" data-turbo="false">
+              <input type="hidden" name="REQUEST_TOKEN" value="<?= $esc($wf['rt']) ?>">
+              <p style="margin:.6em 0;"><label><?= $esc($p['update_file']) ?><br><input type="file" name="sourceFile" accept=".csv,.xlsx,.xls" required></label></p>
+              <p style="margin:.6em 0;"><label><input type="checkbox" name="import" value="1" checked> <?= $esc($p['update_import']) ?></label></p>
+              <p class="tl_help" style="margin:.6em 0;"><?= $esc(sprintf($p['update_hint'], $this->protectedFolder)) ?></p>
+              <p style="margin:.6em 0 0;"><button type="submit" class="tl_submit"><?= $esc($p['update_submit']) ?></button></p>
+            </form>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <?php // STILLGELEGT: der Import-Dialog mit der Wahl zwischen „additiv" und „absolut".
             // „Absolut" löschte mit einem Klick Einträge samt bereits erzeugter PDFs – auch

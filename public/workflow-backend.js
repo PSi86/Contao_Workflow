@@ -223,6 +223,8 @@
 
             // The log dialog is read-only, so it needs nothing beyond open/close.
             wireDialog(box, '.wf-dialog--log', '.wf-open-log');
+            // "Quelldatei aktualisieren" (3.6.2): a plain multipart form, nothing to set up.
+            wireDialog(box, '.wf-dialog--source', '.wf-open-source');
             setupDownload(wireDialog(box, '.wf-dialog--download', '.wf-open-download'));
         });
     });

@@ -20,6 +20,9 @@ use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PersonNameResolver;
+use Psimandl\WorkflowBundle\Service\SourceFilePermission;
+use Psimandl\WorkflowBundle\Service\SourceFilePrivacy;
+use Psimandl\WorkflowBundle\Service\SourceFileReport;
 // STILLGELEGT mit dem absoluten Importmodus (siehe unten, urls.importAbsolute):
 // use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowStatus;
@@ -66,6 +69,12 @@ class DashboardModule extends BackendModule
         $router = $container->get('router');
         $csrf = $container->get('contao.csrf.token_manager');
         $rt = $csrf->getDefaultTokenValue();
+        /** @var SourceFileReport $sourceFileReport */
+        $sourceFileReport = $container->get(SourceFileReport::class);
+        /** @var SourceFilePrivacy $sourceFilePrivacy */
+        $sourceFilePrivacy = $container->get(SourceFilePrivacy::class);
+        // Upload and move change the source file: only for users who may change it in the mask.
+        $canChangeSource = $container->get(SourceFilePermission::class)->canChange();
 
         $workflows = WorkflowModel::findAll(['order' => 'tstamp DESC']);
         $data = [];
@@ -108,6 +117,10 @@ class DashboardModule extends BackendModule
                     // mask (WorkflowIntegrityListener::flagStaleSource), so both agree.
                     'sourceDirty'   => [] === $problems && $validator->isSourceDirty($workflow),
                     'neverImported' => $validator->hasNeverImported($workflow),
+                    // The source file can be downloaded without a login (3.6.2): warning with the
+                    // "move to the protected folder" button, the same as in the edit mask.
+                    'privacyWarning' => $sourceFileReport->warning($workflow),
+                    'sourcePath'    => $sourceFilePrivacy->sourcePath($workflow),
                     'canSend'       => [] === $problems && [] === $sendBlockers,
                     'sendBlockers'  => $sendBlockers,
                     'completed'     => $figures['completed'],
@@ -137,6 +150,9 @@ class DashboardModule extends BackendModule
                         // Without the token: the download dialog is a GET form, whose fields
                         // replace the whole query string – the token travels as a field.
                         'download'       => $router->generate('workflow_download', ['id' => $id]),
+                        // "Quelldatei aktualisieren" (3.6.2): a multipart POST form, the token
+                        // travels as a field.
+                        'sourceUpdate'   => $router->generate('workflow_source_update', ['id' => $id]),
                     ],
                     // Shown at the PDF checkbox, which is disabled while there are none.
                     'pdfCount'      => $pdfStorage->countWorkflowPdfs($id),
@@ -180,6 +196,10 @@ class DashboardModule extends BackendModule
         $this->Template->bounceTestWorkflows = $container->get(BounceHealth::class)->isConfigured()
             ? $this->invitingWorkflows()
             : [];
+
+        $this->Template->canChangeSource = $canChangeSource;
+        $this->Template->privacy = $GLOBALS['TL_LANG']['workflow_privacy'] ?? [];
+        $this->Template->protectedFolder = $sourceFilePrivacy->protectedFolder();
 
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;

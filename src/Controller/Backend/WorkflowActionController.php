@@ -29,6 +29,13 @@ use Psimandl\WorkflowBundle\Service\PdfGenerator;
 use Psimandl\WorkflowBundle\Service\PdfStorage;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
 use Psimandl\WorkflowBundle\Service\Slugger;
+use Psimandl\WorkflowBundle\Service\SourceColumnCheck;
+use Psimandl\WorkflowBundle\Service\SourceFileException;
+use Psimandl\WorkflowBundle\Service\SourceFilePermission;
+use Psimandl\WorkflowBundle\Service\SourceFilePrivacy;
+use Psimandl\WorkflowBundle\Service\SourceFileReport;
+use Psimandl\WorkflowBundle\Service\SourceFileStore;
+use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 use Psimandl\WorkflowBundle\Service\SpreadsheetExporter;
 use Psimandl\WorkflowBundle\Service\SpreadsheetImporter;
 use Psimandl\WorkflowBundle\Service\WorkflowConfigExporter;
@@ -88,6 +95,12 @@ class WorkflowActionController
         private readonly BounceProbe $bounceProbe,
         private readonly BounceMailbox $bounceMailbox,
         private readonly BounceSettings $bounceSettings,
+        private readonly SourceFilePrivacy $sourceFilePrivacy,
+        private readonly SourceFileStore $sourceFileStore,
+        private readonly SourceFileReport $sourceFileReport,
+        private readonly SourceFilePermission $sourceFilePermission,
+        private readonly SourceColumnCheck $sourceColumnCheck,
+        private readonly SpreadsheetInspector $inspector,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -333,6 +346,19 @@ class WorkflowActionController
             return $redirect;
         }
 
+        $this->runImport($workflow, $returnToEdit);
+
+        return $backTo;
+    }
+
+    /**
+     * Runs the import of one workflow and reports it as messages – for the import button and
+     * for "Quelldatei aktualisieren" with "Danach importieren" (3.6.2).
+     *
+     * @param bool $returnToEdit the user lands on the edit mask, which reports slug collisions itself
+     */
+    private function runImport(WorkflowModel $workflow, bool $returnToEdit): void
+    {
         // Jeder Import läuft additiv – er legt an und aktualisiert, löscht aber nichts. Der
         // frühere absolute Modus ist stillgelegt (siehe den abgeschalteten Import-Dialog in
         // be_workflow_dashboard.html5): ein Klick löschte Einträge samt bereits erzeugter
@@ -402,11 +428,134 @@ class WorkflowActionController
             if (!$returnToEdit) {
                 $this->reportSlugCollisions($result['collisions']);
             }
+        } catch (SourceFileException $e) {
+            // The import refuses a public source file (3.6.2). Said with the button that removes
+            // the cause, right where the user tried.
+            Message::addError($this->sourceFileReport->warning($workflow, $returnToEdit ? 'edit' : 'dashboard') ?? $e->getMessage());
         } catch (\Throwable $e) {
             Message::addError('Import fehlgeschlagen: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Moves the workflow's source file out of a public folder into the protected one (3.6.2,
+     * decision E3: everyone who may change the source file). GET like the other edit-mask
+     * actions – the button sits in a message above the DCA form and in the overview – but
+     * guarded by the request token, the permission check and a confirm dialog in the button.
+     * The file manager record moves with the file, so every workflow reading it keeps working.
+     */
+    #[Route('/source-protect/{id}', name: 'workflow_source_protect', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function protectSourceFile(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_privacy'];
+        $backTo = 'edit' === (string) $request->query->get('return') ? $this->backToEdit($id) : $this->backToDashboard();
+
+        if (!$this->sourceFilePermission->canChange()) {
+            Message::addError($lang['move_no_permission']);
+
+            return $backTo;
+        }
+
+        $path = $this->sourceFilePrivacy->sourcePath($workflow);
+
+        if (null === $path) {
+            Message::addError($lang['no_source']);
+
+            return $backTo;
+        }
+
+        if (null === $this->sourceFilePrivacy->publicFolderOf($path)) {
+            Message::addInfo($lang['not_public']);
+
+            return $backTo;
+        }
+
+        try {
+            $this->sourceFileReport->moved($this->sourceFileStore->moveToProtected($path), $path, $id);
+        } catch (SourceFileException $e) {
+            Message::addError(StringUtil::specialchars($e->getMessage()));
+        }
 
         return $backTo;
+    }
+
+    /**
+     * "Quelldatei aktualisieren" in the overview (3.6.2): uploads a new source file into the
+     * protected folder, makes it the workflow's source and – with "Danach importieren" – runs
+     * the import. Nothing changes when the file is refused.
+     *
+     * The rules of the edit mask (the columns of a locked workflow stay the same), plus one the
+     * mask does not need: the sheet the workflow reads must be in the new file. In the mask the
+     * sheet picker is right below; here a missing sheet would leave a workflow that cannot run.
+     */
+    #[Route('/source-update/{id}', name: 'workflow_source_update', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function updateSourceFile(int $id, Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        $workflow = $this->getWorkflow($id);
+
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_privacy'];
+
+        if (!$this->sourceFilePermission->canChange()) {
+            Message::addError($lang['upload_no_permission']);
+
+            return $this->backToDashboard();
+        }
+
+        $upload = $request->files->get('sourceFile');
+
+        if (!$upload instanceof UploadedFile) {
+            Message::addError($lang['upload_none']);
+
+            return $this->backToDashboard();
+        }
+
+        $previous = $this->sourceFilePrivacy->sourcePath($workflow);
+
+        try {
+            $stored = $this->sourceFileStore->store($upload, function (string $path) use ($workflow): void {
+                $this->assertSheetPresent($workflow, $path);
+                $this->sourceColumnCheck->assertSameColumns($workflow, $path);
+            });
+        } catch (\Throwable $e) {
+            Message::addError(StringUtil::specialchars($e->getMessage()));
+
+            return $this->backToDashboard();
+        }
+
+        $workflow->sourceFile = $stored['file']->uuid;
+        $workflow->tstamp = time();
+        $workflow->save();
+
+        $this->sourceFileReport->uploaded($stored, $previous, $id);
+
+        // assertRunnable() says why, when the workflow cannot be imported yet.
+        if ($request->request->get('import') && null === $this->assertRunnable($workflow)) {
+            $this->runImport($workflow, false);
+        }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * @throws SourceFileException
+     */
+    private function assertSheetPresent(WorkflowModel $workflow, string $path): void
+    {
+        $sheet = (string) $workflow->sourceSheet;
+
+        if ('' !== $sheet && !\in_array($sheet, $this->inspector->sheetNamesOf($path), true)) {
+            throw new SourceFileException('sheet_missing', [$sheet]);
+        }
     }
 
     /**

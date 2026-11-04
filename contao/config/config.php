@@ -9,11 +9,14 @@ use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\RuleModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Widget\PdfVarsWidget;
+use Psimandl\WorkflowBundle\Widget\SourceUploadWidget;
 
 /*
  * Back end form widgets.
  */
 $GLOBALS['BE_FFL']['wfPdfVars'] = PdfVarsWidget::class;
+// Upload of a source file into the protected folder (3.6.2).
+$GLOBALS['BE_FFL']['wfSourceUpload'] = SourceUploadWidget::class;
 
 /*
  * Back end modules.

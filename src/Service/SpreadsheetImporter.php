@@ -6,6 +6,7 @@ namespace Psimandl\WorkflowBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\FilesModel;
+use Contao\System;
 use Contao\Validator;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use Doctrine\DBAL\Connection;
@@ -58,6 +59,7 @@ class SpreadsheetImporter
         private readonly PdfStorage $pdfStorage,
         private readonly ImportLog $log,
         private readonly Connection $connection,
+        private readonly SourceFilePrivacy $privacy,
         private readonly string $projectDir,
     ) {
     }
@@ -74,7 +76,8 @@ class SpreadsheetImporter
      *
      * @return array{inserted: int, updated: int, protected: int, total: int, collisions: array<string, array<int, string>>, formatProblems: array<int, string>, formulaProblems: array<int, string>, invalidEmails: array<int, string>, hidden: int, hiddenKnown: int, duplicates: int, missing: int, removed: int, removedAnswered: int, sharedRows: int}
      *
-     * @throws \RuntimeException when the source file is missing or has no columns
+     * @throws \RuntimeException  when the source file is missing or has no columns
+     * @throws SourceFileException when the source file lies in a public folder (3.6.2)
      */
     public function import(WorkflowModel $workflow, string $mode = self::MODE_ADD): array
     {
@@ -83,6 +86,7 @@ class SpreadsheetImporter
         $sourceFile = $this->inspector->resolvePath($workflow) ?? '';
 
         try {
+            $this->assertNotPublic($workflow);
             $result = $this->run($workflow, $mode);
         } catch (\Throwable $exception) {
             $this->log->recordFailure($workflow, $mode, $exception, $sourceFile);
@@ -493,6 +497,27 @@ class SpreadsheetImporter
         }
 
         return $map;
+    }
+
+    /**
+     * Refuses to read a source file that can be downloaded without a login (decision E1 of the
+     * 3.6.2 plan). Inside the logged part of import(), so the log says why nothing happened.
+     * Sending stays possible (E2): the mails carry no data from the file.
+     *
+     * @throws SourceFileException
+     */
+    private function assertNotPublic(WorkflowModel $workflow): void
+    {
+        $folder = $this->privacy->publicFolderOfWorkflow($workflow);
+
+        if (null === $folder) {
+            return;
+        }
+
+        $this->framework->initialize();
+        $this->framework->getAdapter(System::class)->loadLanguageFile('workflow_messages');
+
+        throw new SourceFileException('import_public', [$folder]);
     }
 
     private function resolveSourcePath(WorkflowModel $workflow): string

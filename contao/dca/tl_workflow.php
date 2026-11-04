@@ -103,7 +103,7 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
         // body) → notifications.
         // ... → notifications → the destructive participant reset, in its own collapsed
         // section at the very end (see WorkflowLockListener, which points here).
-        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult,mailRoute;{reset_legend:hide},resetEntries',
+        'default' => '{title_legend},title,published;{source_legend},sourceFile,sourceUpload,sourceInfo,sourceSheet,headerRow,emailField;{importlog_legend:hide},importLog;{content_legend},pdfTitle,introText;{form_legend},formPage,requireSignature,pdfSignatureDate,pdfSignatureLocationSource,pdfSignatureLocation,pdfSignatureLocationVar,questions,questionOrder,formPreview;{pdf_legend},master,pdfFileName,pdfBodyType,rules,pdfBodyTemplate,pdfPreview;{notification_legend},ncInvite,ncReminder,ncResult,mailRoute;{reset_legend:hide},resetEntries',
     ],
     'fields' => [
         'id' => [
@@ -336,6 +336,18 @@ $GLOBALS['TL_DCA']['tl_workflow'] = [
             'exclude'              => true,
             'input_field_callback' => [PreviewButtonListener::class, 'renderPdfButton'],
             'eval'                 => ['tl_class' => 'clr'],
+        ],
+        // Upload straight into the protected folder files/workflow-quellen (3.6.2, no DB column):
+        // SourceFileSelectionListener takes the file over as the value of sourceFile, so nobody
+        // has to pick a storage location – the way a source file used to end up public. Shown
+        // only to users who may change sourceFile (same listener) – hence "exclude" false: a field
+        // with an inputType and no "exclude" counts as excluded in Contao 5.3
+        // (DataContainer::isFieldExcluded()), and a second permission would hide it from
+        // editors who may change the source file.
+        'sourceUpload' => [
+            'exclude'   => false,
+            'inputType' => 'wfSourceUpload',
+            'eval'      => ['tl_class' => 'clr', 'doNotShow' => true],
         ],
         // Read-only summary of the source file (no DB column): which file is being read, when
         // it was last changed, and whether that is still what the last import saw. Sits right

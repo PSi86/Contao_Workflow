@@ -8,7 +8,6 @@ use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Environment;
-use Contao\FilesModel;
 use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
@@ -17,6 +16,7 @@ use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\QuestionModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\PlaceholderResolver;
+use Psimandl\WorkflowBundle\Service\SourceFileReport;
 use Psimandl\WorkflowBundle\Service\SpreadsheetInspector;
 use Psimandl\WorkflowBundle\Service\WorkflowValidator;
 use Symfony\Component\Routing\RouterInterface;
@@ -42,7 +42,7 @@ class WorkflowIntegrityListener
         private readonly Connection $connection,
         private readonly RouterInterface $router,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
-        private readonly string $projectDir,
+        private readonly SourceFileReport $sourceFileReport,
     ) {
     }
 
@@ -505,10 +505,11 @@ class WorkflowIntegrityListener
     }
 
     /**
-     * Warns when the source spreadsheet is stored in a publicly served folder of
-     * the file manager: it (and all the personal data it contains) would then be
-     * directly downloadable without a login. Source files belong in a protected
-     * folder – in Contao they are protected by default unless a folder is published.
+     * Warns when the source spreadsheet is stored in a publicly served folder of the file
+     * manager: it (and all the personal data it contains) is then downloadable without a
+     * login. The warning names the folder that publishes it and the public address, and
+     * carries the button that moves the file to the protected folder (3.6.2; the same text
+     * as in the overview, see SourceFileReport::warning()).
      */
     #[AsCallback(table: 'tl_workflow', target: 'config.onload')]
     public function warnPublicSourceFile(DataContainer $dc): void
@@ -519,45 +520,15 @@ class WorkflowIntegrityListener
 
         $workflow = WorkflowModel::findByPk((int) $dc->id);
 
-        if (null === $workflow || !$this->sourceFileIsPublic($workflow)) {
+        if (null === $workflow) {
             return;
         }
 
-        Message::addError(
-            'Datenschutz-Hinweis: Die Quelldatei dieses Workflows liegt in einem öffentlichen '
-            .'Ordner der Dateiverwaltung und ist damit ohne Login direkt herunterladbar – '
-            .'inklusive aller personenbezogenen Daten. Bitte den Ordner in der Dateiverwaltung '
-            .'schützen (Kontextmenü „Schützen") oder die Quelldatei in einen geschützten Ordner verschieben.',
-        );
-    }
+        System::loadLanguageFile('workflow_messages');
+        $warning = $this->sourceFileReport->warning($workflow, 'edit');
 
-    /**
-     * A Contao folder is web-accessible when it (or an ancestor) carries a
-     * ".public" marker file; a file inside is then directly downloadable. Walks
-     * the source file's folder path upwards and checks for that marker.
-     */
-    private function sourceFileIsPublic(WorkflowModel $workflow): bool
-    {
-        if (!$workflow->sourceFile) {
-            return false;
+        if (null !== $warning) {
+            Message::addError($warning);
         }
-
-        $file = FilesModel::findByUuid($workflow->sourceFile);
-
-        if (null === $file) {
-            return false;
-        }
-
-        $parts = explode('/', \dirname((string) $file->path));
-
-        while ([] !== $parts) {
-            if (is_file($this->projectDir.'/'.implode('/', $parts).'/.public')) {
-                return true;
-            }
-
-            array_pop($parts);
-        }
-
-        return false;
     }
 }

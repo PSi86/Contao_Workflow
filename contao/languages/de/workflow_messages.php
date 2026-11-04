@@ -232,3 +232,60 @@ $GLOBALS['TL_LANG']['workflow_reimport'] = [
     'first_import_hint' => 'Für diesen Workflow wurde noch kein Import ausgeführt – es liegen keine Teilnehmerdaten vor. Vorschau-Formular und Vorschau-PDF zeigen bis dahin nur Beispieldaten, und es können keine E-Mails versendet werden.',
     'import_button'     => 'Jetzt importieren',
 ];
+
+// 3.6.2 – Quelldateien bleiben geschützt (docs/dev/PLAN-source-file-privacy.md). Meldungen von
+// SourceFileException (Schlüssel = Ausnahme-Schlüssel), Bearbeitungsmaske, Übersicht und
+// Dateiverwaltung. %-Platzhalter siehe die jeweilige Stelle im Code.
+$GLOBALS['TL_LANG']['workflow_privacy'] = [
+    // Warnung (Maske, Übersicht) und Verschieben
+    'public_warning'           => 'Datenschutz: Die Quelldatei „%1$s“ liegt in einem öffentlichen Ordner und ist ohne Login herunterladbar – mit allen personenbezogenen Daten (%2$s). Öffentlich macht sie der Ordner „%3$s“. Solange das so ist, ist der Import gesperrt.',
+    'move_button'              => 'In geschützten Ordner verschieben',
+    'move_confirm'             => 'Die Quelldatei nach „%s“ verschieben? Alle Workflows, die sie nutzen, lesen sie danach dort weiter.',
+    'move_no_permission'       => 'Verschieben kann, wer die Quelldatei dieses Workflows in der Workflow-Verwaltung ändern darf.',
+    'moved'                    => 'Quelldatei verschoben nach „%1$s“. Unter %2$s ist sie nicht mehr erreichbar.',
+    'moved_renamed'            => 'Dort lag schon eine Datei „%1$s“; sie bleibt erhalten, die verschobene heißt jetzt „%2$s“.',
+    'moved_shared'             => 'Dieselbe Datei nutzen auch: %s. Sie lesen sie weiterhin.',
+    'not_public'               => 'Die Quelldatei liegt bereits in einem geschützten Ordner.',
+    'no_source'                => 'Dieser Workflow hat keine Quelldatei.',
+    'move_missing'             => 'Die Datei „%s“ wurde nicht gefunden.',
+    'move_failed'              => 'Die Datei „%s“ konnte nicht verschoben werden.',
+    // Import und Auswahl
+    'import_public'            => 'Import verweigert: Die Quelldatei liegt im öffentlichen Ordner „%s“ und ist ohne Login herunterladbar. Bitte zuerst in den geschützten Ordner verschieben.',
+    'select_public'            => 'Diese Datei liegt im öffentlichen Ordner „%1$s“ und wäre ohne Login herunterladbar. Bitte sie über „Datei hochladen“ hochladen – sie wird dann geschützt in „%2$s“ abgelegt.',
+    // Hochladen
+    'folder_public'            => 'Der Ordner „%1$s“ ist öffentlich (freigegeben über „%2$s“), dort werden keine Quelldateien abgelegt. Bitte die Freigabe aufheben: Dateiverwaltung → Ordner bearbeiten → Haken „Öffentlich“ entfernen.',
+    'folder_create_failed'     => 'Der Ordner „%s“ konnte nicht angelegt werden.',
+    'upload_none'              => 'Bitte eine Datei auswählen.',
+    'upload_failed'            => 'Die Datei konnte nicht hochgeladen werden (%s).',
+    'upload_too_big'           => 'Die Datei ist zu groß (höchstens %s).',
+    'upload_empty'             => 'Die Datei ist leer.',
+    'upload_name'              => 'Der Dateiname ist ungültig.',
+    'upload_type'              => 'Als Quelldatei sind nur CSV- und Excel-Dateien möglich (csv, xlsx, xls).',
+    'upload_unreadable'        => 'Die Datei lässt sich nicht als Tabelle lesen: %s',
+    'sheet_missing'            => 'In der neuen Datei fehlt das Tabellenblatt „%s“, das dieser Workflow liest. Es wurde nichts geändert.',
+    'uploaded'                 => 'Quelldatei „%1$s“ hochgeladen und geschützt abgelegt in „%2$s“.',
+    'uploaded_renamed'         => 'Eine Datei „%1$s“ lag dort schon; sie bleibt erhalten, die neue heißt „%2$s“.',
+    'previous_kept'            => 'Die bisherige Quelldatei „%s“ bleibt in der Dateiverwaltung erhalten.',
+    'previous_public'          => 'Achtung: Die bisherige Quelldatei „%1$s“ liegt weiterhin öffentlich und ist ohne Login herunterladbar (%2$s). Bitte in der Dateiverwaltung löschen oder in einen geschützten Ordner verschieben.',
+    'previous_shared'          => 'Weiterhin die bisherige Datei lesen: %s.',
+    'upload_no_permission'     => 'Die Quelldatei ändern darf nur, wer sie in der Workflow-Verwaltung bearbeiten darf.',
+    // Übersicht: „Quelldatei aktualisieren“
+    'btn_update'               => 'Quelldatei aktualisieren',
+    'update_current'           => 'Aktuelle Quelldatei: %s',
+    'update_none'              => 'Noch keine Quelldatei zugeordnet.',
+    'update_file'              => 'Neue Quelldatei (CSV oder Excel)',
+    'update_import'            => 'Danach importieren',
+    'update_submit'            => 'Hochladen',
+    'update_hint'              => 'Die Datei wird geschützt in „%s“ abgelegt, eine vorhandene Datei gleichen Namens wird nicht überschrieben. Die bisherige Quelldatei bleibt erhalten. Liegen schon Antworten vor, muss die neue Datei dieselben Spalten haben.',
+    // Dateiverwaltung
+    'fm_cut_source'            => 'Quelldatei von: %s. Verschieben ist gesperrt; am Workflow lässt sie sich in den geschützten Ordner verschieben.',
+    'fm_cut_folder'            => 'Enthält Quelldateien von: %s. Verschieben ist gesperrt.',
+    'fm_cut_protected'         => 'Ordner für die Quelldateien der Workflows. Er lässt sich nicht verschieben.',
+    'fm_delete_source'         => 'Quelldatei von: %s. Löschen ist gesperrt, solange ein Workflow sie nutzt.',
+    'fm_delete_folder'         => 'Enthält Quelldateien von: %s. Löschen ist gesperrt.',
+    'fm_skipped_cut'           => '„%1$s“ wurde nicht verschoben: Quelldatei von %2$s.',
+    'fm_skipped_cut_protected' => '„%s“ wurde nicht verschoben: Ordner für die Quelldateien der Workflows.',
+    'fm_skipped_delete'        => '„%1$s“ wurde nicht gelöscht: Quelldatei von %2$s.',
+    'fm_publish_refused'       => 'Der Ordner „%1$s“ wurde nicht veröffentlicht: Er enthält Quelldateien von %2$s mit personenbezogenen Daten.',
+    'fm_publish_protected'     => 'Der Ordner „%s“ wurde nicht veröffentlicht: Er ist für die Quelldateien der Workflows bestimmt.',
+];
