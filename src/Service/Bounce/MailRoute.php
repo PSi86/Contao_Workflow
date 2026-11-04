@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Service\Bounce;
 
 use Contao\CoreBundle\Mailer\AvailableTransports;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Mime\Address;
 
@@ -43,19 +44,74 @@ class MailRoute
      */
     public function forNotification(int $notificationId): array
     {
-        if ($notificationId <= 0) {
+        return $this->forNotifications([$notificationId])[$notificationId] ?? [];
+    }
+
+    /**
+     * Every notification the edit mask offers: its notification fields list them all
+     * (foreignKey tl_nc_notification.title).
+     *
+     * @return list<int>
+     */
+    public function notificationIds(): array
+    {
+        try {
+            return array_map(intval(...), $this->connection->fetchFirstColumn('SELECT id FROM tl_nc_notification ORDER BY id'));
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * The routes of several notifications, keyed by notification id; a notification without a
+     * published message has no key. Two queries however many notifications there are – the
+     * edit mask needs the route of every notification the user can pick.
+     *
+     * @param list<int> $notificationIds
+     *
+     * @return array<int, list<array{message: string, gateway: string, mail: bool, transport: string, from: string, fromSource: string, replyTo: string, answersTo: string, bounceTo: string, bounceToMailbox: bool}>>
+     */
+    public function forNotifications(array $notificationIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $notificationIds), static fn (int $id): bool => $id > 0)));
+
+        if ([] === $ids) {
             return [];
         }
 
         try {
             $messages = $this->connection->fetchAllAssociative(
-                "SELECT m.id, m.title, g.title AS gatewayTitle, g.type, g.mailerTransport
+                "SELECT m.id, m.pid, m.title, g.title AS gatewayTitle, g.type, g.mailerTransport
                    FROM tl_nc_message m
                    LEFT JOIN tl_nc_gateway g ON g.id = m.gateway
-                  WHERE m.pid = ? AND m.published = '1'
-                  ORDER BY m.sorting, m.id",
-                [$notificationId],
+                  WHERE m.pid IN (?) AND m.published = '1'
+                  ORDER BY m.pid, m.sorting, m.id",
+                [$ids],
+                [ArrayParameterType::INTEGER],
             );
+
+            $mailIds = [];
+
+            foreach ($messages as $message) {
+                if ('mailer' === (string) ($message['type'] ?? '')) {
+                    $mailIds[] = (int) $message['id'];
+                }
+            }
+
+            // Per message the fallback language, otherwise the oldest one.
+            $languages = [];
+
+            if ([] !== $mailIds) {
+                $rows = $this->connection->fetchAllAssociative(
+                    'SELECT pid, email_sender_address, email_replyTo FROM tl_nc_language WHERE pid IN (?) ORDER BY pid, fallback DESC, id',
+                    [$mailIds],
+                    [ArrayParameterType::INTEGER],
+                );
+
+                foreach ($rows as $row) {
+                    $languages[(int) $row['pid']] ??= $row;
+                }
+            }
         } catch (\Throwable) {
             return [];
         }
@@ -77,16 +133,15 @@ class MailRoute
                 'bounceToMailbox' => false,
             ];
 
+            $notification = (int) $message['pid'];
+
             if (!$route['mail']) {
-                $routes[] = $route;
+                $routes[$notification][] = $route;
 
                 continue;
             }
 
-            $language = $this->connection->fetchAssociative(
-                'SELECT email_sender_address, email_replyTo FROM tl_nc_language WHERE pid = ? ORDER BY fallback DESC, id LIMIT 1',
-                [(int) $message['id']],
-            ) ?: [];
+            $language = $languages[(int) $message['id']] ?? [];
 
             $forced = '' !== $route['transport'] ? $this->transports?->getTransport($route['transport'])?->getFrom() : null;
             $sender = trim((string) ($language['email_sender_address'] ?? ''));
@@ -104,7 +159,7 @@ class MailRoute
             $route['bounceToMailbox'] = null !== $bounce;
             $route['bounceTo'] = $bounce ?? $route['from'];
 
-            $routes[] = $route;
+            $routes[$notification][] = $route;
         }
 
         return $routes;
@@ -153,6 +208,39 @@ class MailRoute
         }
 
         return array_values($warnings);
+    }
+
+    /**
+     * The warnings of every choice the edit mask offers, each with the choices that cause it.
+     * The browser shows a warning while at least one of its choices is selected; for any
+     * selection that is the same set of warnings {@see warnings()} reports for the selected
+     * routes together (its route warnings are per route, its mailbox warnings need any mail
+     * route). The mailbox warnings stay last, as there. Pure.
+     *
+     * @param array<string, list<array{message: string, gateway: string, mail: bool, transport: string, from: string, fromSource: string, replyTo: string, answersTo: string, bounceTo: string, bounceToMailbox: bool}>> $routesByChoice choice (e.g. "invite:12") => its routes
+     *
+     * @return list<array{key: string, args: list<string>, choices: list<string>}>
+     */
+    public static function warningsByChoice(array $routesByChoice, ?string $bounceAddress, bool $mailboxConfigured, bool $mailboxFailing): array
+    {
+        $routeWarnings = [];
+        $mailboxWarnings = [];
+
+        foreach ($routesByChoice as $choice => $routes) {
+            foreach (self::warnings($routes, $bounceAddress, $mailboxConfigured, $mailboxFailing) as $warning) {
+                $id = $warning['key'].'|'.implode('|', $warning['args']);
+
+                if (\in_array($warning['key'], ['route_no_mailbox', 'route_mailbox_failing'], true)) {
+                    $mailboxWarnings[$id] ??= [...$warning, 'choices' => []];
+                    $mailboxWarnings[$id]['choices'][] = (string) $choice;
+                } else {
+                    $routeWarnings[$id] ??= [...$warning, 'choices' => []];
+                    $routeWarnings[$id]['choices'][] = (string) $choice;
+                }
+            }
+        }
+
+        return [...array_values($routeWarnings), ...array_values($mailboxWarnings)];
     }
 
     private static function same(string $a, string $b): bool

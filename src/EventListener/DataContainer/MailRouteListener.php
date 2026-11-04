@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\EventListener\DataContainer;
 
 use Contao\DataContainer;
+use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
@@ -18,8 +19,14 @@ use Psimandl\WorkflowBundle\Service\Bounce\MailRoute;
  * sender or Reply-To that is the bounce mailbox, no mailbox at all, a gateway that does not
  * send mail).
  *
- * Computed from the saved values; after changing a notification, save to update it. A pseudo
- * field (input_field_callback, no column of its own), resolved by class name via
+ * The block follows the notification fields while the user picks, without saving – like the
+ * conditional fields of this mask, which avoid Contao's submitOnChange because it saves the
+ * whole record. The server renders the route of every notification the fields offer, one
+ * tbody per field and notification ("choice", e.g. "invite:12"); workflow-mail-route.js shows
+ * the ones that are selected and says so while the selection differs from the saved one.
+ * Without the script the block shows the saved selection.
+ *
+ * A pseudo field (input_field_callback, no column of its own), resolved by class name via
  * System::importStatic() – the service must therefore be public.
  */
 class MailRouteListener
@@ -44,43 +51,91 @@ class MailRouteListener
         System::loadLanguageFile('workflow_messages');
         $lang = $GLOBALS['TL_LANG']['workflow_route'] ?? [];
 
-        $rows = '';
-        $routes = [];
+        $saved = [];
 
         foreach (self::KINDS as $kind => $field) {
-            foreach ($this->mailRoute->forNotification((int) $workflow->{$field}) as $route) {
-                $routes[] = $route;
-                $rows .= $this->row($this->text($lang, 'kind_'.$kind), $route, $lang);
+            $saved[$kind] = max(0, (int) $workflow->{$field});
+        }
+
+        $selected = array_map(static fn (string $kind, int $id): string => $kind.':'.$id, array_keys($saved), array_values($saved));
+
+        // Every notification the fields offer, plus the saved ones (a deleted notification has
+        // no route). Notifications without a published message have none either.
+        $routesById = $this->mailRoute->forNotifications([...$this->mailRoute->notificationIds(), ...array_values($saved)]);
+
+        $routesByChoice = [];
+        $bodies = '';
+
+        foreach (self::KINDS as $kind => $field) {
+            foreach ($routesById as $id => $routes) {
+                $choice = $kind.':'.$id;
+                $routesByChoice[$choice] = $routes;
+                $rows = '';
+
+                foreach ($routes as $route) {
+                    $rows .= $this->row($this->text($lang, 'kind_'.$kind), $route, $lang);
+                }
+
+                $bodies .= '<tbody data-wf-route-for="'.$choice.'"'.$this->style('', \in_array($choice, $selected, true)).'>'.$rows.'</tbody>';
             }
         }
 
-        if ([] === $routes) {
+        if ([] === $routesByChoice) {
             return '';
         }
 
-        $html = '<div class="widget clr wf-mail-route">'
-            .'<h3><label>'.$this->text($lang, 'title').'</label></h3>'
-            .'<table class="tl_listing" style="width:auto;margin:.2em 0 .6em;">'
-            .'<tr><th class="tl_folder_tlist"></th>'
-            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_from').'</th>'
-            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_answers').'</th>'
-            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_bounces').'</th></tr>'
-            .$rows
-            .'</table>';
-
-        $warnings = MailRoute::warnings(
-            $routes,
+        $warnings = MailRoute::warningsByChoice(
+            $routesByChoice,
             $this->mailbox->address(),
             $this->health->isConfigured(),
             BounceHealth::STATE_CONFIG_ERROR === $this->health->read()['state'],
         );
 
+        $warningHtml = '';
+
         foreach ($warnings as $warning) {
             $text = vsprintf($this->text($lang, 'warn_'.$warning['key']), array_map(StringUtil::specialchars(...), $warning['args']));
-            $html .= '<p class="tl_error" style="margin:0 0 .4em">'.$text.'</p>';
+            $warningHtml .= '<p class="tl_error"'.$this->style('margin:0 0 .4em', [] !== array_intersect($warning['choices'], $selected))
+                .' data-wf-route-for="'.implode(' ', $warning['choices']).'">'.$text.'</p>';
         }
 
-        return $html.'<p class="tl_help tl_tip" style="margin:0">'.$this->text($lang, 'hint').'</p></div>';
+        // The ids of the three selects: "ctrl_<field>", in "edit multiple" "ctrl_<field>_<id>".
+        $suffix = 'editAll' === Input::get('act') ? '_'.(int) $dc->id : '';
+        $config = ['fields' => [], 'saved' => []];
+
+        foreach (self::KINDS as $kind => $field) {
+            $config['fields'][$kind] = 'ctrl_'.$field.$suffix;
+            $config['saved'][$kind] = (string) $saved[$kind];
+        }
+
+        $GLOBALS['TL_JAVASCRIPT']['wf_mail_route'] = 'bundles/contaoworkflow/workflow-mail-route.js|static';
+
+        $anySelected = [] !== array_intersect(array_keys($routesByChoice), $selected);
+
+        return '<div class="widget clr wf-mail-route" data-wf-route="'.htmlspecialchars(json_encode($config, JSON_THROW_ON_ERROR), ENT_QUOTES).'"'.$this->style('', $anySelected).'>'
+            .'<h3><label>'.$this->text($lang, 'title').'</label></h3>'
+            .'<p class="tl_info"'.$this->style('margin:.2em 0 .4em', false).' data-wf-route-unsaved>'.$this->text($lang, 'unsaved').'</p>'
+            .'<table class="tl_listing" style="width:auto;margin:.2em 0 .6em;">'
+            .'<thead><tr><th class="tl_folder_tlist"></th>'
+            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_from').'</th>'
+            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_answers').'</th>'
+            .'<th class="tl_folder_tlist">'.$this->text($lang, 'col_bounces').'</th></tr></thead>'
+            .$bodies
+            .'</table>'
+            .$warningHtml
+            .'<p class="tl_help tl_tip" style="margin:0">'.$this->text($lang, 'hint').'</p></div>';
+    }
+
+    /**
+     * The one style attribute of an element (a second one would be ignored by the browser),
+     * hidden unless visible. Inline display, not the hidden attribute: Contao's back-end CSS
+     * sets display on some of these elements, which would override [hidden].
+     */
+    private function style(string $base, bool $visible): string
+    {
+        $style = implode(';', array_filter([$base, $visible ? '' : 'display:none']));
+
+        return '' === $style ? '' : ' style="'.$style.'"';
     }
 
     /**

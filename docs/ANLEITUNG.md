@@ -219,8 +219,9 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
 10. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen. Darunter zeigt der
     Block **„Versandweg"** je Benachrichtigung, was Empfänger als Absender sehen, wohin
     Antworten gehen und wohin Bounces gehen – mit einer Warnung, wenn Absender oder „Antwort an"
-    das Bounce-Postfach ist oder noch keines eingerichtet ist. Er zeigt die **gespeicherten**
-    Werte; nach einer Änderung erst speichern.
+    das Bounce-Postfach ist oder noch keines eingerichtet ist. Er folgt der Auswahl sofort,
+    ohne dass etwas gespeichert wird; solange sie vom gespeicherten Stand abweicht, steht dort
+    **„Auswahl noch nicht gespeichert"**.
 11. **Speichern.**
 
 > ### Gesperrte Einstellungen, sobald Antworten vorliegen
