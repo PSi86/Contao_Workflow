@@ -71,10 +71,14 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
 - PHP läuft als `fpm-fcgi`, `fastcgi_finish_request` vorhanden (2026-11-03 geprüft).
 - KAS-Cronjob auf `/_contao/cron` läuft sehr wahrscheinlich (alle `tl_cron_job.lastRun` auf
   Sekunde :01). Nach dem Update auf 3.5.0 zeigt es die Statuszeile sicher.
-- Mail-Setup (Stand 2026-10-12, siehe Memory `production-rollout-tsvkorntal-de`): Transport
-  `workflow` mit `WORKFLOW_MAILER_DSN` (Konto `workflow@tsvkorntal.de`) und erzwungenem `from`;
-  eigenes NC-Gateway „E-Mail (Workflow)". Bounce-Postfach laut damaliger Planung ebenfalls
-  `workflow@` – **auf Produktion nicht verifiziert**.
+- Mail-Setup: Geplant war im Oktober 2026 ein Transport `workflow` mit `WORKFLOW_MAILER_DSN` und
+  erzwungenem `from` sowie ein eigenes NC-Gateway „E-Mail (Workflow)". **Korrektur 2026-11-04
+  (Nutzer):** Weder tsvkorntal.de noch tsvkorntal.com hat eine `config/config.yaml`; alles steht
+  in der `.env.local`. Die Managed Edition liest daraus für den Versand nur `MAILER_DSN`
+  (`contao/manager-bundle`, `ContaoManager/Plugin.php`) – es gibt also **einen** Transport und
+  **kein** erzwungenes `from`. Eine `WORKFLOW_MAILER_DSN` wirkt ohne `config.yaml` nicht. Der
+  sichtbare Absender der Workflow-Mails ist damit die Absenderadresse der NC-Nachricht (sonst
+  die Admin-E-Mail).
 
 ---
 
@@ -94,7 +98,7 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
 | E10 | Passwort des Bounce-Postfachs darf verschlüsselt in der Datenbank liegen (F3). | Nutzer, 2026-11-03 |
 | E11 | Bounce-Postfach einrichten dürfen nur Contao-Administratoren (F4). | Nutzer, 2026-11-03 |
 | E12 | Zuverlässiger Versand hat Vorrang vor frei wählbarem Absender (F5). | Nutzer, 2026-11-03 |
-| E13 | Erzwungenes `from` am Transport `workflow` bleibt, Wert wird `verwaltung@tsvkorntal.de` – **erst nach** dem Update von tsvkorntal.de auf 3.6.0 (sonst gingen Bounces an `verwaltung@`, siehe Probe D). | Nutzer, 2026-11-03 |
+| E13 | **Neu gefasst 2026-11-04** (die erste Fassung „erzwungenes `from` am Transport `workflow` bleibt“ setzte einen Transport voraus, den es nicht gibt, siehe Abschnitt 0, Mail-Setup): Nach dem Update von tsvkorntal.de auf 3.6.0 wird in den Benachrichtigungen der Workflows (Einladung, Erinnerung, Ergebnis) die Absenderadresse `verwaltung@tsvkorntal.de` eingetragen; „Antwort an“ leer oder ebenfalls `verwaltung@`. **Erst nach** dem Update (sonst gingen Bounces an `verwaltung@`, siehe Probe D). Kontrolle über den Block „Versandweg“; keine `config.yaml` nur dafür. | Nutzer, 2026-11-03; neu gefasst 2026-11-04 |
 
 ## 2. Offene Fragen – vor bzw. während der Umsetzung klären
 
@@ -123,8 +127,8 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
       header.from=tsvkorntal.de`; A mit `Return-Path: <workflow-test@tsvkorntal.de>`, D mit
       `Return-Path: <verwaltung@tsvkorntal.de>`; kein `Reply-To` → Antworten gehen an `From`.
       Im Postfach `verwaltung@` kam nichts an. D zeigt zugleich, was ohne AP-B1 passiert, wenn das
-      erzwungene `from` auf `verwaltung@` steht: die Bounces gingen an `verwaltung@`.
-      **Folge:** Auf tsvkorntal.de das `from` erst nach dem Update auf 3.6.0 umstellen.
+      Absender `verwaltung@` ist: die Bounces gingen an `verwaltung@`.
+      **Folge:** Auf tsvkorntal.de den Absender erst nach dem Update auf 3.6.0 umstellen (E13).
 - [x] **F2:** Empfänger auf demselben Server (z. B. `non.existent@tsvkorntal.de`) werden sofort
       mit 5xx abgelehnt, kein DSN (Nutzer). Externe Empfänger liefern einen DSN (Probe zu F1):
       `…@bounce-test.invalid` nach ~1 s (`5.4.4`, „Host or domain name not found"), unbekannter
@@ -133,9 +137,9 @@ einträgt. Antworten von Menschen landen in einem anderen Postfach, das das Bund
       Ruf bei Gmail.
 - [x] **F3:** Passwort darf verschlüsselt in der Datenbank liegen (E10).
 - [x] **F4:** nur Contao-Administratoren (E11).
-- [x] **F5:** entschieden als E13 (erzwungenes `from` bleibt, Wert `verwaltung@tsvkorntal.de`, erst
-      nach dem Update auf 3.6.0). Damit liegt `From` immer in der eigenen Domain, egal was im NC
-      steht.
+- [x] **F5:** entschieden als E13: Absender `verwaltung@tsvkorntal.de`, erst nach dem Update auf
+      3.6.0. 2026-11-04 neu gefasst: ohne `config.yaml` gibt es kein erzwungenes `from`; der
+      Absender wird in den NC-Nachrichten eingetragen und im Block „Versandweg“ kontrolliert.
 - [x] **Testsystem tsvkorntal.com** (Nutzer, 2026-11-03): ruft heute `noreply@tsvkorntal.com` als
       Bounce-Postfach ab – also nicht das Postfach der Produktion. Nach dem Update auf 3.6.0 wird
       dessen DSN-Benutzer automatisch die Bounce-Adresse. Für die Abnahme kann es bleiben oder im
@@ -275,8 +279,10 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
   Bestätigung; Zeile `test`/`entryId 0`; Worker versendet; Mailpit `Return-Path:
   <bounces@example.org>` an die `.invalid`-Adresse; alle vier Statuszeilen und die Takt-Zeile
   gerendert; aufgeräumt.
-- **Abnahme offen:** echter Bounce auf tsvkorntal.com nach dem Update (Bounce-Postfach
-  `workflow-test@tsvkorntal.de`).
+- **Abnahme bestanden 2026-11-04** auf tsvkorntal.com mit 3.6.0 (Bounce-Postfach
+  `noreply@tsvkorntal.com` per `WORKFLOW_BOUNCE_IMAP_DSN`): „✔ Ende-zu-Ende-Test vom 04.11.2026
+  01:37 (Workflow „TEST VRS“): Der Bounce kam nach 16 s im Bounce-Postfach an und wurde
+  zugeordnet. Bounce-Adresse: noreply@tsvkorntal.com.“
 - Ursprüngliche Planung:
 - Knopf in der Statuszeile/im Dialog „Bounce-Postfach“: Workflow wählen → Testmail über dessen
   Einladungs-Benachrichtigung (echtes Gateway, Transport, From, Reply-To) an die Testadresse (F2;
@@ -353,17 +359,19 @@ Ein Commit pro Paket, deutsche Commit-Texte ohne Umlaute im Betreff (siehe Git-L
   `From` oder `Reply-To` = Bounce-Adresse (E6).
 - Bestehende Absenderdomain-Prüfungen (AP7 aus 2.x) bleiben.
 
-### AP-B6 — Doku, Changelog, Release — **Doku und CHANGELOG erledigt 2026-11-03; Release offen**
+### AP-B6 — Doku, Changelog, Release — **erledigt; Release 3.6.0 am 2026-11-04 freigegeben**
 - DEPLOYMENT.md: 3a Absender = von Menschen gelesene Adresse; 3c neu (zwei Postfächer, Dialog,
   Versandweg, Ende-zu-Ende-Test, `.env.local` als Alternative mit `WORKFLOW_BOUNCE_ADDRESS`,
   Messwerte All-Inkl, erzwungener Absender erst nach dem Update, Merkstelle, Diagnose); Checkliste
   und Troubleshooting ergänzt. ANLEITUNG.md: Absender im NC, Block „Versandweg“, Statuszeile
   (liegengebliebene Nachrichten, Ende-zu-Ende-Test), Dialog „Bounce-Postfach“.
 - CHANGELOG: Block unter `[Unreleased]` mit „Beim Update“; wird beim Release zu `[3.6.0]`.
-- **Offen (nur auf Go des Nutzers):** Version schneiden (CHANGELOG-Überschrift, Paketversion),
-  ZIP bauen (`scripts/build-bundle.ps1`), zuerst auf tsvkorntal.com einspielen und dort den
-  Ende-zu-Ende-Test mit echtem Bounce machen, dann Merge nach `main`, Tag, GitHub-Release, dann
-  tsvkorntal.de (danach E13 umsetzen).
+- Version geschnitten (eb2d16b), ZIP gebaut (sha256 `a22526dc…1264f104`), auf tsvkorntal.com
+  installiert; Ende-zu-Ende-Test mit echtem Bounce bestanden (AP-B3). Freigabe zum Release durch
+  den Nutzer 2026-11-04: Merge nach `main`, Tag `v3.6.0`, GitHub-Release mit genau diesem ZIP.
+- **Danach:** tsvkorntal.de auf 3.6.0, Bounce-Postfach `workflow@` einrichten, dann E13.
+- **3.6.1** (Nutzer, 2026-11-04): Block „Versandweg“ lädt beim Wechsel einer Benachrichtigung
+  sofort neu; Testbereich in der Übersicht zugeklappt.
 - Ursprüngliche Planung:
 - DEPLOYMENT.md §3c neu: zwei Postfächer, Einrichtung 1/2, Schritt-für-Schritt All-Inkl,
   Ende-zu-Ende-Test. ANLEITUNG.md: Dialog „Bounce-Postfach", Maskenzeilen.
