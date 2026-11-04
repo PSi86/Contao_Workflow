@@ -6,6 +6,20 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.6.1] – 2026-11-04
+
+> **Beim Update:** nur den Cache leeren; keine Datenbankänderung.
+
+### Geändert
+- **Der Block „Versandweg" folgt der Auswahl der Benachrichtigungen sofort.** Bisher zeigte er
+  die gespeicherten Benachrichtigungen und stimmte erst nach dem Speichern wieder. Jetzt
+  wechselt er mit der Auswahl, ohne etwas zu speichern – wie die bedingten Felder der Maske.
+  Solange die Auswahl vom gespeicherten Stand abweicht, steht dort „Auswahl noch nicht
+  gespeichert"; die Warnungen folgen ebenfalls der Auswahl.
+- **Ende-zu-Ende-Test in einem zugeklappten Block:** Das Formular steht in der Übersicht unter
+  „Ende-zu-Ende-Test der Bounce-Erkennung" und muss aufgeklappt werden. Die Ergebniszeile des
+  letzten Tests bleibt sichtbar.
+
 ## [3.6.0] – 2026-11-03
 
 Schwerpunkt: **Bounces getrennt von Absender und Antworten.** Ein Bounce geht an den
