@@ -150,9 +150,12 @@ parallel betreiben.**
      korrekter URL-Kodierung (`@` → `%40`, Sonderzeichen im Passwort) für dich zusammenbaut –
      das erspart Tippfehler beim Kodieren:
      <https://docs.contao.org/5.x/manual/de/system/einstellungen/#mailer-dsn>
-3. **Absenderadresse im Notification Center** auf `noreply@deine-domain.de` setzen
+3. **Absenderadresse im Notification Center** auf eine Adresse der eigenen Domain setzen
    (bei allen drei Notifications, Feld „Absender") — **nicht** die Demo-Adresse
    `example.com`. Sonst stimmt die DKIM/SPF-Ausrichtung nicht und die Mail gilt als unzulässig.
+   Seit 3.6.0 darf (und soll) das ein Postfach sein, das ein Mensch liest, z. B.
+   `verwaltung@deine-domain.de`: Antworten der Teilnehmer gehen dorthin, Bounces dagegen ins
+   eigene Bounce-Postfach (Abschnitt 3c).
 
 ### 3b. Externer Transaktions-Anbieter (optional, erst bei Bedarf)
 Sinnvoll bei deutlich höherem Volumen, schlechter Zustellbarkeit oder Bedarf an
@@ -166,35 +169,89 @@ Bounce-/Logging-Webhooks (z. B. **Amazon SES, Postmark, Mailgun, Brevo**):
 ### 3c. Bounce-Postfach einrichten (unzustellbare Adressen erkennen)
 Ein „**250 OK**" beim Absenden heißt nur „angenommen", **nicht** „zugestellt". Lehnt der
 Empfänger-Server die Mail später ab (z. B. `550 User unknown`), schickt er eine
-**Unzustellbarkeitsmeldung (Bounce/DSN)** als eigene E-Mail an die Absenderadresse zurück.
-Diese Meldung erzeugt in Contao **kein** Ereignis – sie liegt nur im Postfach. Das Bundle
-holt sie per **IMAP** ab, erkennt harte Bounces und sperrt die betroffene Adresse
-(„Unzustellbar" in der Übersicht). Wie oft, richtet sich danach, was im Postfach sein kann:
-**alle 2 Minuten** in der halben Stunde nach einem Versand, **alle 15 Minuten**, solange
-Einladungen unbeantwortet sind, sonst **alle 2 Stunden** (holt auch einen verspäteten Bounce
-noch ab). Die Statuszeile der Übersicht zeigt letzte und nächste Prüfung samt Grund;
+**Unzustellbarkeitsmeldung (Bounce/DSN)** als eigene E-Mail zurück – und zwar an den
+**Envelope-Sender** der Mail (`MAIL FROM`, beim Empfänger als `Return-Path` sichtbar), **nie**
+an „Antwort an" und nicht an die angezeigte Absenderadresse. Diese Meldung erzeugt in Contao
+**kein** Ereignis – sie liegt nur im Postfach. Das Bundle holt sie per **IMAP** ab, erkennt
+harte Bounces und sperrt die betroffene Adresse („Unzustellbar" in der Übersicht). Wie oft,
+richtet sich danach, was im Postfach sein kann: **alle 2 Minuten** in der halben Stunde nach
+einem Versand, **alle 15 Minuten**, solange Einladungen unbeantwortet sind, sonst **alle
+2 Stunden** (holt auch einen verspäteten Bounce noch ab), während eines Ende-zu-Ende-Tests
+**jede Minute**. Die Statuszeile der Übersicht zeigt letzte und nächste Prüfung samt Grund;
 **„Jetzt prüfen"** ruft das Postfach sofort ab – auch ohne Konsole.
 
-1. **Postfach = Absenderadresse.** Die Bounces landen bei der Absenderadresse aus dem
-   Notification Center (z. B. `noreply@deine-domain.de`). Lege für sie in KAS ein echtes
-   **Postfach** an (kein reiner Weiterleitungs-Alias), damit die Bounces abholbar sind.
-2. **`WORKFLOW_BOUNCE_IMAP_DSN`** in `<projekt>/.env.local` setzen:
-   ```
-   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40deine-domain.de:PASSWORT@wXXXXXXX.kasserver.com:993?ssl=true
-   ```
-   - Server = `<KAS-Login>.kasserver.com`, IMAP-Port **993** (SSL).
-   - `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort URL-kodieren.
-   - **Leer/nicht gesetzt = Funktion aus** (kein Fehler, es passiert einfach nichts).
-3. **Spamfilter für dieses Postfach deaktivieren.** Bounces haben `MAIL FROM:<>` (leerer
+**Zwei Postfächer (seit 3.6.0).** Menschen und Bundle bekommen getrennte Postfächer:
+
+| | Beispiel | wer liest es |
+|---|---|---|
+| **Absender / „Antwort an"** der Benachrichtigungen | `verwaltung@deine-domain.de` | ein Mensch – Antworten der Teilnehmer landen hier |
+| **Bounce-Postfach** | `workflow@deine-domain.de` | nur das Bundle |
+
+Das Bundle setzt bei **jeder Workflow-Mail** die Adresse des Bounce-Postfachs als
+Envelope-Sender. Absender und „Antwort an" bleiben, wie sie im Notification Center stehen. Der
+Abruf verschiebt nur Bounces von Workflow-Mails nach `INBOX/Processed`; alles andere
+(Antworten, Abwesenheitsnotizen, Bounces anderer Absender) bleibt im Posteingang, und die
+Übersicht sagt, wie viele solche Nachrichten dort liegen.
+
+1. **Postfach anlegen.** In KAS → „E-Mail" ein echtes **Postfach** anlegen (kein reiner
+   Weiterleitungs-Alias), z. B. `workflow@deine-domain.de`, am besten in derselben Domain wie
+   der Absender (SPF/DKIM-Ausrichtung). **Je Installation ein eigenes Postfach** – Test- und
+   Produktionssystem teilen sich keines.
+2. **Spamfilter für dieses Postfach deaktivieren.** Bounces haben `MAIL FROM:<>` (leerer
    Absender); manche Filter stufen genau das als verdächtig ein und würden die Bounce-Mails
    aussortieren, bevor das Bundle sie sieht.
-4. **Unterordner `Processed`.** Verarbeitete Mails werden nach `INBOX/Processed` verschoben
-   (Idempotenz – nichts wird doppelt ausgewertet). Der Ordner wird bei Bedarf automatisch
-   angelegt; du kannst ihn auch selbst im Webmail erstellen.
+3. **In der Workflow-Übersicht einrichten** (nur Administratoren): Abschnitt
+   **„Bounce-Postfach"** aufklappen und eintragen:
+   - **Adresse des Bounce-Postfachs**, z. B. `workflow@deine-domain.de`
+   - **IMAP-Server** `<KAS-Login>.kasserver.com`, **Port** 993, **SSL/TLS**
+   - **Benutzer** (leer = die Adresse; bei All-Inkl geht auch der Postfach-Login `m0…`)
+   - **Passwort**
 
-> Der Abruf läuft über Contaos regulären Cron (Abschnitt 2) – kein zusätzlicher Cronjob
-> nötig. Ist kein Bounce-Postfach konfiguriert, bleibt alles beim Alten; ein Versand gilt
-> dann weiterhin als „versendet, keine Fehlermeldung".
+   Dann **„Speichern und Postfach prüfen"**: Das Bundle meldet sich sofort an und ruft das
+   Postfach ab; Erfolg oder Fehler stehen oben in der Übersicht. Das Passwort wird
+   **verschlüsselt** in der Datenbank gespeichert (Schlüssel aus `APP_SECRET`) und nie wieder
+   angezeigt. Wird `APP_SECRET` geändert, lässt es sich nicht mehr entschlüsseln – die Übersicht
+   sagt das, und es muss neu eingegeben werden. **„Entfernen"** schaltet die Bounce-Erkennung
+   ab. Der Ordner `INBOX/Processed` wird beim ersten Abruf automatisch angelegt.
+4. **Versandweg prüfen.** In der Bearbeitungsmaske jedes Workflows steht unter den
+   Benachrichtigungen der Block **„Versandweg"**: je Einladung, Erinnerung und Ergebnis, was
+   Empfänger als Absender sehen, wohin Antworten und wohin Bounces gehen. Zeigt Absender oder
+   „Antwort an" auf das Bounce-Postfach, erscheint eine Warnung – dann bitte eine Adresse
+   wählen, die ein Mensch liest.
+5. **Ende-zu-Ende-Test.** In der Statuszeile der Übersicht einen Workflow wählen und
+   **„Ende-zu-Ende-Test starten"**. Die Einladung dieses Workflows geht über ihren echten
+   Versandweg an eine Adresse, die es nicht gibt (`…@bounce-test.invalid`); kein Eintrag wird
+   verändert. Die Statuszeile zeigt danach „Bounce nach … s im Bounce-Postfach angekommen und
+   zugeordnet", „Versand fehlgeschlagen – …" oder nach 30 Minuten „kein Bounce". Empfänger in
+   CC/BCC der Einladung bekommen die Testmail ebenfalls.
+
+**Alternativ per `.env.local`** (hat Vorrang vor dem Dialog; der Dialog zeigt die Werte dann nur
+an):
+```
+WORKFLOW_BOUNCE_IMAP_DSN=imap://workflow%40deine-domain.de:PASSWORT@wXXXXXXX.kasserver.com:993?ssl=true
+# nur nötig, wenn der Benutzer oben keine E-Mail-Adresse ist (z. B. m0123456):
+WORKFLOW_BOUNCE_ADDRESS=workflow@deine-domain.de
+```
+- `@` im Benutzernamen als `%40` kodieren; Sonderzeichen im Passwort URL-kodieren (ein `+`
+  bleibt seit 3.6.0 ein `+`).
+- **Leer/nicht gesetzt und nichts im Dialog = Funktion aus** (kein Fehler, es passiert einfach
+  nichts; ein Versand gilt dann weiterhin als „versendet, keine Fehlermeldung").
+
+**Gemessen bei All-Inkl (3. November 2026):** Versand über ein Konto mit anderer
+Absenderadresse (`From`) und anderem Envelope-Sender in derselben Domain wird angenommen; der
+Bounce kam nach 1–10 Sekunden beim Envelope-Sender an; SPF, DKIM und DMARC bestanden.
+Empfänger auf **demselben** Server (z. B. eine nicht existierende Adresse der eigenen Domain)
+lehnt All-Inkl dagegen schon beim Einliefern ab – das erscheint als „Versandfehler" bzw.
+sperrt die Adresse, ohne Bounce.
+
+**Erzwungener Absender am Transport.** Ist in `config/config.yaml` für den Transport der
+Workflow-Mails ein `from` gesetzt (`contao.mailer.transports.<name>.from`), sehen Empfänger
+immer diese Adresse – unabhängig vom Notification Center. Das ist die zuverlässigste Art,
+`From` in der eigenen Domain zu halten. Soll es auf eine von Menschen gelesene Adresse
+umgestellt werden (z. B. `verwaltung@`), dann **erst nach dem Update auf 3.6.0**: Davor leitete
+der Mailer den Envelope-Sender aus `From` ab, und die Bounces gingen an dieses Postfach.
+
+> Der Abruf läuft über Contaos regulären Cron (Abschnitt 2) – kein zusätzlicher Cronjob nötig.
 
 > **⚠ Managed Edition: `.env.local` wird evtl. nicht direkt gelesen.** Existiert eine
 > kompilierte `<projekt>/.env.local.php` (der Contao-Manager legt sie an), hat sie **Vorrang**,
@@ -212,25 +269,39 @@ noch ab). Die Statuszeile der Übersicht zeigt letzte und nächste Prüfung samt
 ```
 vendor/bin/contao-console workflow:bounce:collect --dry-run
 ```
-Das zeigt Schritt für Schritt: ob die DSN erkannt wird, ob die IMAP-Verbindung steht, wie
-viele Nachrichten im Postfach liegen und ob ein Bounce einem Eintrag zugeordnet werden kann –
-**ohne** etwas zu verändern. Ohne `--dry-run` verarbeitet es die Bounces sofort (verschiebt
-sie nach `INBOX/Processed`, markiert die Einträge). Mit `--dsn=imap://…` lässt sich die
-IMAP-Verbindung unabhängig von `.env.local` testen.
+Das zeigt Schritt für Schritt: woher das Postfach kommt (Dialog oder `.env.local`), ob die
+IMAP-Verbindung steht, wie viele Nachrichten im Posteingang liegen und wie viele davon neu
+sind, und ob ein Bounce einem Eintrag zugeordnet werden kann – **ohne** etwas zu verändern.
+Ohne `--dry-run` verarbeitet es die Bounces sofort (verschiebt Bounces von Workflow-Mails nach
+`INBOX/Processed`, markiert die Einträge). Mit `--dsn=imap://…` lässt sich ein anderes
+Postfach testen; es wird dann ganz gelesen, und die Merkstelle des eingerichteten Postfachs
+bleibt unberührt.
+
+Jede Nachricht wird **genau einmal** angesehen: Das Bundle merkt sich je Postfach die zuletzt
+geprüfte Nachrichtennummer (UID) und liest beim nächsten Mal nur neuere. Ein anderes Postfach
+oder eine vom Server neu vergebene Nummerierung (UIDVALIDITY) startet einen vollen Durchgang.
 
 > **Diagnose in der Workflow-Übersicht.** Der Zustand der Bounce-Erkennung wird oben in der
 > Übersicht angezeigt, ohne dass die Seite selbst eine IMAP-Verbindung öffnet (sie liest den
 > letzten Cron-Befund):
-> - **Kein Banner** – ein Postfach ist konfiguriert und beim letzten Lauf erreichbar.
-> - **Hinweis (blau)** – es ist **kein** Postfach konfiguriert (oder die `.env`-Variable wurde
->   nicht geladen, siehe den Managed-Edition-Hinweis oben). Zustellfehler werden dann nicht
->   erkannt. Im System-Log steht dazu eine **Warnung**, kein Fehler.
-> - **Fehler (rot)** – ein Postfach ist konfiguriert, war beim letzten Lauf aber **nicht
+> - **Kein Banner** – ein Postfach ist eingerichtet und beim letzten Lauf erreichbar.
+> - **Hinweis (blau)** – es ist **kein** Postfach eingerichtet (weder im Dialog noch per
+>   `.env.local`, oder die `.env`-Variable wurde nicht geladen, siehe den Managed-Edition-Hinweis
+>   oben). Zustellfehler werden dann nicht erkannt. Im System-Log steht dazu eine **Warnung**,
+>   kein Fehler.
+> - **Fehler (rot)** – ein Postfach ist eingerichtet, war beim letzten Lauf aber **nicht
 >   erreichbar** (falscher Host/Port, Zugangsdaten, Passwort-Format …). Der Grund steht im
->   Banner und als **Fehler** im System-Log. Nach der Korrektur **„Jetzt prüfen"** klicken (oder
->   `workflow:bounce:collect` ohne `--dsn` ausführen), um das Banner sofort zu aktualisieren –
->   sonst räumt es die nächste planmäßige Prüfung ab. Die Log-Meldungen erscheinen nur bei einem
->   **Zustandswechsel**, nicht bei jedem Lauf.
+>   Banner und als **Fehler** im System-Log. Nach der Korrektur **„Speichern und Postfach
+>   prüfen"** bzw. **„Jetzt prüfen"** klicken (oder `workflow:bounce:collect` ohne `--dsn`
+>   ausführen), um das Banner sofort zu aktualisieren – sonst räumt es die nächste planmäßige
+>   Prüfung ab. Die Log-Meldungen erscheinen nur bei einem **Zustandswechsel**, nicht bei jedem
+>   Lauf.
+> - **Fehler (rot) „Passwort lässt sich nicht mehr entschlüsseln"** – `APP_SECRET` wurde
+>   geändert; das Passwort im Dialog neu eingeben.
+> - **„Im Posteingang des Bounce-Postfachs liegen N Nachricht(en) …"** – Nachrichten, die keine
+>   Bounces von Workflow-Mails sind. Zeigt ein Absender oder „Antwort an" auf das Bounce-Postfach
+>   (Block „Versandweg" in der Bearbeitungsmaske)? Danach im Webmail ansehen und löschen; die
+>   Zahl sinkt beim nächsten Abruf.
 
 ---
 
@@ -333,6 +404,8 @@ Bezeichnungen lassen sich nicht mehr pro Workflow ändern.
 - [ ] Empfangene Mail-Header zeigen `dkim=pass`, `spf=pass`, `dmarc=pass`.
 - [ ] Test-Workflow mit wenigen echten Adressen: Einladung → Link → Formular →
       PDF/Ergebnis-Mail → `messenger:stats` zeigt `contao_failure = 0`.
+- [ ] Bounce-Postfach eingerichtet (Abschnitt 3c), „Versandweg" ohne Warnung,
+      Ende-zu-Ende-Test zeigt „✔ Bounce … angekommen und zugeordnet".
 
 ---
 
@@ -345,6 +418,9 @@ Bezeichnungen lassen sich nicht mehr pro Workflow ändern.
 | Warnung „… seit über 15 Minuten eingereiht", obwohl der Cronjob läuft | Mail ist beim Einreihen gescheitert (Altlast bis 3.4.1), meist wegen einer ungültig geschriebenen Adresse; im System-Log steht dann „An email must have a "To", "Cc", or "Bcc" header". Löst sich nach einer Stunde von selbst (Abschnitt 6). |
 | Versand wird gar nicht erst angeboten / abgelehnt | Workflow nicht **veröffentlicht**, keine gültige Formularseite oder keine gültige Benachrichtigung zugeordnet. |
 | Mails landen im Spam | SPF/DKIM/DMARC fehlen oder Absender-Domain ≠ signierte Domain (Abschnitt 3a/4). |
+| Ende-zu-Ende-Test: „kein Bounce nach 30 Minuten" | Bounce-Adresse ist nicht das abgerufene Postfach (Block „Versandweg" in der Bearbeitungsmaske, Spalte „Bounces gehen an"), oder der Spamfilter des Bounce-Postfachs sortiert Bounces aus (Abschnitt 3c). |
+| Ende-zu-Ende-Test: „Versand fehlgeschlagen – … 553 … Sender address rejected" | Der Mailserver erlaubt diese Bounce-Adresse als Envelope-Sender nicht für das Versandkonto. Bounce-Postfach auf das Versandkonto selbst legen oder beim Anbieter freischalten lassen. |
+| Antworten von Teilnehmern kommen nicht an | Absender oder „Antwort an" zeigt auf das Bounce-Postfach (Warnung im Block „Versandweg"). Die Antworten liegen dort im Posteingang; die Übersicht zählt sie. |
 | Versand bricht ab / Verbindungsfehler | all-inkl 3-Verbindungen-Limit → nur **einen** Worker betreiben; autoscale deckeln (Abschnitt 2c). |
 | Einzelne Personen ohne Mail | Transport `contao_failure` prüfen (Abschnitt 6). |
 | PDF fehlt im Anhang | NC-Notification „Ergebnis": unter „Anhänge über Tokens" muss `##attachment##` stehen. |

@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Psimandl\WorkflowBundle\Controller\Backend;
 
 use Contao\BackendModule;
+use Contao\BackendUser;
 use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
 use Doctrine\DBAL\Connection;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceProbe;
+use Psimandl\WorkflowBundle\Service\Bounce\PasswordCipher;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceSchedule;
 use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\ImportLogRenderer;
@@ -153,7 +157,13 @@ class DashboardModule extends BackendModule
 
         // Bounce-detection state, spanning all workflows: a hint when no mailbox is configured,
         // an error when the configured one is unreachable (from the cron's last verdict).
-        $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class));
+        $this->Template->bounceBanner = $this->bounceBanner($container->get(BounceHealth::class), $container->get(BounceMailbox::class));
+
+        // The bounce mailbox dialog, for administrators only (decision E11 of the 3.6.0 plan).
+        $this->Template->mailboxDialog = BackendUser::getInstance()->isAdmin
+            ? $this->mailboxDialog($container->get(BounceMailbox::class))
+            : null;
+        $this->Template->mailboxUrl = $router->generate('workflow_bounce_mailbox');
 
         // Whether a real cron calls Contao, and when the bounce mailbox was/will be read.
         $this->Template->cronStatus = $this->cronStatus(
@@ -162,6 +172,14 @@ class DashboardModule extends BackendModule
             $container->get(BounceSchedule::class),
         );
         $this->Template->bounceCheckUrl = $router->generate('workflow_bounce_check').'?rt='.$rt;
+
+        // End-to-end test of bounce detection: the last result, and the form to start one
+        // (only with a bounce mailbox, and only for workflows that have an invitation).
+        $this->Template->bounceTest = $this->probeLine($container->get(BounceProbe::class));
+        $this->Template->bounceTestUrl = $router->generate('workflow_bounce_test');
+        $this->Template->bounceTestWorkflows = $container->get(BounceHealth::class)->isConfigured()
+            ? $this->invitingWorkflows()
+            : [];
 
         $this->Template->workflows = $data;
         $this->Template->hasWorkflows = [] !== $data;
@@ -183,11 +201,15 @@ class DashboardModule extends BackendModule
      *
      * @return array{level: string, message: string}|null
      */
-    private function bounceBanner(BounceHealth $health): ?array
+    private function bounceBanner(BounceHealth $health, BounceMailbox $mailbox): ?array
     {
         $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
 
         if (!$health->isConfigured()) {
+            if ($mailbox->passwordUnreadable()) {
+                return ['level' => 'error', 'message' => (string) ($lang['mailbox_password_unreadable'] ?? '')];
+            }
+
             return ['level' => 'notice', 'message' => (string) ($lang['bounce_unconfigured'] ?? '')];
         }
 
@@ -213,7 +235,7 @@ class DashboardModule extends BackendModule
      * will be read next. Everything comes from stored timestamps – nothing is guessed, and the
      * page opens no connection of its own.
      *
-     * @return array{cronOk: bool, cron: string, bounce: string}
+     * @return array{cronOk: bool, cron: string, bounce: string, foreign: string}
      */
     private function cronStatus(CronHealth $cronHealth, BounceHealth $bounceHealth, BounceSchedule $schedule): array
     {
@@ -235,12 +257,24 @@ class DashboardModule extends BackendModule
         }
 
         $bounceLine = '';
+        $foreignLine = '';
 
         if ($bounceHealth->isConfigured()) {
-            $checkedAt = $bounceHealth->read()['checkedAt'];
+            $verdict = $bounceHealth->read();
+            $checkedAt = $verdict['checkedAt'];
+
+            // Only from a successful run: after a failed one the stored count is outdated.
+            if (BounceHealth::STATE_OK === $verdict['state']) {
+                $foreign = $bounceHealth->readScan()['foreignCount'];
+
+                if ($foreign > 0) {
+                    $foreignLine = sprintf((string) $lang['bounce_foreign'], $foreign);
+                }
+            }
             $current = $schedule->current($now);
 
             $reason = match ($current['tier']) {
+                BounceSchedule::TIER_TEST => (string) $lang['bounce_tier_test'],
                 BounceSchedule::TIER_RECENT => sprintf((string) $lang['bounce_tier_recent'], $this->ago($now - $current['lastMailAt'])),
                 BounceSchedule::TIER_OUTSTANDING => sprintf((string) $lang['bounce_tier_outstanding'], $current['outstanding']),
                 default => (string) $lang['bounce_tier_idle'],
@@ -260,7 +294,85 @@ class DashboardModule extends BackendModule
             }
         }
 
-        return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine];
+        return ['cronOk' => $alive, 'cron' => $cronLine, 'bounce' => $bounceLine, 'foreign' => $foreignLine];
+    }
+
+    /**
+     * What the overview says about the last end-to-end test of bounce detection (empty when
+     * there was none in the last week). Everything comes from the test's send row.
+     *
+     * @return array{text: string, warn: bool}
+     */
+    private function probeLine(BounceProbe $probe): array
+    {
+        $test = $probe->latest();
+
+        if (null === $test) {
+            return ['text' => '', 'warn' => false];
+        }
+
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'] ?? [];
+        $started = date('d.m.Y H:i', $test['startedAt']);
+        $envelope = '' !== $test['envelopeSender'] ? $test['envelopeSender'] : (string) $lang['bounce_test_no_envelope'];
+
+        $text = match ($test['state']) {
+            BounceProbe::STATE_QUEUED => sprintf((string) $lang['bounce_test_queued'], $started, $test['workflow'], $test['recipient']),
+            BounceProbe::STATE_WAITING => sprintf((string) $lang['bounce_test_waiting'], $started, $test['workflow'], date('H:i', $test['sentAt']), $envelope, date('H:i', $test['until'])),
+            BounceProbe::STATE_BOUNCED => sprintf((string) $lang['bounce_test_ok'], $started, $test['workflow'], $this->duration($test['seconds']), $envelope),
+            BounceProbe::STATE_FAILED => sprintf((string) $lang['bounce_test_failed'], $started, $test['workflow'], '' !== $test['error'] ? $test['error'] : '—'),
+            default => sprintf((string) $lang['bounce_test_timeout'], $started, $test['workflow'], $envelope),
+        };
+
+        return ['text' => $text, 'warn' => \in_array($test['state'], [BounceProbe::STATE_FAILED, BounceProbe::STATE_TIMEOUT], true)];
+    }
+
+    /**
+     * What the bounce mailbox dialog shows: the effective source, the values of
+     * WORKFLOW_BOUNCE_IMAP_DSN when that one rules (read-only), otherwise the back-end settings
+     * for the form – never the password, only whether one is stored and readable.
+     *
+     * @return array{source: ?string, env: ?array{host: string, port: int, user: string}, address: ?string, form: array{address: string, host: string, port: int, encryption: string, user: string}, passwordSet: bool, passwordUnreadable: bool, stored: bool, sodium: bool}
+     */
+    private function mailboxDialog(BounceMailbox $mailbox): array
+    {
+        $settings = $mailbox->backend();
+
+        return [
+            'source' => $mailbox->source(),
+            'env' => $mailbox->envSummary(),
+            'address' => $mailbox->address(),
+            'form' => [
+                'address' => (string) ($settings['address'] ?? ''),
+                'host' => (string) ($settings['host'] ?? ''),
+                'port' => (int) ($settings['port'] ?? 993),
+                'encryption' => (string) ($settings['encryption'] ?? 'ssl'),
+                'user' => (string) ($settings['user'] ?? ''),
+            ],
+            'passwordSet' => (bool) ($settings['passwordSet'] ?? false),
+            'passwordUnreadable' => $mailbox->passwordUnreadable(),
+            'stored' => null !== $settings,
+            'sodium' => PasswordCipher::isAvailable(),
+        ];
+    }
+
+    /**
+     * Workflows the end-to-end test can use: those with an invitation notification.
+     *
+     * @return array<int, string> id => title
+     */
+    private function invitingWorkflows(): array
+    {
+        /** @var Connection $connection */
+        $connection = System::getContainer()->get('database_connection');
+
+        $rows = $connection->fetchAllKeyValue('SELECT id, title FROM tl_workflow WHERE ncInvite > 0 ORDER BY title');
+
+        return array_map('strval', $rows);
+    }
+
+    private function duration(int $seconds): string
+    {
+        return $seconds < 120 ? $seconds.' s' : (int) round($seconds / 60).' min';
     }
 
     private function ago(int $seconds): string

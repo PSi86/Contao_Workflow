@@ -29,7 +29,9 @@ use Terminal42\NotificationCenterBundle\Event\AsynchronousReceiptEvent;
  * For the rare synchronous transport the receipt event fires within the send call, before
  * the tl_workflow_send row is inserted, so the live {@see WorkflowMailContext} is used as a
  * fallback and the row is created here; {@see NotificationDispatcher::rememberParcel()} then
- * upserts it idempotently without resetting the state written here.
+ * upserts it idempotently without resetting the state written here. With a bounce mailbox
+ * address configured, {@see EnvelopeSenderListener} has already created the row at send
+ * time, and the row is simply updated.
  */
 class WorkflowMailResultListener
 {

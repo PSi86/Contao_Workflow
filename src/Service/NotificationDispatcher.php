@@ -63,6 +63,28 @@ class NotificationDispatcher
         );
     }
 
+    /**
+     * Sends the workflow's invitation notification to $address as an end-to-end test of the
+     * whole mail path: Notification Center gateway, transport, sender, envelope sender. No
+     * entry is involved – the tokens are those of an empty answer set, and the send row has
+     * kind "test" and entryId 0, so nothing in the workflow changes.
+     */
+    public function sendTest(WorkflowModel $workflow, string $address): bool
+    {
+        $entry = new EntryModel();
+        $entry->id = 0;
+        $entry->pid = (int) $workflow->id;
+        $entry->email = $address;
+
+        return $this->send(
+            (int) $workflow->ncInvite,
+            $this->baseTokens($workflow, $entry, ''),
+            $workflow,
+            $entry,
+            WorkflowMailContext::KIND_TEST,
+        );
+    }
+
     public function sendReminder(WorkflowModel $workflow, EntryModel $entry, string $link): bool
     {
         return $this->send(

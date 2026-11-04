@@ -16,6 +16,10 @@ use Psimandl\WorkflowBundle\Model\EntryModel;
 use Psimandl\WorkflowBundle\Model\WorkflowModel;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceCollector;
 use Psimandl\WorkflowBundle\Service\Bounce\BounceHealth;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceMailbox;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceOutcome;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceProbe;
+use Psimandl\WorkflowBundle\Service\Bounce\BounceSettings;
 use Psimandl\WorkflowBundle\Service\EntryReset;
 use Psimandl\WorkflowBundle\Service\SubmissionProcessor;
 use Psimandl\WorkflowBundle\Service\DemoWorkflowSeeder;
@@ -81,6 +85,9 @@ class WorkflowActionController
         private readonly ImportSummary $importSummary,
         private readonly EntryReset $entryReset,
         private readonly BounceCollector $bounceCollector,
+        private readonly BounceProbe $bounceProbe,
+        private readonly BounceMailbox $bounceMailbox,
+        private readonly BounceSettings $bounceSettings,
         private readonly string $csrfTokenName,
     ) {
     }
@@ -160,6 +167,40 @@ class WorkflowActionController
     }
 
     /**
+     * Starts the end-to-end test of bounce detection ("Ende-zu-Ende-Test" in the overview): the
+     * invitation of the chosen workflow goes to an address that cannot exist, and the overview
+     * then shows whether its bounce reached the bounce mailbox.
+     */
+    #[Route('/bounce-test', name: 'workflow_bounce_test', methods: ['POST'])]
+    public function startBounceTest(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+        $this->assertAccess();
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
+
+        $workflow = WorkflowModel::findByPk((int) $request->request->get('workflow'));
+
+        if (null === $workflow) {
+            Message::addError($lang['bounce_test_no_workflow']);
+
+            return $this->backToDashboard();
+        }
+
+        $result = $this->bounceProbe->start($workflow);
+
+        match ($result['status']) {
+            BounceProbe::START_STARTED => Message::addConfirmation(sprintf($lang['bounce_test_started'], $result['address'])),
+            BounceProbe::START_UNCONFIGURED => Message::addError($lang['bounce_test_unconfigured']),
+            BounceProbe::START_NO_INVITE => Message::addError(sprintf($lang['bounce_test_no_invite'], StringUtil::specialchars((string) $workflow->title))),
+            default => Message::addError(sprintf($lang['bounce_test_not_handed_over'], $result['address'])),
+        };
+
+        return $this->backToDashboard();
+    }
+
+    /**
      * Reads the bounce mailbox right away ("Jetzt prüfen" in the overview) instead of waiting
      * for the next scheduled check, and reports what it found.
      */
@@ -172,8 +213,86 @@ class WorkflowActionController
         System::loadLanguageFile('workflow_messages');
         $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
 
-        $outcome = $this->bounceCollector->checkNow();
+        $this->reportBounceCheck($this->bounceCollector->checkNow(), $lang);
 
+        return $this->backToDashboard();
+    }
+
+    /**
+     * Saves the bounce mailbox set up in the overview dialog – administrators only (decision
+     * E11 of the 3.6.0 plan). "check" also reads the mailbox right away, which proves the
+     * login and updates the overview banner; "clear" removes the settings. While
+     * WORKFLOW_BOUNCE_IMAP_DSN is set, it takes precedence and the dialog only shows values.
+     */
+    #[Route('/bounce-mailbox', name: 'workflow_bounce_mailbox', methods: ['POST'])]
+    public function saveBounceMailbox(Request $request): Response
+    {
+        $this->framework->initialize();
+        $this->assertToken($request);
+
+        if (!$this->security->isGranted('ROLE_ADMIN')) {
+            throw new AccessDeniedException('Only administrators may set up the bounce mailbox.');
+        }
+
+        System::loadLanguageFile('workflow_messages');
+        $lang = $GLOBALS['TL_LANG']['workflow_dashboard'];
+
+        if (BounceMailbox::SOURCE_ENV === $this->bounceMailbox->source()) {
+            Message::addError($lang['mailbox_env_locked']);
+
+            return $this->backToDashboard();
+        }
+
+        $action = (string) $request->request->get('action');
+
+        if ('clear' === $action) {
+            $this->bounceSettings->clear();
+            Message::addConfirmation($lang['mailbox_cleared']);
+
+            return $this->backToDashboard();
+        }
+
+        $address = trim((string) $request->request->get('address'));
+        $user = trim((string) $request->request->get('user'));
+        $values = [
+            'address' => $address,
+            'host' => trim((string) $request->request->get('host')),
+            'port' => (int) $request->request->get('port'),
+            'encryption' => (string) $request->request->get('encryption'),
+            'user' => '' !== $user ? $user : $address,
+        ];
+
+        // Never trimmed: spaces can be part of a password.
+        $password = (string) $request->request->get('password');
+        $stored = $this->bounceSettings->read();
+
+        $problems = BounceSettings::validate($values, '' !== $password, null !== $stored && $stored['passwordSet']);
+
+        if ([] !== $problems) {
+            foreach ($problems as $problem) {
+                Message::addError($lang[$problem]);
+            }
+
+            return $this->backToDashboard();
+        }
+
+        $this->bounceSettings->save($values, '' !== $password ? $password : null);
+        Message::addConfirmation($lang['mailbox_saved']);
+
+        if ('check' === $action) {
+            $this->reportBounceCheck($this->bounceCollector->checkNow(), $lang);
+        }
+
+        return $this->backToDashboard();
+    }
+
+    /**
+     * Turns a bounce check into flash messages for the overview.
+     *
+     * @param array<string, string> $lang
+     */
+    private function reportBounceCheck(?BounceOutcome $outcome, array $lang): void
+    {
         if (null === $outcome) {
             Message::addInfo($lang['bounce_check_busy']);
         } elseif (BounceHealth::STATE_UNCONFIGURED === $outcome->state) {
@@ -190,9 +309,11 @@ class WorkflowActionController
                 ($c['unmatched'] ?? 0) + ($c['former'] ?? 0),
                 $c['skipped'] ?? 0,
             ));
-        }
 
-        return $this->backToDashboard();
+            if (($c['inbox'] ?? 0) > 0) {
+                Message::addInfo(sprintf($lang['bounce_foreign'], $c['inbox']));
+            }
+        }
     }
 
     #[Route('/import/{id}', name: 'workflow_import', requirements: ['id' => '\d+'], methods: ['GET'])]

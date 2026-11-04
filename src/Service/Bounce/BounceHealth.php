@@ -17,8 +17,9 @@ use Doctrine\DBAL\Connection;
  * tl_workflow_bounce_health, upserted by {@see BounceCollector::reconcileHealth()} and read
  * by the overview.
  *
- * "Is it configured?" is a separate, cheap question answered live from the bound DSN — no
- * cron run needed, so a site whose config did not load is flagged immediately.
+ * "Is it configured?" is a separate question answered live by {@see BounceMailbox} (the bound
+ * DSN, or the back-end settings – one small query) — no cron run needed, so a site whose
+ * config did not load is flagged immediately.
  *
  * Every database access is guarded: right after a deploy the table may not exist yet (the
  * schema diff runs on contao:migrate), and the collector's contract is to never throw.
@@ -39,19 +40,20 @@ class BounceHealth
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly ?string $bounceImapDsn = null,
+        private readonly ?BounceMailbox $mailbox = null,
     ) {
     }
 
     /**
-     * Whether a bounce mailbox DSN is present and loaded. Cheap (no I/O), so the overview can
-     * ask on every render. An empty result means either "never configured" or "configured but
-     * not loaded" (e.g. a Managed Edition with .env.local.php that never picked up .env.local)
-     * – the application cannot tell the two apart, and both mean bounces go undetected.
+     * Whether a usable bounce mailbox is set up. Cheap (no IMAP), so the overview can ask on
+     * every render. False means "never set up", "set in .env.local but not loaded" (e.g. a
+     * Managed Edition with .env.local.php that never picked up .env.local) or "stored password
+     * no longer readable" ({@see BounceMailbox::passwordUnreadable()}) – all of them mean
+     * bounces go undetected.
      */
     public function isConfigured(): bool
     {
-        return '' !== trim((string) $this->bounceImapDsn);
+        return null !== $this->mailbox && '' !== $this->mailbox->imapDsn();
     }
 
     /**
@@ -85,7 +87,9 @@ class BounceHealth
                 ['id' => self::ROW_ID],
             );
 
-            return (string) $previous;
+            // The row may have been created by recordScan() during this very first run; an
+            // empty state still means "no verdict recorded yet".
+            return '' === (string) $previous ? null : (string) $previous;
         } catch (\Throwable) {
             // Table not there yet, or the DB is momentarily unavailable: the run's real work
             // (applying bounces) already happened; losing the health note is not worth throwing
@@ -120,5 +124,67 @@ class BounceHealth
             'message'   => (string) ($row['message'] ?? ''),
             'checkedAt' => (int) $row['tstamp'],
         ];
+    }
+
+    /**
+     * Where the collector stopped reading the INBOX (the watermark: the mailbox, its
+     * UIDVALIDITY and the highest UID already looked at) and how many messages the last run
+     * left in the INBOX because they are not bounces of workflow mails.
+     *
+     * Zeros when nothing is recorded yet, or when the columns do not exist yet (the database
+     * was not updated after the bundle update): the collector then reads the whole INBOX.
+     *
+     * @return array{mailbox: string, uidValidity: int, lastUid: int, foreignCount: int}
+     */
+    public function readScan(): array
+    {
+        try {
+            $row = $this->connection->fetchAssociative(
+                'SELECT scanMailbox, uidValidity, lastUid, foreignCount FROM tl_workflow_bounce_health WHERE id = ?',
+                [self::ROW_ID],
+            );
+        } catch (\Throwable) {
+            $row = false;
+        }
+
+        if (false === $row) {
+            return ['mailbox' => '', 'uidValidity' => 0, 'lastUid' => 0, 'foreignCount' => 0];
+        }
+
+        return [
+            'mailbox'      => (string) $row['scanMailbox'],
+            'uidValidity'  => (int) $row['uidValidity'],
+            'lastUid'      => (int) $row['lastUid'],
+            'foreignCount' => (int) $row['foreignCount'],
+        ];
+    }
+
+    /**
+     * Stores the watermark, and – at the end of a run – the number of messages left in the
+     * INBOX. Never throws, for the same reason as {@see record()}; a lost watermark only means
+     * the next run looks at the same messages again, which is harmless.
+     */
+    public function recordScan(string $mailbox, int $uidValidity, int $lastUid, ?int $foreignCount = null): void
+    {
+        $values = ['scanMailbox' => $mailbox, 'uidValidity' => $uidValidity, 'lastUid' => $lastUid];
+
+        if (null !== $foreignCount) {
+            $values['foreignCount'] = $foreignCount;
+        }
+
+        try {
+            $exists = false !== $this->connection->fetchOne(
+                'SELECT id FROM tl_workflow_bounce_health WHERE id = ?',
+                [self::ROW_ID],
+            );
+
+            if ($exists) {
+                $this->connection->update('tl_workflow_bounce_health', $values, ['id' => self::ROW_ID]);
+            } else {
+                $this->connection->insert('tl_workflow_bounce_health', ['id' => self::ROW_ID] + $values);
+            }
+        } catch (\Throwable) {
+            // See the doc comment.
+        }
     }
 }

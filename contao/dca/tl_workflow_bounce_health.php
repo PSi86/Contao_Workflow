@@ -39,5 +39,21 @@ $GLOBALS['TL_DCA']['tl_workflow_bounce_health'] = [
         'message' => [
             'sql' => 'text NULL',
         ],
+        // Watermark of the bounce collector (3.6.0): the mailbox it belongs to, its UIDVALIDITY
+        // and the highest UID already looked at. Each INBOX message is read exactly once.
+        'scanMailbox' => [
+            'sql' => "varchar(255) NOT NULL default ''",
+        ],
+        'uidValidity' => [
+            'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
+        'lastUid' => [
+            'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
+        // Messages the last run left in the INBOX because they are not bounces of workflow
+        // mails (replies, out-of-office notes, bounces of other senders); shown in the overview.
+        'foreignCount' => [
+            'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
     ],
 ];

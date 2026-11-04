@@ -73,7 +73,10 @@ Die **Formular-URL** ergibt sich aus dem **Alias dieser Seite** + Token (z. B. `
    - Pro Notification eine **Nachricht** (Gateway = E-Mail, *veröffentlicht*) und
      darunter eine **Sprache** „de" (*Fallback*) mit:
      - **Empfänger:** `##email##`
-     - **Absender:** z. B. `noreply@deine-domain.de`
+     - **Absender:** eine Adresse der eigenen Domain, die ein Mensch liest, z. B.
+       `verwaltung@deine-domain.de` – Antworten der Teilnehmer gehen dorthin (oder an eine
+       eigene **„Antwort an"**-Adresse). **Nicht** das Bounce-Postfach: Bounces leitet das
+       Bundle selbst dorthin (Abschnitt 5, „Bounce-Postfach").
      - **Betreff/Text** frei; bei **Einladung/Erinnerung** den Link einbauen: `##link##`
      - bei **Ergebnis**: Feld **„Anhänge über Tokens" = `##attachment##`** (hängt das PDF an)
    - Verfügbare Tokens: `##email##`, `##link##`, `##workflow_title##`,
@@ -213,7 +216,11 @@ Felder in **dieser Reihenfolge** (einige Listen befüllen sich erst aus der Date
         eigene Logik** → **die Dokument-Texte entfallen** (werden ausgeblendet). Siehe Abschnitt 8.
     - Header (Logo), Unterschrift und Footer kommen aus der gewählten **Briefkopf-Vorlage**;
       die Briefkopf-Variablen (`##letterhead_verein##`, `##letterhead_ort##`, …) stammen ebenfalls von dort.
-10. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen.
+10. **Benachrichtigungen:** Einladung / Erinnerung / Ergebnis zuordnen. Darunter zeigt der
+    Block **„Versandweg"** je Benachrichtigung, was Empfänger als Absender sehen, wohin
+    Antworten gehen und wohin Bounces gehen – mit einer Warnung, wenn Absender oder „Antwort an"
+    das Bounce-Postfach ist oder noch keines eingerichtet ist. Er zeigt die **gespeicherten**
+    Werte; nach einer Änderung erst speichern.
 11. **Speichern.**
 
 > ### Gesperrte Einstellungen, sobald Antworten vorliegen
@@ -652,6 +659,25 @@ angezeigten Link öffnen.
   Bounce-Postfach) samt Takt: **alle 2 Minuten** in der halben Stunde nach einem Versand,
   **alle 15 Minuten**, solange Einladungen unbeantwortet sind, sonst **alle 2 Stunden**.
   **„Jetzt prüfen"** ruft das Postfach sofort ab und meldet, was es gefunden hat.
+- **„Im Posteingang des Bounce-Postfachs liegen N Nachricht(en) …"** – Nachrichten, die keine
+  Bounces von Workflow-Mails sind (Antworten, Abwesenheitsnotizen, Bounces anderer Absender).
+  Das Bundle lässt sie liegen. Meist zeigt dann ein Absender oder eine „Antwort an" auf das
+  Bounce-Postfach (Block „Versandweg" in der Bearbeitungsmaske). Im Webmail ansehen und löschen.
+- **Ende-zu-Ende-Test:** Workflow wählen, **„Ende-zu-Ende-Test starten"**. Die Einladung des
+  Workflows geht über ihren echten Versandweg an eine Adresse, die es nicht gibt
+  (`…@bounce-test.invalid`); kein Eintrag wird verändert. Solange der Test wartet, wird das
+  Postfach jede Minute geprüft (höchstens 30 Minuten). Das Ergebnis steht danach in der
+  Statuszeile: **„✔ … Bounce nach N s angekommen und zugeordnet"**, **„⚠ Versand
+  fehlgeschlagen – …"** oder **„⚠ … kein Bounce"** (mit möglichen Ursachen). Empfänger in
+  CC/BCC der Einladung erhalten die Testmail ebenfalls.
+
+**Bounce-Postfach einrichten (nur Administratoren):** Abschnitt **„Bounce-Postfach"** unter der
+Statuszeile. Adresse, IMAP-Server, Port/Verschlüsselung, Benutzer (leer = Adresse) und Passwort
+eintragen, dann **„Speichern und Postfach prüfen"**. Das Passwort wird verschlüsselt gespeichert
+und nie wieder angezeigt; zum Ändern anderer Werte das Passwortfeld leer lassen. **„Entfernen"**
+schaltet die Bounce-Erkennung ab. Ist das Postfach per `WORKFLOW_BOUNCE_IMAP_DSN` in der
+`.env.local` festgelegt, zeigt der Abschnitt die Werte nur an. Technischer Hintergrund und
+Einrichtung bei All-Inkl: [DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt 3c.
 
 Darunter pro Workflow eine eigene Karte mit:
 - Zähler **eingegangen / offen / gesamt**. Ist die Quelldatei geladen, aber **noch nicht

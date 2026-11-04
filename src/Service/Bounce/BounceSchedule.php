@@ -11,8 +11,10 @@ use Doctrine\DBAL\Connection;
  *
  * Bounces follow mails: most arrive within minutes of a send, late ones (a receiving server
  * that kept retrying) within days. A fixed interval is either too slow right after a send or
- * wasteful during the weeks nothing happens. Three tiers:
+ * wasteful during the weeks nothing happens. Four tiers:
  *
+ *  - test:        an end-to-end test ({@see BounceProbe}) waits for its bounce, for at most
+ *                 30 minutes → every minute;
  *  - recent:      a mail was sent or queued in the last 30 minutes → every 2 minutes;
  *  - outstanding: invitations are out and unanswered → every 15 minutes;
  *  - idle:        nothing is outstanding (nothing sent yet, or everybody answered) → every
@@ -24,6 +26,8 @@ use Doctrine\DBAL\Connection;
  */
 class BounceSchedule
 {
+    public const TIER_TEST = 'test';
+
     public const TIER_RECENT = 'recent';
 
     public const TIER_OUTSTANDING = 'outstanding';
@@ -32,7 +36,11 @@ class BounceSchedule
 
     public const RECENT_WINDOW = 1800;
 
+    /** How long an end-to-end test waits for its bounce. */
+    public const TEST_WINDOW = 1800;
+
     private const INTERVALS = [
+        self::TIER_TEST        => 60,
         self::TIER_RECENT      => 120,
         self::TIER_OUTSTANDING => 900,
         self::TIER_IDLE        => 7200,
@@ -64,13 +72,25 @@ class BounceSchedule
             $outstanding = (int) $this->connection->fetchOne(
                 "SELECT COUNT(*) FROM tl_workflow_entry WHERE status >= 1 AND respondedAt = 0 AND bounceHard = ''",
             );
+
         } catch (\Throwable) {
             // Tables not there yet: check at the most relaxed pace rather than not at all.
             $lastMailAt = 0;
             $outstanding = 0;
         }
 
+        try {
+            // An end-to-end test still waiting for its bounce. Asked separately, so a problem
+            // here cannot take the other tiers down with it.
+            $testAt = (int) $this->connection->fetchOne(
+                "SELECT MAX(queuedAt) FROM tl_workflow_send WHERE kind = 'test' AND state IN ('queued', 'sent')",
+            );
+        } catch (\Throwable) {
+            $testAt = 0;
+        }
+
         $tier = match (true) {
+            $testAt > 0 && $now - $testAt <= self::TEST_WINDOW => self::TIER_TEST,
             $lastMailAt > 0 && $now - $lastMailAt <= self::RECENT_WINDOW => self::TIER_RECENT,
             $outstanding > 0 => self::TIER_OUTSTANDING,
             default => self::TIER_IDLE,

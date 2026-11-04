@@ -9,9 +9,11 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
 use Contao\CoreBundle\Exception\CronExecutionSkippedException;
 use Contao\CoreBundle\Monolog\ContaoContext;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DbalException;
 use Psimandl\WorkflowBundle\Service\BackgroundActivity;
 use Psimandl\WorkflowBundle\Service\CronHealth;
 use Psimandl\WorkflowBundle\Service\Delivery\DeliveryRecorder;
+use Psimandl\WorkflowBundle\Service\WorkflowMailContext;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\Lock\LockFactory;
@@ -26,9 +28,14 @@ use Webklex\PHPIMAP\Message;
  * {@see BounceParser} and correlates hard bounces back to their tl_workflow_send row (and,
  * denormalized, the entry) by parcel id.
  *
- * Configuration is an IMAP DSN in .env.local, e.g.
+ * Since 3.6.0 the collector moves only bounces of workflow mails to INBOX/Processed and leaves
+ * everything else in the INBOX, where a person can see it; the overview shows how many such
+ * messages there are. A watermark makes sure each message is looked at exactly once.
+ *
+ * The mailbox comes from {@see BounceMailbox}: the back-end settings of the workflow overview,
+ * or an IMAP DSN in .env.local, which takes precedence, e.g.
  *   WORKFLOW_BOUNCE_IMAP_DSN=imap://noreply%40example.com:PASS@wXXXX.kasserver.com:993?ssl=true
- * When it is empty the collector is a no-op — the feature is simply off.
+ * Without a mailbox the collector is a no-op — the feature is simply off.
  *
  * How often the mailbox is read is decided by {@see BounceSchedule}: the job is called every
  * minute and reads the mailbox only when the current tier says so (every 2 minutes right after
@@ -61,7 +68,7 @@ class BounceCollector
         private readonly BounceSchedule $schedule,
         private readonly CronHealth $cronHealth,
         private readonly LockFactory $lockFactory,
-        private readonly ?string $bounceImapDsn = null,
+        private readonly ?BounceMailbox $mailbox = null,
         private readonly ?BackgroundActivity $activity = null,
     ) {
     }
@@ -101,7 +108,7 @@ class BounceCollector
         $started = microtime(true);
 
         try {
-            $outcome = $this->collect(trim((string) $this->bounceImapDsn));
+            $outcome = $this->collect((string) $this->mailbox?->imapDsn());
             $this->reconcileHealth($outcome);
 
             return $outcome;
@@ -130,13 +137,15 @@ class BounceCollector
 
         match ($outcome->state) {
             BounceHealth::STATE_UNCONFIGURED => $this->systemLog(
-                'Bounce-Postfach nicht konfiguriert: WORKFLOW_BOUNCE_IMAP_DSN ist leer oder wurde nicht geladen. '
+                'Bounce-Postfach nicht eingerichtet: weder in der Workflow-Übersicht noch per WORKFLOW_BOUNCE_IMAP_DSN '
+                .'(oder das gespeicherte Passwort lässt sich nicht mehr entschlüsseln). '
                 .'In diesem Zustand werden Zustellfehler und Bounces nicht erkannt.',
                 LogLevel::WARNING,
             ),
             BounceHealth::STATE_CONFIG_ERROR => $this->systemLog(
                 'Bounce-Postfach nicht erreichbar: '.$outcome->message.' '
-                .'Zustellfehler und Bounces werden derzeit nicht erkannt – bitte WORKFLOW_BOUNCE_IMAP_DSN prüfen.',
+                .'Zustellfehler und Bounces werden derzeit nicht erkannt – bitte die Zugangsdaten prüfen '
+                .'(Workflow-Übersicht → Bounce-Postfach, bzw. WORKFLOW_BOUNCE_IMAP_DSN).',
                 LogLevel::ERROR,
             ),
             // Only worth a line as a RECOVERY: null means the first-ever run was already fine.
@@ -153,13 +162,20 @@ class BounceCollector
      * console for diagnosis; $dryRun inspects the mailbox without moving mails or writing to
      * the database.
      *
+     * Only bounces of workflow mails are moved to INBOX/Processed; everything else stays in the
+     * INBOX for a person to see ({@see handleRaw()}). Each message is looked at exactly once:
+     * the watermark (mailbox, UIDVALIDITY, highest UID looked at) is advanced after every
+     * message, and a run reads only messages above it. $trackProgress is false when the
+     * command tests a different mailbox (--dsn): then the whole INBOX is read and the
+     * configured mailbox's watermark is left alone.
+     *
      * Never throws — every failure becomes the returned {@see BounceOutcome} (and, if given, is
      * reported). The caller decides what to persist/log about it ({@see reconcileHealth()}),
      * which keeps this method free of the "log once per state change" concern.
      *
      * @param (\Closure(string, string): void)|null $report ($level in info|comment|error, $message)
      */
-    public function collect(string $dsn, bool $dryRun = false, ?\Closure $report = null): BounceOutcome
+    public function collect(string $dsn, bool $dryRun = false, ?\Closure $report = null, bool $trackProgress = true): BounceOutcome
     {
         $note = static function (string $level, string $message) use ($report): void {
             if (null !== $report) {
@@ -168,25 +184,21 @@ class BounceCollector
         };
 
         if ('' === $dsn) {
-            $note('comment', 'Kein Bounce-Postfach konfiguriert (WORKFLOW_BOUNCE_IMAP_DSN ist leer).');
+            $note('comment', 'Kein Bounce-Postfach eingerichtet (weder in der Workflow-Übersicht noch per WORKFLOW_BOUNCE_IMAP_DSN).');
 
             return BounceOutcome::unconfigured();
         }
 
         try {
-            $config = $this->configFromDsn($dsn);
+            $config = self::imapConfig($dsn);
         } catch (\Throwable $e) {
             $note('error', 'Ungültige DSN: '.$e->getMessage());
 
             return BounceOutcome::configError('Ungültige DSN ('.$e->getMessage().').');
         }
 
-        $total = 0;
-        $hard = 0;
-        $former = 0;
-        $soft = 0;
-        $unmatched = 0;
-        $skipped = 0;
+        $counts = ['total' => 0, 'hard' => 0, 'former' => 0, 'soft' => 0, 'unmatched' => 0, 'skipped' => 0, 'moved' => 0, 'kept' => 0, 'inbox' => 0];
+        $persist = $trackProgress && !$dryRun;
 
         try {
             $client = (new ClientManager())->make($config);
@@ -202,109 +214,177 @@ class BounceCollector
                 return BounceOutcome::configError('INBOX nicht gefunden.');
             }
 
+            // STATUS before anything selects the INBOX: clients must not use it on the
+            // selected mailbox. It gives the message count, UIDVALIDITY and the next UID
+            // without fetching anything.
+            $status = $inbox->status();
+            $inboxCount = (int) ($status['messages'] ?? 0);
+            $uidValidity = (int) ($status['uidvalidity'] ?? 0);
+            $uidNext = (int) ($status['uidnext'] ?? 0);
+
+            $mailbox = $this->mailboxKey($config);
+            $lastUid = $trackProgress ? self::resumeAfter($this->health->readScan(), $mailbox, $uidValidity) : 0;
+
             if (!$dryRun) {
                 $this->ensureProcessedFolder($client);
             }
 
-            // whereAll() forces "UID SEARCH ALL": without an explicit criterion webklex sends
-            // an empty search, which strict IMAP servers (All-Inkl/Dovecot) reject with
-            // "BAD ... Missing search parameters".
-            $messages = $inbox->messages()->whereAll()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->get();
-            $total = \count($messages);
-            $note('info', $total.' Nachricht(en) in der INBOX'.($dryRun ? ' (Testlauf – es wird nichts verändert)' : '').'.');
+            $messages = [];
+            $pending = 0;
+
+            // Fetch only when there is something above the watermark. This also keeps an empty
+            // INBOX from being asked for UIDs at all.
+            if ($inboxCount > 0 && ($uidNext <= 0 || $uidNext - 1 > $lastUid)) {
+                $messages = $inbox->messages()->limit(self::BATCH_LIMIT)->setFetchBody(true)->leaveUnread()->getByUidGreater($lastUid);
+                $pending = (int) ($messages->total() ?? \count($messages));
+            }
+
+            $note('info', \sprintf(
+                '%d Nachricht(en) in der INBOX, davon %d neu seit der letzten Prüfung (UID > %d)%s.',
+                $inboxCount,
+                $pending,
+                $lastUid,
+                $dryRun ? ' – Testlauf, es wird nichts verändert' : '',
+            ));
+
+            $own = 0;
+            $stopped = false;
 
             foreach ($messages as $message) {
+                $uid = (int) $message->getUid();
+
                 try {
-                    // Correlate first; a hard bounce is idempotent, so even if the move below
-                    // fails and the message is seen again next run, no harm is done.
-                    $reports = $this->parser->parse($this->rawMessage($message));
+                    $verdict = $this->handleRaw($this->rawMessage($message), $dryRun, $note);
+                } catch (DbalException $e) {
+                    // Database trouble is usually passing: stop here and look at this message
+                    // again on the next run (the watermark stays below it).
+                    $this->logMessageError($note, 'Datenbankfehler, Nachricht wird beim nächsten Abruf erneut geprüft – '.$e->getMessage());
+                    $stopped = true;
+                    break;
+                } catch (\Throwable $e) {
+                    // An unreadable message would fail again on every run: leave it in the INBOX
+                    // for a person and move on.
+                    $this->logMessageError($note, 'Nachricht nicht lesbar, bleibt im Posteingang – '.$e->getMessage());
+                    $verdict = ['own' => false, 'outcomes' => []];
+                }
 
-                    if ([] === $reports) {
-                        ++$skipped;
-                        $note('comment', 'Übersprungen: keine Unzustellbarkeitsmeldung (kein DSN).');
+                ++$counts['total'];
 
-                        if (!$dryRun) {
-                            $message->move(self::PROCESSED_FOLDER, true);
-                        }
+                foreach ($verdict['outcomes'] as $outcome) {
+                    match ($outcome) {
+                        'hard', 'former', 'soft', 'unmatched' => ++$counts[$outcome],
+                        'nodsn' => ++$counts['skipped'],
+                        default => null,
+                    };
+                }
 
-                        continue;
-                    }
-
-                    foreach ($reports as $bounce) {
-                        $note('info', \sprintf(
-                            '%s — %s, Status %s, Parcel %s%s',
-                            $bounce->recipient,
-                            $bounce->action,
-                            $bounce->status,
-                            $bounce->parcelId ?? '—',
-                            $bounce->isHardBounce() ? ' [HARD]' : ($bounce->isSoftBounce() ? ' [soft]' : ''),
-                        ));
-
-                        if ($dryRun) {
-                            if ($bounce->isHardBounce()) {
-                                $send = $this->locateSend($bounce);
-                                $note($send ? 'info' : 'error', '  → '.($send ? 'würde Eintrag '.$send['entryId'].' als unzustellbar markieren' : 'keine passende Versandzeile gefunden – nicht zuordenbar'));
-                            }
-
-                            continue;
-                        }
-
-                        match ($this->applyReport($bounce)) {
-                            'hard' => ++$hard,
-                            'former' => ++$former,
-                            'unmatched' => ++$unmatched,
-                            'soft' => ++$soft,
-                            default => null,
-                        };
-                    }
+                if ($verdict['own']) {
+                    ++$own;
 
                     if (!$dryRun) {
-                        $message->move(self::PROCESSED_FOLDER, true);
+                        try {
+                            $message->move(self::PROCESSED_FOLDER, true);
+                            ++$counts['moved'];
+                        } catch (\Throwable $e) {
+                            // Already applied (idempotent); only the move failed.
+                            $this->logMessageError($note, 'Bounce ausgewertet, aber nicht nach Processed verschoben, bleibt im Posteingang – '.$e->getMessage());
+                        }
                     }
-                } catch (\Throwable $e) {
-                    $this->logger->warning('Workflow bounce collector: could not process a message ('.$e->getMessage().').');
-                    $note('error', 'Fehler bei einer Nachricht: '.$e->getMessage());
-                    $this->systemLog('Bounce-Collector: Fehler bei einer Nachricht – '.$e->getMessage(), LogLevel::ERROR);
+                } else {
+                    ++$counts['kept'];
+                }
+
+                $lastUid = max($lastUid, $uid);
+
+                if ($persist) {
+                    $this->health->recordScan($mailbox, $uidValidity, $lastUid);
                 }
             }
 
             $client->disconnect();
-            $note('info', 'Fertig.');
 
-            // Only log a run that actually did something. An empty mailbox is the normal
-            // state, so a line every 15 minutes would bury the entries that matter — and the
-            // system log is the one diagnostic channel available without CLI access. A run
-            // with messages IS worth a line even when none carried a DSN: those messages were
-            // still moved out of the INBOX. Errors are logged regardless (see the catch
-            // blocks), and "workflow:bounce:collect" reports every step on demand, so
-            // liveness stays checkable without the heartbeat.
-            if (!$dryRun && $total > 0) {
+            $lastUid = self::watermarkAfterRun($lastUid, $uidNext, !$stopped && $counts['total'] >= $pending);
+
+            // What the INBOX holds after this run, apart from messages not looked at yet:
+            // computed from the STATUS count, so messages a person deleted in the meantime
+            // are no longer counted.
+            $counts['inbox'] = self::leftInInbox($inboxCount, $dryRun ? $own : $counts['moved'], $pending, $counts['total']);
+
+            if ($persist) {
+                $this->health->recordScan($mailbox, $uidValidity, $lastUid, $counts['inbox']);
+            }
+
+            $note('info', \sprintf(
+                'Fertig. %d Nachricht(en) im Posteingang gehören zu keiner Workflow-Mail%s.',
+                $counts['inbox'],
+                $dryRun ? ' (nach einem echten Lauf)' : '',
+            ));
+
+            // Only log a run that actually looked at something. An empty mailbox is the
+            // normal state, so a line every 15 minutes would bury the entries that matter —
+            // and the system log is the one diagnostic channel available without CLI access.
+            // Errors are logged regardless, and "workflow:bounce:collect" reports every step
+            // on demand, so liveness stays checkable without the heartbeat.
+            if (!$dryRun && $counts['total'] > 0) {
                 $this->systemLog(\sprintf(
-                    'Bounce-Postfach geprüft (%s:%d): %d Nachricht(en), %d hart markiert, %d für eine inzwischen geänderte Adresse, %d weich, %d ohne Zuordnung, %d ohne DSN.',
+                    'Bounce-Postfach geprüft (%s:%d): %d neue Nachricht(en), %d hart markiert, %d für eine inzwischen geänderte Adresse, %d weich, %d ohne Zuordnung, %d ohne DSN; %d nach Processed verschoben, %d im Posteingang belassen.',
                     $config['host'],
                     $config['port'],
-                    $total,
-                    $hard,
-                    $former,
-                    $soft,
-                    $unmatched,
-                    $skipped,
+                    $counts['total'],
+                    $counts['hard'],
+                    $counts['former'],
+                    $counts['soft'],
+                    $counts['unmatched'],
+                    $counts['skipped'],
+                    $counts['moved'],
+                    $counts['kept'],
                 ));
             }
 
-            return BounceOutcome::ok([
-                'total' => $total,
-                'hard' => $hard,
-                'former' => $former,
-                'soft' => $soft,
-                'unmatched' => $unmatched,
-                'skipped' => $skipped,
-            ]);
+            return BounceOutcome::ok($counts);
         } catch (\Throwable $e) {
             $note('error', 'IMAP-Fehler: '.$e->getMessage());
 
             return BounceOutcome::configError('IMAP-Fehler ('.$e->getMessage().').');
         }
+    }
+
+    /**
+     * The UID after which to read: the stored watermark, but only while it belongs to this
+     * mailbox and its UIDVALIDITY is unchanged. A different mailbox (configuration changed) or
+     * a new UIDVALIDITY (the server renumbered the messages) starts a full pass.
+     *
+     * @param array{mailbox: string, uidValidity: int, lastUid: int, foreignCount: int} $scan
+     */
+    public static function resumeAfter(array $scan, string $mailbox, int $uidValidity): int
+    {
+        if ($uidValidity <= 0 || $scan['mailbox'] !== $mailbox || $scan['uidValidity'] !== $uidValidity) {
+            return 0;
+        }
+
+        return max(0, $scan['lastUid']);
+    }
+
+    /**
+     * The watermark after a run. After a complete pass (no batch limit hit, not stopped) every
+     * UID below UIDNEXT – from the STATUS before the run – has been looked at or no longer
+     * exists (moved out, or deleted by a person). Raising the watermark to UIDNEXT − 1 keeps
+     * such gaps from causing a UID query on every later run. A message that arrived during the
+     * run has a UID of at least UIDNEXT and stays above it.
+     */
+    public static function watermarkAfterRun(int $lastUid, int $uidNext, bool $complete): int
+    {
+        return $complete && $uidNext > 0 ? max($lastUid, $uidNext - 1) : $lastUid;
+    }
+
+    /**
+     * Messages in the INBOX after a run that were looked at and left there: the count at the
+     * start, minus the bounces moved out, minus the new messages not looked at yet (batch
+     * limit, or a run stopped by a database error).
+     */
+    public static function leftInInbox(int $inboxCount, int $moved, int $pending, int $examined): int
+    {
+        return max(0, $inboxCount - $moved - max(0, $pending - $examined));
     }
 
     /**
@@ -329,23 +409,84 @@ class BounceCollector
     }
 
     /**
-     * Parses one raw message and applies its bounces to the send log. Public and free of any
-     * IMAP dependency so it can be unit-tested against fixtures and a real database.
+     * Handles one raw message: parses it, finds the workflow mail each report is about and,
+     * unless $dryRun, applies the reports to the send log. Public and free of any IMAP
+     * dependency so it can be unit-tested against fixtures and a real database.
+     *
+     * Returns whether the message is ours – a delivery status notification about at least one
+     * workflow mail this installation logged. Only such a message is moved to the Processed
+     * folder. Anything else stays in the INBOX for a person to see: replies and out-of-office
+     * notes that reached the bounce mailbox, and bounces of mails this installation did not
+     * send (another sender pointing at the mailbox, another installation, a send row already
+     * purged).
+     *
+     * @param (\Closure(string, string): void)|null $note
+     *
+     * @return array{own: bool, outcomes: list<string>} one outcome per report
+     *                                                  (hard|former|soft|unmatched|none), or
+     *                                                  ['nodsn'] for a message without a DSN
      */
-    public function handleRaw(string $raw): void
+    public function handleRaw(string $raw, bool $dryRun = false, ?\Closure $note = null): array
     {
-        foreach ($this->parser->parse($raw) as $report) {
-            $this->applyReport($report);
+        $note ??= static function (string $level, string $message): void {
+        };
+
+        $reports = $this->parser->parse($raw);
+
+        if ([] === $reports) {
+            $note('comment', 'Keine Unzustellbarkeitsmeldung (kein DSN) – bleibt im Posteingang.');
+
+            return ['own' => false, 'outcomes' => ['nodsn']];
         }
+
+        $sends = array_map($this->locateSend(...), $reports);
+        $own = [] !== array_filter($sends);
+        $outcomes = [];
+
+        foreach ($reports as $i => $bounce) {
+            $send = $sends[$i];
+
+            $note('info', \sprintf(
+                '%s — %s, Status %s, Parcel %s%s',
+                $bounce->recipient,
+                $bounce->action,
+                $bounce->status,
+                $bounce->parcelId ?? '—',
+                $bounce->isHardBounce() ? ' [HARD]' : ($bounce->isSoftBounce() ? ' [soft]' : ''),
+            ));
+
+            if ($dryRun) {
+                if ($bounce->isHardBounce()) {
+                    $note(null !== $send ? 'info' : 'error', '  → '.(null !== $send ? 'würde Eintrag '.$send['entryId'].' als unzustellbar markieren' : 'keine passende Versandzeile gefunden – nicht zuordenbar'));
+                }
+
+                $outcomes[] = $bounce->isHardBounce() ? (null !== $send ? 'hard' : 'unmatched') : ($bounce->isSoftBounce() ? 'soft' : 'none');
+
+                continue;
+            }
+
+            $outcomes[] = $this->applyReport($bounce, $send);
+        }
+
+        $note(
+            $own ? 'info' : 'comment',
+            $own
+                ? '  → Bounce einer Workflow-Mail'.($dryRun ? ', würde nach Processed verschoben' : ', wird nach Processed verschoben').'.'
+                : '  → gehört zu keiner Workflow-Mail dieser Installation – bleibt im Posteingang.',
+        );
+
+        return ['own' => $own, 'outcomes' => $outcomes];
     }
 
     /**
-     * @return string one of hard|former|unmatched|soft|none
+     * @param array{id: int, entryId: int, recipient: string, kind: string}|null $send the located send row
+     *
+     * @return string one of hard|former|test|unmatched|soft|none
      */
-    private function applyReport(BounceReport $report): string
+    private function applyReport(BounceReport $report, ?array $send): string
     {
         if ($report->isHardBounce()) {
-            return $this->recordHardBounce($report);
+            return $this->recordHardBounce($report, $send);
         }
 
         if ($report->isSoftBounce()) {
@@ -364,13 +505,13 @@ class BounceCollector
     }
 
     /**
+     * @param array{id: int, entryId: int, recipient: string, kind: string}|null $send the located send row
+     *
      * @return string hard (address blocked) | former (the entry's address has changed since) |
-     *                unmatched (no send row found)
+     *                test (the end-to-end test's bounce) | unmatched (no send row found)
      */
-    private function recordHardBounce(BounceReport $report): string
+    private function recordHardBounce(BounceReport $report, ?array $send): string
     {
-        $send = $this->locateSend($report);
-
         if (null === $send) {
             $this->logger->warning(\sprintf(
                 'Workflow bounce collector: hard bounce for %s could not be correlated (parcel id %s).',
@@ -394,6 +535,14 @@ class BounceCollector
             [$code, $now, $now, (int) $send['id']],
         );
 
+        // The bounce the end-to-end test is waiting for: the row above is its result; there is
+        // no entry to block.
+        if (WorkflowMailContext::KIND_TEST === $send['kind']) {
+            $this->systemLog(\sprintf('Ende-zu-Ende-Test: Bounce für %s im Bounce-Postfach angekommen und zugeordnet (%s).', $report->recipient, $code));
+
+            return 'test';
+        }
+
         // Block the address: excluded from further invitation and reminder runs and shown as
         // "Unzustellbar" – but only while the entry still has the address the mail went to. A
         // late bounce for an address the admin has corrected since must not block the new one.
@@ -416,18 +565,18 @@ class BounceCollector
     }
 
     /**
-     * @return array{id: int, entryId: int, recipient: string}|null
+     * @return array{id: int, entryId: int, recipient: string, kind: string}|null
      */
     private function locateSend(BounceReport $report): ?array
     {
         if (null !== $report->parcelId) {
             $row = $this->connection->fetchAssociative(
-                'SELECT id, entryId, recipient FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
+                'SELECT id, entryId, recipient, kind FROM tl_workflow_send WHERE parcelId = ? LIMIT 1',
                 [$report->parcelId],
             );
 
             if (false !== $row) {
-                return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
+                return self::sendRow($row);
             }
 
             // Parcel id present but unknown (purged, or a mail we did not send): do not guess.
@@ -437,7 +586,7 @@ class BounceCollector
         // Rule 5: no parcel id (the MTA truncated the original past the header). Fall back to
         // the most recent successfully sent mail to this recipient, and record that we guessed.
         $row = $this->connection->fetchAssociative(
-            "SELECT id, entryId, recipient FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
+            "SELECT id, entryId, recipient, kind FROM tl_workflow_send WHERE recipient = ? AND state = 'sent' ORDER BY sentAt DESC, id DESC LIMIT 1",
             [$report->recipient],
         );
 
@@ -450,13 +599,30 @@ class BounceCollector
             $report->recipient,
         ));
 
-        return ['id' => (int) $row['id'], 'entryId' => (int) $row['entryId'], 'recipient' => (string) $row['recipient']];
+        return self::sendRow($row);
     }
 
     /**
+     * @param array<string, mixed> $row
+     *
+     * @return array{id: int, entryId: int, recipient: string, kind: string}
+     */
+    private static function sendRow(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'entryId' => (int) $row['entryId'],
+            'recipient' => (string) $row['recipient'],
+            'kind' => (string) $row['kind'],
+        ];
+    }
+
+    /**
+     * The webklex client configuration for an IMAP DSN.
+     *
      * @return array<string, mixed>
      */
-    private function configFromDsn(string $dsn): array
+    public static function imapConfig(string $dsn): array
     {
         $parts = parse_url($dsn);
 
@@ -486,19 +652,42 @@ class BounceCollector
             'protocol' => 'imap',
             'encryption' => $encryption,
             'validate_cert' => $validateCert,
-            'username' => isset($parts['user']) ? urldecode($parts['user']) : '',
-            'password' => isset($parts['pass']) ? urldecode($parts['pass']) : '',
+            // rawurldecode, not urldecode: in a URI a "+" is a plus, not a space.
+            'username' => isset($parts['user']) ? rawurldecode($parts['user']) : '',
+            'password' => isset($parts['pass']) ? rawurldecode($parts['pass']) : '',
             'authentication' => null,
             // Fail fast instead of hanging the (web) cron on an unreachable mailbox.
             'timeout' => 20,
         ];
     }
 
+    /**
+     * Identifies the mailbox the watermark belongs to (no secret in it).
+     *
+     * @param array<string, mixed> $config
+     */
+    private function mailboxKey(array $config): string
+    {
+        return \sprintf('imap://%s@%s:%d', rawurlencode((string) $config['username']), (string) $config['host'], (int) $config['port']);
+    }
+
+    /**
+     * @param \Closure(string, string): void $note
+     */
+    private function logMessageError(\Closure $note, string $message): void
+    {
+        $this->logger->warning('Workflow bounce collector: '.$message);
+        $note('error', $message);
+        $this->systemLog('Bounce-Collector: '.$message, LogLevel::ERROR);
+    }
+
     private function ensureProcessedFolder(object $client): void
     {
         try {
             if (null === $client->getFolderByPath(self::PROCESSED_FOLDER, false, true)) {
-                $client->createFolder(self::PROCESSED_FOLDER);
+                // No EXPUNGE afterwards (webklex' default): no mailbox is selected yet, so the
+                // server answers "BAD No mailbox selected" although the folder was created.
+                $client->createFolder(self::PROCESSED_FOLDER, false);
             }
         } catch (\Throwable $e) {
             // If the folder cannot be ensured, the per-message move will fail and be logged.

@@ -6,6 +6,68 @@ Alle nennenswerten Änderungen an diesem Bundle. Format angelehnt an
 
 ## [Unreleased]
 
+## [3.6.0] – 2026-11-03
+
+Schwerpunkt: **Bounces getrennt von Absender und Antworten.** Ein Bounce geht an den
+Envelope-Sender einer Mail, und den leitete der Mailer bisher aus dem Absender ab. Das
+Bounce-Postfach musste deshalb der Absender sein – und war damit zugleich das Postfach, in das
+Teilnehmer antworten. Der Abruf verschob jede Nachricht darin nach `Processed`, auch Antworten.
+Ob Bounces überhaupt ankommen, ließ sich nur an einem echten Fehlversand ablesen, und das
+Postfach war nur per `.env.local` einzurichten.
+
+> **Beim Update:** Datenbank aktualisieren (Contao-Manager bzw. `contao:migrate`) – es legt die
+> Tabelle `tl_workflow_settings` sowie neue Spalten in `tl_workflow_send` (`envelopeSender`) und
+> `tl_workflow_bounce_health` (`scanMailbox`, `uidValidity`, `lastUid`, `foreignCount`) an.
+> Danach den Cache leeren. Ist `WORKFLOW_BOUNCE_IMAP_DSN` mit einer E-Mail-Adresse als Benutzer
+> gesetzt, gehen Workflow-Mails ab jetzt **automatisch** mit dieser Adresse als Envelope-Sender
+> raus; bei All-Inkl ist das erlaubt (gemessen), andere Anbieter können einen Envelope-Sender
+> ablehnen, der nicht zum Versandkonto passt – der Ende-zu-Ende-Test zeigt es. Einen
+> erzwungenen Absender am Transport (`contao.mailer.transports.<name>.from`) erst **nach** dem
+> Update auf eine von Menschen gelesene Adresse umstellen (DEPLOYMENT.md, Abschnitt 3c).
+
+### Hinzugefügt
+- **Bounce-Adresse als Envelope-Sender:** Jede Workflow-Mail geht mit der Adresse des
+  Bounce-Postfachs als Envelope-Sender (`MAIL FROM`, beim Empfänger `Return-Path`) raus.
+  Absender und „Antwort an" bleiben, wie sie im Notification Center stehen – Antworten gehen
+  also an ein Postfach, das ein Mensch liest, Bounces ins Bounce-Postfach. Welche Adresse
+  tatsächlich verwendet wurde, hält die Versandzeile fest. Optional
+  `WORKFLOW_BOUNCE_ADDRESS`, wenn der IMAP-Benutzer keine E-Mail-Adresse ist.
+- **Bounce-Postfach im Back-End einrichten:** Abschnitt „Bounce-Postfach" in der
+  Workflow-Übersicht, nur für Administratoren – Adresse, IMAP-Server, Port, Verschlüsselung,
+  Benutzer, Passwort. „Speichern und Postfach prüfen" meldet sich sofort an. Das Passwort liegt
+  verschlüsselt in der Datenbank (libsodium, Schlüssel aus `APP_SECRET`) und wird nie angezeigt.
+  `WORKFLOW_BOUNCE_IMAP_DSN` in der `.env.local` hat weiter Vorrang.
+- **Ende-zu-Ende-Test:** In der Statuszeile einen Workflow wählen und den Test starten. Seine
+  Einladung geht über den echten Versandweg an eine Adresse unter `.invalid`; das Postfach wird
+  dann jede Minute geprüft, bis zu 30 Minuten. Die Statuszeile zeigt, ob und nach wie vielen
+  Sekunden der Bounce ankam, ob der Versand scheiterte (mit Fehlertext) oder ob kein Bounce kam.
+  Kein Eintrag wird verändert.
+- **Versandweg in der Bearbeitungsmaske:** Unter den Benachrichtigungen steht je Einladung,
+  Erinnerung und Ergebnis, was Empfänger als Absender sehen (auch ein vom Transport erzwungener
+  Absender), wohin Antworten und wohin Bounces gehen – mit Warnung, wenn Absender oder „Antwort
+  an" das Bounce-Postfach ist, keines eingerichtet ist oder seine letzte Prüfung scheiterte.
+- **Übersicht nennt liegengebliebene Nachrichten:** „Im Posteingang des Bounce-Postfachs liegen
+  N Nachricht(en), die keine Bounces von Workflow-Mails sind …" – die Zahl kommt vom Server und
+  sinkt, wenn jemand im Webmail löscht.
+
+### Geändert
+- **Der Bounce-Abruf verschiebt nur noch Bounces von Workflow-Mails** nach `INBOX/Processed`.
+  Antworten, Abwesenheitsnotizen und Bounces anderer Absender bleiben im Posteingang (bisher
+  wurden auch sie verschoben, wo niemand sie sah).
+- **Jede Nachricht des Bounce-Postfachs wird genau einmal angesehen:** Das Bundle merkt sich
+  die zuletzt geprüfte Nachrichtennummer und liest danach nur neuere; ist nichts Neues da, wird
+  nichts abgerufen.
+- `workflow:bounce:collect` liest das eingerichtete Postfach (Dialog oder `.env.local`) und
+  nennt die Quelle; `--dsn` liest ein anderes Postfach ganz, ohne die Merkstelle des
+  eingerichteten zu verändern.
+
+### Behoben
+- Ein `+` in Benutzer oder Passwort des IMAP-DSN wurde zum Leerzeichen; die Anmeldung
+  scheiterte. Ein von Hand als `+` geschriebenes Leerzeichen gilt jetzt als `+` (`%20` gilt
+  weiter).
+- Beim ersten Anlegen von `INBOX/Processed` stand fälschlich „could not ensure the Processed
+  folder (BAD No mailbox selected)" im Log, obwohl der Ordner angelegt war.
+
 ## [3.5.0] – 2026-11-03
 
 Schwerpunkt: **Versandstatus, Cronjob und Zurücksetzen.** Ohne Server-Cronjob arbeitet Contao

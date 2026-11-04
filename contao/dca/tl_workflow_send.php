@@ -82,5 +82,11 @@ $GLOBALS['TL_DCA']['tl_workflow_send'] = [
         'bounceCode' => [
             'sql' => "varchar(255) NOT NULL default ''",
         ],
+        // Address that actually went out as SMTP MAIL FROM (the bounce mailbox), written at
+        // send time by EnvelopeSenderListener. Empty: the mailer derived the envelope sender
+        // from the From header (no bounce mailbox address configured).
+        'envelopeSender' => [
+            'sql' => "varchar(255) NOT NULL default ''",
+        ],
     ],
 ];
